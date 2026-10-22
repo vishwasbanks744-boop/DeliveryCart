@@ -1,0 +1,2749 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ramjicart</title>
+<style>
+    /* =========================
+   BASIC RESET
+========================= */
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f7f9fc;
+    color: #172033;
+}
+
+
+/* =========================
+   HEADER
+========================= */
+
+.header {
+    width: 100%;
+    height: 74px;
+    background: #ffffff;
+    border-bottom: 1px solid #e8edf3;
+    display: flex;
+    align-items: center;
+    padding: 0 30px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.header-container {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+
+/* =========================
+   LOGO
+========================= */
+
+.main-upperdiv {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+}
+
+.main-upperdiv h1 {
+    font-size: 27px;
+    font-weight: 800;
+    color: #172033;
+    line-height: 30px;
+    letter-spacing: -1px;
+}
+
+.main-upperdiv h1::first-letter {
+    color: #ff5a16;
+}
+
+.main-upperdiv h4 {
+    font-size: 10px;
+    font-weight: 500;
+    color: #8b95a7;
+    margin-top: 2px;
+    padding-left: 2px;
+}
+
+
+/* =========================
+   HEADER RIGHT
+========================= */
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+
+/* Notification */
+
+.notification-button {
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: transparent;
+    position: relative;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.refresh-button {
+    width: 38px;
+    height: 38px;
+    border: 1px solid #e7ebf0;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #526075;
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.refresh-button:hover {
+    border-color: #ff5a16;
+    color: #ff5a16;
+}
+
+.refresh-button:disabled {
+    opacity: 0.55;
+    cursor: wait;
+}
+
+.logout-button {
+    min-height: 36px;
+    padding: 0 12px;
+    border: 1px solid #e7ebf0;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #526075;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.material-icons {
+    font-size: 21px;
+    line-height: 1;
+}
+
+
+/* Notification count */
+
+.notification-count {
+    position: absolute;
+    top: 1px;
+    right: 0;
+
+    min-width: 17px;
+    height: 17px;
+
+    padding: 0 4px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: #ef3333;
+    color: white;
+
+    border-radius: 50%;
+
+    font-size: 9px;
+    font-weight: 700;
+
+    border: 2px solid white;
+}
+
+.notification-count[hidden] {
+    display: none;
+}
+
+
+/* Divider */
+
+.header-divider {
+    width: 1px;
+    height: 32px;
+    background: #e5e7eb;
+    margin: 0 5px;
+}
+
+
+/* Restaurant account */
+
+.restaurant-account {
+    height: 44px;
+    min-width: 220px;
+
+    padding: 0 12px;
+
+    display: flex;
+    align-items: center;
+    gap: 9px;
+
+    border: 1px solid #e7ebf0;
+    border-radius: 24px;
+
+    background: #ffffff;
+
+    box-shadow: 0 2px 8px rgba(20, 30, 50, 0.03);
+}
+
+
+/* Restaurant image */
+
+.restaurant-logo {
+    width: 31px;
+    height: 31px;
+
+    border-radius: 50%;
+
+    object-fit: cover;
+
+    background: #fff0e8;
+}
+
+.restaurant-logo-fallback {
+    width: 31px;
+    height: 31px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff0e8;
+    color: #ff5a16;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.restaurant-logo[hidden],
+.restaurant-logo-fallback[hidden] {
+    display: none;
+}
+
+
+/* Restaurant name */
+
+.resturant-name {
+    flex: 1;
+
+    font-size: 13px;
+    font-weight: 600;
+
+    color: #263246;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+
+/* Arrow */
+
+.restaurant-arrow {
+    font-size: 17px;
+    color: #697386;
+}
+
+
+/* =========================
+   SIDEBAR
+========================= */
+
+.second-list {
+    position: fixed;
+
+    left: 0;
+    top: 74px;
+
+    width: 220px;
+    height: calc(100vh - 74px);
+
+    background: #ffffff;
+
+    border-right: 1px solid #e7ebf0;
+
+    padding: 24px 13px;
+
+    z-index: 900;
+}
+
+.second-list ul {
+    list-style: none;
+}
+
+.second-list li {
+    margin-bottom: 7px;
+}
+
+.second-list a {
+    display: flex;
+    align-items: center;
+
+    gap: 12px;
+
+    width: 100%;
+    min-height: 45px;
+
+    padding: 11px 14px;
+
+    text-decoration: none;
+
+    color: #526075;
+
+    font-size: 14px;
+    font-weight: 500;
+
+    border-radius: 9px;
+
+    transition: 0.2s ease;
+}
+
+.second-list a:hover {
+    background: #fff2eb;
+    color: #ff5a16;
+}
+
+
+/* Active Dashboard */
+
+.second-list .first-list a {
+    background: #fff0e9;
+    color: #ff5a16;
+    font-weight: 600;
+}
+
+
+/* =========================
+   HERO BANNER
+========================= */
+
+.hero-banner {
+    margin-left: 235px;
+    margin-right: 25px;
+    margin-top: 24px;
+
+    height: 235px;
+
+    position: relative;
+
+    overflow: hidden;
+
+    border-radius: 13px;
+
+    background: #111111;
+
+    display: flex;
+    align-items: center;
+
+    padding: 30px 38px;
+}
+
+
+/* Dark overlay */
+
+.hero-banner::before {
+    content: "";
+
+    position: absolute;
+
+    inset: 0;
+
+    background: linear-gradient(
+        90deg,
+        rgba(0, 0, 0, 0.78),
+        rgba(0, 0, 0, 0.45),
+        rgba(0, 0, 0, 0.20)
+    );
+
+    z-index: 1;
+}
+
+
+/* Banner image */
+
+.banner-image {
+    position: absolute;
+
+    inset: 0;
+
+    z-index: 0;
+}
+
+.banner-image img {
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+}
+
+
+/* Banner text */
+
+.banner-text {
+    position: relative;
+
+    z-index: 2;
+
+    max-width: 650px;
+
+    color: white;
+}
+
+.banner-text p:first-child {
+    font-size: 15px;
+    font-weight: 600;
+
+    margin-bottom: 6px;
+
+    color: #ffffff;
+}
+
+.banner-text h1 {
+    font-size: 42px;
+    line-height: 1.1;
+
+    font-weight: 800;
+
+    color: #ffffff;
+
+    margin-bottom: 10px;
+}
+
+.banner-text p:last-child {
+    font-size: 15px;
+
+    line-height: 1.6;
+
+    color: #f0f0f0;
+}
+
+
+/* Extra text */
+
+.hero-banner > div:last-child {
+    display: none;
+}
+
+
+/* =========================
+   DASHBOARD STATS
+========================= */
+
+.dashboard-stats-container {
+    margin-left: 235px;
+    margin-right: 25px;
+
+    margin-top: 22px;
+
+    display: grid;
+
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+
+    gap: 16px;
+}
+
+.stat-card {
+    min-height: 112px;
+
+    background: #ffffff;
+
+    border: 1px solid #e6ebf1;
+
+    border-radius: 12px;
+
+    padding: 19px;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 13px;
+
+    position: relative;
+
+    transition: 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 8px 25px rgba(30, 50, 80, 0.07);
+}
+
+
+/* Icons */
+
+.card-icon {
+    width: 45px;
+    height: 45px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 10px;
+
+    font-size: 20px;
+
+    flex-shrink: 0;
+}
+
+.icon-orange {
+    background: #fff0e8;
+}
+
+.icon-green {
+    background: #eaf9f0;
+}
+
+.icon-blue {
+    background: #edf5ff;
+}
+
+.icon-purple {
+    background: #f3edff;
+}
+
+
+/* Card information */
+
+.card-info {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 5px;
+}
+
+.card-title {
+    font-size: 12px;
+
+    color: #7c8798;
+}
+
+.card-value {
+    font-size: 21px;
+
+    color: #172033;
+
+    font-weight: 700;
+}
+
+
+/* Arrow */
+
+.card-arrow-btn {
+    position: absolute;
+
+    right: 14px;
+    bottom: 13px;
+
+    width: 28px;
+    height: 28px;
+
+    border: 1px solid #e5eaf0;
+
+    background: #ffffff;
+
+    border-radius: 7px;
+
+    color: #596579;
+
+    cursor: pointer;
+
+    font-size: 15px;
+}
+
+.card-arrow-btn:hover {
+    background: #ff5a16;
+
+    color: white;
+
+    border-color: #ff5a16;
+}
+
+
+/* =========================
+   ADD PRODUCT
+========================= */
+
+.add-product-section {
+    margin-left: 235px;
+    margin-right: 25px;
+
+    margin-top: 22px;
+
+    background: #ffffff;
+
+    border: 1px solid #e5ebf1;
+
+    border-radius: 12px;
+
+    padding: 20px 22px;
+}
+
+
+/* Section heading */
+
+.section-header {
+    margin-bottom: 18px;
+}
+
+.section-header h2 {
+    font-size: 20px;
+
+    color: #172033;
+
+    margin-bottom: 5px;
+}
+
+.section-header p {
+    font-size: 13px;
+
+    color: #7c8798;
+}
+
+
+/* =========================
+   PRODUCT FORM
+========================= */
+
+.product-form {
+    display: grid;
+
+    grid-template-columns:
+        1.2fr
+        1.2fr
+        0.9fr
+        1.3fr
+        1.1fr
+        0.7fr;
+
+    gap: 18px;
+
+    align-items: end;
+}
+
+.form-group {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 7px;
+}
+
+.form-group label {
+    font-size: 12px;
+
+    font-weight: 600;
+
+    color: #445066;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+
+    height: 47px;
+
+    border: 1px solid #dce3eb;
+
+    border-radius: 8px;
+
+    padding: 0 12px;
+
+    background: #ffffff;
+
+    outline: none;
+
+    font-family: inherit;
+
+    font-size: 12px;
+
+    color: #344054;
+
+    transition: 0.2s ease;
+}
+
+.form-group textarea {
+    padding-top: 14px;
+
+    resize: vertical;
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+    color: #a2acba;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    border-color: #ff6a2a;
+
+    box-shadow:
+        0 0 0 3px rgba(255, 90, 22, 0.08);
+}
+
+
+/* File input */
+
+.form-group input[type="file"] {
+    padding: 13px 10px;
+
+    cursor: pointer;
+}
+
+
+/* Add product button */
+
+.form-button button {
+    width: 100%;
+
+    height: 47px;
+
+    border: none;
+
+    border-radius: 8px;
+
+    background: #ff5a16;
+
+    color: #ffffff;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: 0.2s ease;
+}
+
+.form-button button:hover {
+    background: #e94e0b;
+
+    transform: translateY(-1px);
+}
+
+
+/* =========================
+   MENU SECTION
+========================= */
+
+.menu-section {
+    margin-left: 235px;
+    margin-right: 25px;
+
+    margin-top: 22px;
+    margin-bottom: 40px;
+
+    background: #ffffff;
+
+    border: 1px solid #e5ebf1;
+
+    border-radius: 12px;
+
+    padding: 21px;
+}
+
+
+/* Menu heading */
+
+.menu-header {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 20px;
+
+    margin-bottom: 20px;
+}
+
+.menu-title {
+    display: flex;
+
+    align-items: center;
+
+    gap: 11px;
+}
+
+.menu-icon {
+    width: 38px;
+    height: 38px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 9px;
+
+    background: #fff0e8;
+
+    font-size: 18px;
+}
+
+.menu-title h2 {
+    font-size: 20px;
+
+    color: #172033;
+
+    margin-bottom: 4px;
+}
+
+.menu-title p {
+    font-size: 12px;
+
+    color: #7c8798;
+}
+
+
+/* =========================
+   MENU FILTERS
+========================= */
+
+.menu-filters {
+    display: flex;
+
+    align-items: center;
+
+    gap: 7px;
+
+    flex-wrap: wrap;
+}
+
+.category-filter {
+    padding: 8px 16px;
+
+    border-radius: 20px;
+
+    border: 1px solid #e3e8ef;
+
+    background: #ffffff;
+
+    color: #596579;
+
+    font-size: 11px;
+
+    cursor: pointer;
+
+    transition: 0.2s ease;
+}
+
+.category-filter:hover {
+    color: #ff5a16;
+
+    border-color: #ff5a16;
+}
+
+.category-filter.active {
+    background: #ff5a16;
+
+    border-color: #ff5a16;
+
+    color: #ffffff;
+}
+
+
+/* =========================
+   MENU ITEMS
+========================= */
+
+.menu-items {
+    width: 100%;
+
+    display: grid;
+
+    grid-template-columns: repeat(4, 1fr);
+
+    gap: 13px;
+}
+
+
+/*
+    IMPORTANT:
+
+    Abhi koi product yahan permanently
+    nahi hai.
+
+    Backend + JavaScript baad mein
+    #menuItems ke andar products
+    create karega.
+*/
+
+
+.menu-item {
+    background: #ffffff;
+
+    border: 1px solid #e5ebf1;
+
+    border-radius: 10px;
+
+    padding: 11px;
+
+    transition: 0.2s ease;
+}
+
+.menu-item:hover {
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 8px 20px rgba(30, 50, 80, 0.07);
+}
+
+.menu-item-image {
+    width: 100%;
+
+    height: 135px;
+
+    object-fit: cover;
+
+    border-radius: 8px;
+}
+
+.menu-item-content {
+    padding: 9px 2px 2px;
+}
+
+.menu-item-name {
+    font-size: 14px;
+
+    font-weight: 700;
+
+    color: #263246;
+
+    margin-bottom: 5px;
+}
+
+.menu-item-category {
+    font-size: 11px;
+
+    color: #8a95a6;
+
+    margin-bottom: 6px;
+}
+
+.menu-item-price {
+    font-size: 14px;
+
+    font-weight: 700;
+
+    color: #263246;
+
+    margin-bottom: 7px;
+}
+
+.menu-item-status {
+    display: inline-block;
+
+    padding: 4px 8px;
+
+    border-radius: 12px;
+
+    background: #e8f9ef;
+
+    color: #1d9a57;
+
+    font-size: 10px;
+
+    font-weight: 600;
+}
+
+.restaurant-orders-section {
+    margin: 22px 25px 22px 235px;
+    padding: 22px;
+    background: #ffffff;
+    border: 1px solid #e5ebf1;
+    border-radius: 12px;
+    scroll-margin-top: 90px;
+}
+
+.restaurant-profile-summary {
+    margin: 22px 25px 22px 235px;
+    padding: 22px;
+    background: #ffffff;
+    border: 1px solid #e5ebf1;
+    border-radius: 12px;
+}
+
+.restaurant-profile-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.restaurant-profile-field {
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid #e5ebf1;
+    border-radius: 8px;
+}
+
+.restaurant-profile-field span {
+    display: block;
+    margin-bottom: 6px;
+    color: #778397;
+    font-size: 12px;
+}
+
+.restaurant-profile-field strong {
+    display: block;
+    overflow-wrap: anywhere;
+    font-size: 14px;
+}
+
+.restaurant-profile-summary .restaurant-orders-header a {
+    color: #ff5a16;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.restaurant-orders-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.restaurant-orders-header h2 {
+    margin-bottom: 5px;
+    color: #263246;
+    font-size: 21px;
+}
+
+.restaurant-orders-header p,
+.order-card-date,
+.order-card-label {
+    color: #778397;
+    font-size: 13px;
+}
+
+.back-to-dashboard {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 0 12px;
+    border: 1px solid #e5ebf1;
+    border-radius: 8px;
+    color: #526075;
+    background: #ffffff;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.back-to-dashboard:hover {
+    border-color: #ff5a16;
+    color: #ff5a16;
+}
+
+.order-controls {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.order-search {
+    flex: 1;
+    min-width: 180px;
+}
+
+.order-search input,
+.order-status-filter select {
+    width: 100%;
+    min-height: 42px;
+    padding: 10px 12px;
+    border: 1px solid #dce2e9;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #263246;
+    font: inherit;
+}
+
+.order-search input:focus,
+.order-status-filter select:focus {
+    outline: 2px solid rgba(255, 90, 22, 0.18);
+    border-color: #ff5a16;
+}
+
+.order-status-filter {
+    width: 190px;
+}
+
+.restaurant-order-list {
+    display: grid;
+    gap: 14px;
+}
+
+.restaurant-order-card {
+    padding: 17px;
+    border: 1px solid #e5ebf1;
+    border-radius: 10px;
+    background: #ffffff;
+}
+
+.restaurant-order-card-top,
+.restaurant-order-card-heading,
+.restaurant-order-item,
+.restaurant-order-total {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.restaurant-order-card-top {
+    padding-bottom: 13px;
+    border-bottom: 1px solid #edf0f4;
+}
+
+.restaurant-order-number {
+    color: #263246;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.restaurant-order-status {
+    flex-shrink: 0;
+    padding: 6px 10px;
+    border-radius: 20px;
+    background: #fff4d6;
+    color: #936000;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.restaurant-order-status.status-confirmed,
+.restaurant-order-status.status-assigned,
+.restaurant-order-status.status-picked_up,
+.restaurant-order-status.status-on_the_way {
+    background: #e5f1ff;
+    color: #1769aa;
+}
+
+.restaurant-order-status.status-preparing {
+    background: #f0e7ff;
+    color: #7141b1;
+}
+
+.restaurant-order-status.status-ready {
+    background: #e2f8eb;
+    color: #17833d;
+}
+
+.restaurant-order-status.status-completed {
+    background: #e8f9ef;
+    color: #1d8750;
+}
+
+.restaurant-order-status.status-cancelled {
+    background: #ffe5e5;
+    color: #c62828;
+}
+
+.restaurant-order-details {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    padding: 15px 0;
+}
+
+.restaurant-order-detail strong {
+    display: block;
+    margin-top: 4px;
+    color: #263246;
+    font-size: 14px;
+    overflow-wrap: anywhere;
+}
+
+.restaurant-order-items {
+    padding: 12px 0;
+    border-top: 1px solid #edf0f4;
+    border-bottom: 1px solid #edf0f4;
+}
+
+.restaurant-order-item {
+    padding: 5px 0;
+    color: #4c596d;
+    font-size: 14px;
+}
+
+.restaurant-order-total {
+    justify-content: flex-end;
+    margin-top: 10px;
+    color: #263246;
+    font-weight: 700;
+}
+
+.restaurant-order-actions {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+}
+
+.restaurant-order-actions button {
+    min-height: 38px;
+    padding: 8px 13px;
+    border: 0;
+    border-radius: 7px;
+    background: #ff5a16;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.restaurant-order-actions button:hover {
+    background: #e94e0b;
+}
+
+.restaurant-order-actions button.cancel-order-button {
+    background: #fff0f0;
+    color: #c62828;
+}
+
+.restaurant-order-actions input {
+    width: 190px;
+    min-height: 38px;
+    padding: 8px 10px;
+    border: 1px solid #dce2e9;
+    border-radius: 7px;
+    font: inherit;
+}
+
+.restaurant-orders-empty,
+.restaurant-orders-error {
+    padding: 32px 16px;
+    border-radius: 9px;
+    background: #f8f9fb;
+    color: #778397;
+    text-align: center;
+}
+
+.restaurant-orders-empty strong {
+    display: block;
+    margin-bottom: 6px;
+    color: #263246;
+}
+
+.restaurant-orders-error {
+    color: #b42318;
+}
+
+.restaurant-orders-notice {
+    margin-bottom: 14px;
+    padding: 11px 13px;
+    border: 1px solid #b7e4c7;
+    border-radius: 8px;
+    background: #effaf3;
+    color: #176b3a;
+    font-size: 14px;
+}
+
+@media (max-width: 768px) {
+    .restaurant-orders-section {
+        margin: 22px 15px;
+        padding: 17px;
+    }
+
+    .restaurant-order-details {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 550px) {
+    .restaurant-orders-header,
+    .order-controls {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .order-status-filter {
+        width: 100%;
+    }
+
+    .restaurant-order-details {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media (max-width: 1200px) {
+
+    .dashboard-stats-container {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .product-form {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .menu-items {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+}
+
+
+@media (max-width: 1000px) {
+
+    .dashboard-stats-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .restaurant-profile-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .menu-items {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+}
+
+
+@media (max-width: 768px) {
+
+    .header {
+        padding: 0 15px;
+    }
+
+    .second-list {
+        position: static;
+
+        width: 100%;
+
+        height: auto;
+
+        padding: 10px;
+
+        border-right: none;
+
+        border-bottom: 1px solid #e7ebf0;
+    }
+
+    .second-list ul {
+        display: flex;
+
+        overflow-x: auto;
+
+        gap: 5px;
+    }
+
+    .second-list li {
+        margin-bottom: 0;
+
+        flex-shrink: 0;
+    }
+
+    .second-list a {
+        padding: 9px 12px;
+    }
+
+
+    .hero-banner,
+    .dashboard-stats-container,
+    .restaurant-profile-summary,
+    .add-product-section,
+    .menu-section {
+        margin-left: 15px;
+
+        margin-right: 15px;
+    }
+
+
+    .hero-banner {
+        height: 220px;
+
+        padding: 25px;
+    }
+
+
+    .banner-text h1 {
+        font-size: 32px;
+    }
+
+
+    .dashboard-stats-container {
+        grid-template-columns: 1fr 1fr;
+    }
+
+
+    .product-form {
+        grid-template-columns: 1fr 1fr;
+    }
+
+
+    .menu-header {
+        align-items: flex-start;
+
+        flex-direction: column;
+    }
+
+}
+
+
+@media (max-width: 550px) {
+
+    .restaurant-account {
+        min-width: 45px;
+
+        width: 45px;
+
+        padding: 0 6px;
+    }
+
+    .resturant-name {
+        display: none;
+    }
+
+    .restaurant-arrow {
+        display: none;
+    }
+
+    .header-divider {
+        display: none;
+    }
+
+
+    .dashboard-stats-container {
+        grid-template-columns: 1fr;
+    }
+
+
+    .product-form {
+        grid-template-columns: 1fr;
+    }
+
+
+    .menu-items {
+        grid-template-columns: 1fr;
+    }
+
+
+    .banner-text h1 {
+        font-size: 27px;
+    }
+
+
+    .banner-text p {
+        font-size: 13px;
+    }
+
+
+    .menu-filters {
+        width: 100%;
+    }
+
+}
+
+</style>
+
+</head>
+
+<body>
+<header class="header">
+
+    <div class="header-container">
+
+        <div class="main-upperdiv">
+
+            <h1><img src="/static/logo%20(2).png" alt="Ramjicart logo" style="width:48px;height:48px;object-fit:contain;vertical-align:middle"> Ramjicart</h1>
+
+            <h4>Restaurant Panel</h4>
+
+        </div>
+
+        <div class="header-right">
+
+            <button type="button" class="refresh-button" id="refreshDashboardBtn"
+                aria-label="Refresh dashboard" title="Refresh dashboard">
+                ↻
+            </button>
+
+            <button
+                type="button"
+                class="notification-button"
+                id="notificationBtn"
+                aria-label="Notifications">
+
+                <span class="material-icons" aria-hidden="true">
+                    🔔
+                </span>
+
+                <span
+                    class="notification-count"
+                    id="notificationCount">
+                    0
+                </span>
+
+            </button>
+
+
+            <div class="header-divider"></div>
+
+            <div
+                class="restaurant-account"
+                id="restaurantAccount">
+
+                <img
+                    alt="Restaurant Logo"
+                    class="restaurant-logo"
+                    id="restaurantLogo"
+                    hidden>
+                <span class="restaurant-logo-fallback" id="restaurantInitials" aria-hidden="true">R</span>
+
+                <span
+                    class="resturant-name"
+                    id="restaurant-header-name">
+                </span>
+
+                <span class="restaurant-arrow">
+                    ⌄
+                </span>
+
+            </div>
+
+            <button type="button" class="logout-button" id="restaurantLogoutButton">Sign out</button>
+
+        </div>
+
+    </div>
+    </header>
+    <nav class="second-list">
+        <ul>
+            <li class="first-list"><a href="#">🏠 Dashboard</a></li><hr>
+            
+            <li><a href="#restaurant-orders">📋 Orders</a></li><hr>
+            <li><a href="#menu-section">🍱 Menu items</a></li><hr>
+            <li><a href="/api/restaurant/certificate">📜 Partnership certificate</a></li><hr>
+            <li><a href="resturentprofilepage.html">🏪  Profile</a></li><hr>
+            <li><a href="resturentsettingpage.html">⚙️  Settings</a></li><hr>
+        </ul>
+    </nav>
+    <main class="hero-banner" id="dashboard">
+        <div class="banner-text">
+
+    <p>Welcome back,</p>
+
+    <h1 id="restaurant-name"></h1>
+
+    <p>
+        Manage your menu, update prices, and receive orders
+        from hungry customers.
+    </p>
+
+</div>
+        <div class="banner-image">
+            <img src="/static/food-placeholder.svg" alt="Food illustration">
+        </div>
+        <div>
+            <p>
+                Good food
+            </p>
+            <p>Happy caustomers</p>
+        </div>
+    </main>
+
+<div class="dashboard-stats-container">
+  <div class="stat-card">
+    <span class="card-icon icon-orange">🍴</span>
+    <div class="card-info">
+      <p class="card-title">Total Products</p>
+      <h3 class="card-value" id="total-products">0</h3>
+    </div>
+    <button type="button" class="card-arrow-btn" id="btn-total-products">→</button>
+  </div>
+
+    <div class="stat-card">
+        <span class="card-icon icon-blue">📦</span>
+        <div class="card-info">
+            <p class="card-title">Total Orders</p>
+            <h3 class="card-value" id="total-orders">0</h3>
+        </div>
+        <button type="button" class="card-arrow-btn" id="btn-total-orders" aria-label="View all orders">→</button>
+    </div>
+
+  <div class="stat-card">
+    <span class="card-icon icon-green">📋</span>
+    <div class="card-info">
+      <p class="card-title">Pending Orders</p>
+      <h3 class="card-value" id="pending-orders">0</h3>
+    </div>
+ 
+    <button type="button" class="card-arrow-btn" id="btn-pending-orders">→</button>
+  </div>
+
+  <div class="stat-card">
+    <span class="card-icon icon-blue">✅</span>
+    <div class="card-info">
+      <p class="card-title">Completed Orders</p>
+      <h3 class="card-value" id="completed-orders">0</h3>
+    </div>
+    <button type="button" class="card-arrow-btn" id="btn-completed-orders">→</button>
+  </div>
+
+  <div class="stat-card">
+    <span class="card-icon icon-purple">₹</span>
+    <div class="card-info">
+      <p class="card-title">Today's Earning</p>
+      <h3 class="card-value" id="todays-earning">₹ 0</h3>
+    </div>
+
+    <button type="button" class="card-arrow-btn" id="btn-todays-earning">→</button>
+  </div>
+
+</div>
+<section class="restaurant-profile-summary" id="restaurant-profile">
+    <div class="restaurant-orders-header">
+        <div>
+            <h2>Restaurant profile</h2>
+            <p>Your restaurant contact details.</p>
+        </div>
+        <a href="resturentprofilepage.html">Edit profile</a>
+    </div>
+    <div class="restaurant-profile-grid">
+        <div class="restaurant-profile-field"><span>Restaurant</span><strong id="profileSummaryName">-</strong></div>
+        <div class="restaurant-profile-field"><span>Owner</span><strong id="profileSummaryOwner">-</strong></div>
+        <div class="restaurant-profile-field"><span>Email</span><strong id="profileSummaryEmail">-</strong></div>
+        <div class="restaurant-profile-field"><span>Phone</span><strong id="profileSummaryPhone">-</strong></div>
+        <div class="restaurant-profile-field"><span>Address</span><strong id="profileSummaryAddress">-</strong></div>
+    </div>
+</section>
+<section class="restaurant-orders-section" id="restaurant-orders">
+    <div class="restaurant-orders-header">
+        <div>
+            <h2>Customer orders</h2>
+            <p>Accept orders, update preparation status, and confirm pickup.</p>
+        </div>
+        <a class="back-to-dashboard" href="#dashboard">← Dashboard</a>
+    </div>
+    <div class="order-controls">
+        <label class="order-search">
+            <span class="sr-only">Search orders</span>
+            <input type="search" id="restaurantOrderSearch" placeholder="Search order or customer">
+        </label>
+        <label class="order-status-filter">
+            <span class="sr-only">Filter orders by status</span>
+            <select id="restaurantOrderStatus">
+                <option value="all">All orders</option>
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="preparing">Preparing</option>
+                <option value="ready">Ready</option>
+                <option value="assigned">Delivery partner assigned</option>
+                <option value="picked_up">Picked up</option>
+                <option value="on_the_way">On the way</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+        </label>
+    </div>
+    <p class="restaurant-orders-error" id="restaurantOrdersError" role="alert" hidden></p>
+    <p class="restaurant-orders-notice" id="restaurantOrdersNotice" role="status" hidden></p>
+    <div class="restaurant-order-list" id="restaurantOrderList" aria-live="polite"></div>
+    <div class="restaurant-orders-empty" id="restaurantOrdersEmpty" hidden>
+        <strong>No orders yet</strong>
+        New customer orders will appear here.
+    </div>
+</section>
+<section class="add-product-section">
+
+    <div class="section-header">
+        <h2>Add New Product</h2>
+        <p>Fill in the details to add a new item to your menu.</p>
+        <a class="back-to-dashboard" href="#dashboard">← Dashboard</a>
+    </div>
+
+    <form class="product-form" id="productForm">
+
+        <!-- Product Name -->
+        <div class="form-group">
+            <label for="productName">Product Name</label>
+
+            <input
+                type="text"
+                id="productName"
+                name="productName"
+                placeholder="e.g. Margherita Pizza"
+                required
+            >
+        </div>
+
+
+        <!-- Category -->
+        <div class="form-group">
+            <label for="productCategory">Category</label>
+
+            <select
+                id="productCategory"
+                name="productCategory"
+                required
+            >
+                <option value="">Select category</option>
+                <option value="burger">Burger</option>
+                <option value="pizza">Pizza</option>
+                <option value="rice">Rice</option>
+                <option value="snacks">Snacks</option>
+                <option value="drinks">Drinks</option>
+                <option value="desserts">Desserts</option>
+            </select>
+        </div>
+
+
+        <!-- Price -->
+        <div class="form-group">
+            <label for="productPrice">Price (₹)</label>
+
+            <input
+                type="number"
+                id="productPrice"
+                name="productPrice"
+                placeholder="e.g. 199"
+                min="0"
+                required
+            >
+        </div>
+
+
+        <!-- Description -->
+        <div class="form-group">
+            <label for="productDescription">Description</label>
+
+            <textarea
+                id="productDescription"
+                name="productDescription"
+                placeholder="Short description..."
+            ></textarea>
+        </div>
+
+
+        <!-- Product Image -->
+        <div class="form-group">
+            <label for="productImage">Product Image URL</label>
+
+            <input
+                type="url"
+                id="productImage"
+                name="productImage"
+                placeholder="https://example.com/food.jpg"
+            >
+        </div>
+
+
+        <!-- Add Product Button -->
+        <div class="form-button">
+            <button type="submit" id="addProductBtn">
+                Add Product
+            </button>
+        </div>
+
+    </form>
+
+</section>
+
+
+<section class="menu-section" id="menu-section">
+
+    <div class="menu-header">
+
+        <div class="menu-title">
+            <span class="menu-icon">🍱</span>
+
+            <div>
+                <h2>Your Menu Items</h2>
+                <p>Manage your restaurant products.</p>
+            </div>
+        </div>
+
+        <div class="menu-filters">
+
+            <button
+                type="button"
+                class="category-filter active"
+                data-category="all">
+                All
+            </button>
+
+            <button
+                type="button"
+                class="category-filter"
+                data-category="burgers">
+                Burgers
+            </button>
+
+            <button
+                type="button"
+                class="category-filter"
+                data-category="pizzas">
+                Pizzas
+            </button>
+
+            <button
+                type="button"
+                class="category-filter"
+                data-category="rice">
+                Rice
+            </button>
+
+            <button
+                type="button"
+                class="category-filter"
+                data-category="snacks">
+                Snacks
+            </button>
+
+            <button
+                type="button"
+                class="category-filter"
+                data-category="drinks">
+                Drinks
+            </button>
+
+        </div>
+
+        <a class="back-to-dashboard" href="#dashboard">← Dashboard</a>
+
+    </div>
+
+    <div
+        class="menu-items"
+        id="menuItems">
+
+    </div>
+
+</section>
+<script>
+
+/* =========================================
+   FOODRUSH RESTAURANT PANEL JAVASCRIPT
+   ========================================= */
+
+
+/* =========================================
+   1. RESTAURANT DETAILS
+   ========================================= */
+
+async function loadRestaurantDetails() {
+
+    try {
+
+        const response = await fetch("/api/restaurant/profile");
+
+        if (!response.ok) {
+            throw new Error("Restaurant details not found");
+        }
+
+        const restaurant = await response.json();
+
+
+        /* Restaurant name - Header */
+        const headerName = document.getElementById("restaurant-header-name");
+        const displayName = (restaurant.name || restaurant.ownerName || "").trim();
+        const restaurantName = displayName || "Restaurant";
+
+        if (headerName) {
+            headerName.textContent = restaurantName;
+        }
+
+
+        /* Restaurant name - Welcome Banner */
+        const bannerName = document.getElementById("restaurant-name");
+
+        if (bannerName) {
+            bannerName.textContent = restaurantName;
+        }
+
+        document.getElementById("profileSummaryName").textContent = restaurantName;
+        document.getElementById("profileSummaryOwner").textContent = restaurant.ownerName || "-";
+        document.getElementById("profileSummaryEmail").textContent = restaurant.email || "-";
+        document.getElementById("profileSummaryPhone").textContent = restaurant.phone || "-";
+        document.getElementById("profileSummaryAddress").textContent = restaurant.address || "-";
+
+
+        /* Restaurant Logo */
+        const restaurantLogo =
+            document.getElementById("restaurantLogo");
+        const restaurantInitials =
+            document.getElementById("restaurantInitials");
+
+        if (restaurantLogo && restaurantInitials) {
+            const initials = restaurantName
+                .split(/\s+/)
+                .map(part => part[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase();
+            restaurantInitials.textContent = initials || "R";
+            restaurantInitials.hidden = Boolean(restaurant.logo);
+            restaurantLogo.hidden = !restaurant.logo;
+            restaurantLogo.onerror = () => {
+                restaurantLogo.hidden = true;
+                restaurantInitials.hidden = false;
+            };
+            if (restaurant.logo) {
+                restaurantLogo.src = restaurant.logo;
+            }
+        }
+
+    } catch (error) {
+
+        console.error(
+            "Restaurant details error:",
+            error
+        );
+
+    }
+
+}
+
+
+/* =========================================
+   2. DASHBOARD DATA
+   ========================================= */
+
+async function loadDashboardData() {
+
+    try {
+
+        const response =
+            await fetch("/api/restaurant/dashboard");
+
+        if (!response.ok) {
+            throw new Error("Dashboard data not found");
+        }
+
+        const data = await response.json();
+
+
+        /* Total Products */
+
+        const totalProducts =
+            document.getElementById("total-products");
+
+        if (totalProducts) {
+            totalProducts.textContent =
+                data.totalProducts ?? 0;
+        }
+
+
+        /* Pending Orders */
+
+        const pendingOrders =
+            document.getElementById("pending-orders");
+
+        if (pendingOrders) {
+            pendingOrders.textContent =
+                data.pendingOrders ?? 0;
+        }
+
+        const totalOrders = document.getElementById("total-orders");
+        if (totalOrders) {
+            totalOrders.textContent = data.totalOrders ?? 0;
+        }
+
+
+        /* Completed Orders */
+
+        const completedOrders =
+            document.getElementById("completed-orders");
+
+        if (completedOrders) {
+            completedOrders.textContent =
+                data.completedOrders ?? 0;
+        }
+
+
+        /* Today's Earning */
+
+        const todaysEarning =
+            document.getElementById("todays-earning");
+
+        if (todaysEarning) {
+            todaysEarning.textContent =
+                "₹ " + (data.todaysEarning ?? 0);
+        }
+
+
+        /* Notification Count */
+
+        const notificationCount =
+            document.getElementById("notificationCount");
+
+        if (notificationCount) {
+            const count = Number(data.notificationCount ?? 0);
+            notificationCount.textContent = count;
+            notificationCount.hidden = count === 0;
+        }
+
+    } catch (error) {
+
+        console.error(
+            "Dashboard error:",
+            error
+        );
+
+    }
+
+}
+
+
+/* =========================================
+   3. MENU PRODUCTS
+   ========================================= */
+
+let menuProducts = [];
+
+
+async function loadMenuProducts() {
+
+    try {
+
+        const response =
+            await fetch("/api/restaurant/products");
+
+        if (!response.ok) {
+            throw new Error("Products not found");
+        }
+
+        const products =
+            await response.json();
+
+
+        menuProducts = products || [];
+
+
+        renderMenuProducts(menuProducts);
+
+    } catch (error) {
+
+        console.error(
+            "Menu products error:",
+            error
+        );
+
+    }
+
+}
+
+
+/* =========================================
+   4. SHOW PRODUCTS
+   ========================================= */
+
+function renderMenuProducts(products) {
+
+    const menuItems =
+        document.getElementById("menuItems");
+
+    if (!menuItems) {
+        return;
+    }
+
+
+    /* Empty */
+
+    if (!products.length) {
+
+        menuItems.innerHTML = `
+            <p style="
+                grid-column: 1 / -1;
+                text-align: center;
+                padding: 30px;
+                color: #7c8798;
+            ">
+                No products found.
+            </p>
+        `;
+
+        return;
+    }
+
+
+    /* Clear old products */
+
+    menuItems.innerHTML = "";
+
+
+    products.forEach(product => {
+
+        const productCard =
+            document.createElement("div");
+
+        productCard.className =
+            "menu-item";
+
+
+        productCard.innerHTML = `
+
+            <img
+                class="menu-item-image"
+                src="${product.image || ""}"
+                alt="${product.name || "Product"}"
+            >
+
+            <div class="menu-item-content">
+
+                <h3 class="menu-item-name">
+                    ${product.name || ""}
+                </h3>
+
+                <p class="menu-item-category">
+                    ${product.category || ""}
+                </p>
+
+                <p class="menu-item-price">
+                    ₹ ${product.price ?? 0}
+                </p>
+
+                <span class="menu-item-status">
+                    ${product.available ? "Available" : "Unavailable"}
+                </span>
+
+            </div>
+
+        `;
+
+
+        menuItems.appendChild(productCard);
+
+    });
+
+}
+
+
+/* =========================================
+   5. CATEGORY FILTER
+   ========================================= */
+
+const categoryButtons =
+    document.querySelectorAll(".category-filter");
+
+
+categoryButtons.forEach(button => {
+
+    button.addEventListener("click", function () {
+
+        /* Active button */
+
+        categoryButtons.forEach(btn => {
+            btn.classList.remove("active");
+        });
+
+        this.classList.add("active");
+
+
+        /* Selected category */
+
+        const category =
+            this.dataset.category;
+
+
+        /* All */
+
+        if (category === "all") {
+
+            renderMenuProducts(menuProducts);
+
+            return;
+        }
+
+
+        /* Filter */
+
+        const filteredProducts =
+            menuProducts.filter(product => {
+
+                if (!product.category) {
+                    return false;
+                }
+
+                return product.category.toLowerCase()
+                    === category.toLowerCase()
+                    ||
+                    product.category.toLowerCase()
+                    === category
+                        .replace("s", "")
+                        .toLowerCase();
+
+            });
+
+
+        renderMenuProducts(filteredProducts);
+
+    });
+
+});
+
+
+/* =========================================
+   6. ADD PRODUCT
+   ========================================= */
+
+const productForm =
+    document.getElementById("productForm");
+
+
+if (productForm) {
+
+    productForm.addEventListener(
+        "submit",
+        async function (event) {
+
+            event.preventDefault();
+
+
+            const addProductBtn =
+                document.getElementById("addProductBtn");
+
+
+            /* Form data */
+
+            const formData =
+                new FormData(productForm);
+
+
+            try {
+
+                /* Disable button */
+
+                addProductBtn.disabled = true;
+
+                addProductBtn.textContent =
+                    "Adding...";
+
+
+                /*
+                    Product backend ko bhejna
+                */
+
+                const response =
+                    await fetch(
+                        "/api/restaurant/products",
+                        {
+                            method: "POST",
+                            headers: {
+                                "X-CSRFToken": (document.cookie
+                                    .split("; ")
+                                    .find(function(cookie) {
+                                        return cookie.startsWith("csrftoken=");
+                                    }) || "csrftoken=").split("=").slice(1).join("=")
+                            },
+                            body: formData
+                        }
+                    );
+
+
+                if (!response.ok) {
+                    throw new Error(
+                        "Product could not be added"
+                    );
+                }
+
+
+                /*
+                    Backend ka response
+                */
+
+                const newProduct =
+                    await response.json();
+
+
+                /*
+                    New product ko current
+                    menu mein add karna
+                */
+
+                menuProducts.push(newProduct);
+
+
+                renderMenuProducts(
+                    menuProducts
+                );
+
+
+                /*
+                    Form clear
+                */
+
+                productForm.reset();
+
+
+                alert(
+                    "Product added successfully!"
+                );
+
+
+            } catch (error) {
+
+                console.error(
+                    "Add product error:",
+                    error
+                );
+
+                alert(
+                    "Product add nahi ho saka."
+                );
+
+            } finally {
+
+                addProductBtn.disabled = false;
+
+                addProductBtn.textContent =
+                    "Add Product";
+
+            }
+
+        }
+    );
+
+}
+
+/* =========================================
+   RESTAURANT ORDERS
+   ========================================= */
+
+let restaurantOrders = [];
+
+function escapeOrderText(value) {
+    return String(value ?? "").replace(/[&<>"']/g, character => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    })[character]);
+}
+
+function orderCsrfToken() {
+    const cookie = document.cookie
+        .split("; ")
+        .find(value => value.startsWith("csrftoken="));
+    return cookie ? decodeURIComponent(cookie.split("=").slice(1).join("=")) : "";
+}
+
+function renderRestaurantOrders() {
+    const list = document.getElementById("restaurantOrderList");
+    const empty = document.getElementById("restaurantOrdersEmpty");
+    const search = document.getElementById("restaurantOrderSearch").value.trim().toLowerCase();
+    const status = document.getElementById("restaurantOrderStatus").value;
+    const filteredOrders = restaurantOrders.filter(order => {
+        const matchesStatus = status === "all" || order.status === status;
+        const matchesSearch = `${order.orderNumber || ""} ${order.customerName || ""}`
+            .toLowerCase()
+            .includes(search);
+        return matchesStatus && matchesSearch;
+    });
+
+    list.innerHTML = "";
+    empty.hidden = filteredOrders.length !== 0;
+    filteredOrders.forEach(order => {
+        const card = document.createElement("article");
+        card.className = "restaurant-order-card";
+        const safeId = escapeOrderText(order.id);
+        const statusLabel = escapeOrderText(
+            String(order.status || "pending")
+                .replaceAll("_", " ")
+                .replace(/\b\w/g, letter => letter.toUpperCase())
+        );
+        const items = (order.items || []).map(item => `
+            <div class="restaurant-order-item">
+                <span>${escapeOrderText(item.quantity)} × ${escapeOrderText(item.name)}</span>
+                <strong>₹${escapeOrderText(item.price)}</strong>
+            </div>
+        `).join("");
+
+        let actions = "";
+        if (order.status === "pending") {
+            actions = `
+                <button type="button" data-order-action="confirmed" data-order-id="${safeId}">Accept order</button>
+                <button type="button" class="cancel-order-button" data-order-action="cancelled" data-order-id="${safeId}">Cancel</button>`;
+        } else if (order.status === "confirmed") {
+            actions = `<button type="button" data-order-action="preparing" data-order-id="${safeId}">Start preparing</button>`;
+        } else if (order.status === "preparing") {
+            actions = `<button type="button" data-order-action="ready" data-order-id="${safeId}">Mark ready</button>`;
+        } else if (order.status === "ready" && order.orderType === "pickup") {
+            actions = `
+                <input type="text" inputmode="numeric" maxlength="4" pattern="[0-9]{4}"
+                    aria-label="Customer's four-digit pickup code" placeholder="4-digit pickup code"
+                    id="pickup-code-${safeId}">
+                <button type="button" data-order-action="confirm-pickup" data-order-id="${safeId}">Confirm pickup</button>`;
+        } else if (order.status === "ready" && order.orderType === "delivery") {
+            actions = `<p class="order-card-label">Ready and waiting for a delivery partner.</p>`;
+        } else if (order.status === "assigned") {
+            actions = `<p class="order-card-label">A delivery partner accepted this order.</p>`;
+        } else if (order.status === "picked_up" || order.status === "on_the_way") {
+            actions = `<p class="order-card-label">The delivery partner is completing this order.</p>`;
+        }
+
+        card.innerHTML = `
+            <div class="restaurant-order-card-top">
+                <div>
+                    <div class="restaurant-order-number">Order #${escapeOrderText(order.orderNumber)}</div>
+                    <div class="order-card-date">${escapeOrderText(order.date)}</div>
+                </div>
+                <span class="restaurant-order-status status-${escapeOrderText(order.status)}">${statusLabel}</span>
+            </div>
+            <div class="restaurant-order-details">
+                <div class="restaurant-order-detail">
+                    <span class="order-card-label">Order type</span>
+                    <strong>${escapeOrderText(order.orderTypeText)}</strong>
+                </div>
+                <div class="restaurant-order-detail">
+                    <span class="order-card-label">Customer</span>
+                    <strong>${escapeOrderText(order.customerName)}</strong>
+                </div>
+                <div class="restaurant-order-detail">
+                    <span class="order-card-label">Address / pickup</span>
+                    <strong>${escapeOrderText(order.address)}</strong>
+                </div>
+            </div>
+            <div class="restaurant-order-items">
+                ${items}
+                <div class="restaurant-order-total"><span>Total</span><span>₹${escapeOrderText(order.total)}</span></div>
+            </div>
+            <div class="restaurant-order-actions">${actions}</div>`;
+        list.appendChild(card);
+    });
+
+    const pendingCount = restaurantOrders.filter(order => order.status === "pending").length;
+    const completedCount = restaurantOrders.filter(order => order.status === "completed").length;
+    document.getElementById("total-orders").textContent = restaurantOrders.length;
+    document.getElementById("pending-orders").textContent = pendingCount;
+    document.getElementById("completed-orders").textContent = completedCount;
+}
+
+async function loadRestaurantOrders() {
+    const errorMessage = document.getElementById("restaurantOrdersError");
+    try {
+        const response = await fetch("/api/restaurant/orders");
+        const contentType = response.headers.get("content-type") || "";
+        const data = contentType.includes("application/json")
+            ? await response.json()
+            : {};
+        if (!response.ok) {
+            throw new Error(data.message || "Orders could not be loaded.");
+        }
+        restaurantOrders = data.orders || [];
+        errorMessage.hidden = true;
+        renderRestaurantOrders();
+    } catch (error) {
+        console.error("Restaurant orders error:", error);
+        errorMessage.textContent = error.message || "Orders could not be loaded. Refresh and try again.";
+        errorMessage.hidden = false;
+    }
+}
+
+async function updateRestaurantOrder(orderId, status) {
+    try {
+        const response = await fetch(`/api/restaurant/orders/${orderId}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": orderCsrfToken()
+            },
+            body: JSON.stringify({ status })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || "Order status could not be updated.");
+        }
+        const notice = document.getElementById("restaurantOrdersNotice");
+        if (document.getElementById("restaurantOrderStatus").value === "pending") {
+            document.getElementById("restaurantOrderStatus").value =
+                status === "confirmed" ? "confirmed" : "cancelled";
+            notice.textContent = status === "confirmed"
+                ? "Order accepted. Confirmed orders are now shown."
+                : "Order cancelled. Cancelled orders are now shown.";
+            notice.hidden = false;
+        }
+        await loadRestaurantOrders();
+        await loadDashboardData();
+    } catch (error) {
+        console.error("Order status update error:", error);
+        alert(error.message || "Order status could not be updated. Try again.");
+    }
+}
+
+async function confirmRestaurantPickup(orderId) {
+    const codeField = document.getElementById(`pickup-code-${orderId}`);
+    const code = codeField ? codeField.value.trim() : "";
+    if (!/^\d{4}$/.test(code)) {
+        alert("Enter the customer's 4-digit pickup code.");
+        return;
+    }
+    try {
+        const response = await fetch(`/api/restaurant/orders/${orderId}/confirm-pickup`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": orderCsrfToken()
+            },
+            body: JSON.stringify({ confirmationCode: code })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || "Pickup confirmation failed.");
+        }
+        alert(data.message || "Pickup confirmed.");
+        await loadRestaurantOrders();
+        await loadDashboardData();
+    } catch (error) {
+        console.error("Pickup confirmation error:", error);
+        alert(error.message || "Pickup confirmation failed. Try again.");
+    }
+}
+
+document.getElementById("restaurantOrderSearch").addEventListener("input", renderRestaurantOrders);
+document.getElementById("restaurantOrderStatus").addEventListener("change", renderRestaurantOrders);
+document.getElementById("restaurantOrderList").addEventListener("click", event => {
+    const button = event.target.closest("button[data-order-action]");
+    if (!button) {
+        return;
+    }
+    const { orderAction, orderId } = button.dataset;
+    button.disabled = true;
+    if (orderAction === "confirm-pickup") {
+        confirmRestaurantPickup(orderId).finally(() => {
+            button.disabled = false;
+        });
+    } else {
+        updateRestaurantOrder(orderId, orderAction).finally(() => {
+            button.disabled = false;
+        });
+    }
+});
+
+/* =========================================
+   7. DASHBOARD CARD BUTTONS
+   ========================================= */
+
+const totalProductsButton =
+    document.getElementById(
+        "btn-total-products"
+    );
+
+if (totalProductsButton) {
+
+    totalProductsButton.addEventListener(
+        "click",
+        function () {
+
+            document
+                .querySelector(".menu-section")
+                ?.scrollIntoView({
+                    behavior: "smooth"
+                });
+
+        }
+    );
+
+}
+
+
+/* Pending Orders */
+
+const pendingOrdersButton =
+    document.getElementById(
+        "btn-pending-orders"
+    );
+
+if (pendingOrdersButton) {
+
+    pendingOrdersButton.addEventListener(
+        "click",
+        function () {
+            document.getElementById("restaurantOrderStatus").value = "pending";
+            renderRestaurantOrders();
+            document.getElementById("restaurant-orders").scrollIntoView({ behavior: "smooth" });
+        }
+    );
+
+}
+
+
+/* Completed Orders */
+
+const completedOrdersButton =
+    document.getElementById(
+        "btn-completed-orders"
+    );
+
+if (completedOrdersButton) {
+
+    completedOrdersButton.addEventListener(
+        "click",
+        function () {
+            document.getElementById("restaurantOrderStatus").value = "completed";
+            renderRestaurantOrders();
+            document.getElementById("restaurant-orders").scrollIntoView({ behavior: "smooth" });
+        }
+    );
+
+}
+
+const totalOrdersButton = document.getElementById("btn-total-orders");
+if (totalOrdersButton) {
+    totalOrdersButton.addEventListener("click", function () {
+        document.getElementById("restaurantOrderStatus").value = "all";
+        document.getElementById("restaurantOrderSearch").value = "";
+        renderRestaurantOrders();
+        document.getElementById("restaurant-orders").scrollIntoView({ behavior: "smooth" });
+    });
+}
+
+
+/* Today's Earnings */
+
+const todaysEarningButton =
+    document.getElementById(
+        "btn-todays-earning"
+    );
+
+if (todaysEarningButton) {
+
+    todaysEarningButton.addEventListener(
+        "click",
+        function () {
+
+            console.log(
+                "Today's earning clicked"
+            );
+
+        }
+    );
+
+}
+
+
+/* =========================================
+   8. NOTIFICATION BUTTON
+   ========================================= */
+
+const notificationButton =
+    document.getElementById(
+        "notificationBtn"
+    );
+
+if (notificationButton) {
+
+    notificationButton.addEventListener(
+        "click",
+        function () {
+            document.getElementById("restaurantOrderStatus").value = "pending";
+            renderRestaurantOrders();
+            document.getElementById("restaurant-orders").scrollIntoView({ behavior: "smooth" });
+
+        }
+    );
+
+}
+
+
+/* =========================================
+   9. PAGE LOAD
+   ========================================= */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        loadRestaurantDetails();
+
+        loadDashboardData();
+
+        loadMenuProducts();
+
+        loadRestaurantOrders();
+
+    }
+);
+
+const refreshDashboardButton = document.getElementById("refreshDashboardBtn");
+if (refreshDashboardButton) {
+    refreshDashboardButton.addEventListener("click", async function () {
+        refreshDashboardButton.disabled = true;
+        try {
+            await Promise.all([
+                loadRestaurantDetails(),
+                loadDashboardData(),
+                loadMenuProducts(),
+                loadRestaurantOrders()
+            ]);
+        } finally {
+            refreshDashboardButton.disabled = false;
+        }
+    });
+}
+
+const restaurantLogoutButton = document.getElementById("restaurantLogoutButton");
+if (restaurantLogoutButton) {
+    restaurantLogoutButton.addEventListener("click", async function () {
+        restaurantLogoutButton.disabled = true;
+        try {
+            const response = await fetch("/api/auth/logout", {
+                method: "POST",
+                headers: { "X-CSRFToken": orderCsrfToken() }
+            });
+            if (!response.ok) {
+                throw new Error("Sign out nahi ho saka. Dobara try karo.");
+            }
+            window.location.href = "/resturentloginpage.html";
+        } catch (error) {
+            alert(error.message || "Sign out nahi ho saka. Dobara try karo.");
+            restaurantLogoutButton.disabled = false;
+        }
+    });
+}
+
+</script>
+
+</body>
+
+</html>

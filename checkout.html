@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - Ramjicart</title>
+    <style>
+        * { box-sizing: border-box; font-family: Arial, sans-serif; }
+        body { margin: 0; padding: 28px 16px; background: #f7f8fa; color: #222; }
+        main { max-width: 980px; margin: auto; }
+        .site-brand { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 12px; color: #10233f; font-weight: 700; text-decoration: none; }
+        .site-brand img { width: 48px; height: 48px; object-fit: contain; }
+        h1 { color: #ff4d2d; }
+        .layout { display: grid; grid-template-columns: 1.3fr 0.7fr; gap: 24px; }
+        .card { background: #fff; padding: 24px; border-radius: 14px; box-shadow: 0 4px 18px #0000000d; }
+        .field { margin: 16px 0; }
+        label { display: block; margin-bottom: 7px; font-weight: 600; }
+        input, textarea { width: 100%; padding: 12px; border: 1px solid #ccd1d8; border-radius: 8px; font-size: 16px; }
+        textarea { min-height: 90px; resize: vertical; }
+        .type-option { display: inline-flex; align-items: center; gap: 8px; margin: 8px 20px 8px 0; }
+        .type-option input { width: auto; }
+        .row { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .row.total { font-size: 20px; font-weight: 700; border: 0; }
+        button { width: 100%; padding: 14px; border: 0; border-radius: 9px; background: #ff4d2d; color: white; font-size: 17px; font-weight: 700; cursor: pointer; }
+        button:disabled { opacity: .6; cursor: wait; }
+        #message { min-height: 24px; color: #b42318; }
+        .note { color: #667085; line-height: 1.5; font-size: 14px; }
+        @media (max-width: 700px) { .layout { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<main>
+    <a class="site-brand" href="/"><img src="/static/logo%20(2).png" alt="Ramjicart logo">Ramjicart</a>
+    <h1>Checkout</h1>
+    <p><a href="cartpage.html">← Back to cart</a></p>
+    <div class="layout">
+        <section class="card">
+            <h2>Order details</h2>
+            <div class="field">
+                <label>Order type</label>
+                <label class="type-option"><input type="radio" name="orderType" value="pickup" checked> On the way (I'll collect from the restaurant)</label>
+                <label class="type-option"><input type="radio" name="orderType" value="delivery"> Delivery</label>
+            </div>
+            <p id="customerInfo" class="note"></p>
+            <div class="field" id="addressField" hidden>
+                <label for="deliveryAddress">Delivery address</label>
+                <textarea id="deliveryAddress" autocomplete="street-address"></textarea>
+            </div>
+        </section>
+        <aside class="card">
+            <h2>Order summary</h2>
+            <div class="row"><span>Food total</span><strong id="itemTotal">₹0.00</strong></div>
+            <div class="row"><span>Restaurant commission (online)</span><strong id="commissionFee">₹0.00</strong></div>
+            <div class="row" id="deliveryRow" hidden><span>Delivery charge</span><strong id="deliveryFee">₹0.00</strong></div>
+            <div class="row" id="platformRow"><span>Platform fee</span><strong id="platformFee">₹10.00</strong></div>
+            <div class="row"><span>Gateway amount (fees only)</span><strong id="onlinePaymentAmount">₹0.00</strong></div>
+            <div class="row"><span id="payLaterLabel">Pay at restaurant</span><strong id="payLaterAmount">₹0.00</strong></div>
+            <div class="row total"><span>Total order amount</span><strong id="customerTotal">₹0.00</strong></div>
+            <p class="note">Payment gateway is not connected yet. This is the planned payment split only; no online money is collected right now. Clicking Place order will place the order without taking payment.</p>
+            <p id="message" role="status"></p>
+            <button id="payButton" type="button">Place order</button>
+        </aside>
+    </div>
+</main>
+<script>
+    const message = document.getElementById("message");
+    const payButton = document.getElementById("payButton");
+    let activeQuote = null;
+
+    async function loadCustomer() {
+        const response = await fetch("/api/auth/me");
+        if (!response.ok) {
+            window.location.href = "login.html";
+            return;
+        }
+        const customer = await response.json();
+        document.getElementById("customerInfo").textContent =
+            "Ordering as " + customer.name + " · " + customer.phone;
+    }
+
+    function csrfToken() {
+        const cookie = document.cookie.split("; ")
+            .find(function(value) { return value.startsWith("csrftoken="); });
+        return cookie ? decodeURIComponent(cookie.split("=")[1]) : "";
+    }
+
+    function selectedOrderType() {
+        return document.querySelector('input[name="orderType"]:checked').value;
+    }
+
+    function formatRupees(value) {
+        return "₹" + Number(value || 0).toFixed(2);
+    }
+
+    async function updateQuote() {
+        const delivery = selectedOrderType() === "delivery";
+        document.getElementById("addressField").hidden = !delivery;
+        document.getElementById("deliveryAddress").required = delivery;
+        document.getElementById("deliveryRow").hidden = !delivery;
+        document.getElementById("payLaterLabel").textContent = delivery
+            ? "Pay delivery partner later"
+            : "Pay restaurant later";
+        try {
+            const response = await fetch("/api/customer/checkout/quote", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken() },
+                body: JSON.stringify({ orderType: selectedOrderType() })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || "Could not calculate order total.");
+            activeQuote = data;
+            document.getElementById("itemTotal").textContent = formatRupees(data.itemTotal);
+            document.getElementById("deliveryFee").textContent = formatRupees(data.deliveryFee);
+            document.getElementById("platformFee").textContent = formatRupees(data.platformFee);
+            document.getElementById("commissionFee").textContent = formatRupees(data.commissionAmount);
+            document.getElementById("onlinePaymentAmount").textContent = formatRupees(data.gatewayAmount);
+            document.getElementById("payLaterAmount").textContent = formatRupees(data.payLaterAmount);
+            document.getElementById("customerTotal").textContent = formatRupees(data.customerTotal);
+            message.textContent = "";
+        } catch (error) {
+            activeQuote = null;
+            message.textContent = error.message;
+        }
+    }
+
+    document.querySelectorAll('input[name="orderType"]').forEach(function(input) {
+        input.addEventListener("change", updateQuote);
+    });
+
+    payButton.addEventListener("click", async function() {
+        if (!activeQuote) {
+            await updateQuote();
+            if (!activeQuote) return;
+        }
+        const deliveryAddress = document.getElementById("deliveryAddress").value.trim();
+        if (selectedOrderType() === "delivery" && !deliveryAddress) {
+            message.textContent = "Please enter a delivery address.";
+            return;
+        }
+
+        payButton.disabled = true;
+        payButton.textContent = "Placing order...";
+        message.textContent = "";
+        try {
+            const response = await fetch("/api/customer/orders", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken() },
+                body: JSON.stringify({
+                    orderType: selectedOrderType(),
+                    deliveryAddress: deliveryAddress
+                })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || "Could not place order.");
+            sessionStorage.setItem("orderConfirmationCode", data.confirmationCode);
+            window.location.href = "orderpage.html?id=" + encodeURIComponent(data.orderId);
+        } catch (error) {
+            message.textContent = error.message;
+            payButton.disabled = false;
+            payButton.textContent = "Place order";
+        }
+    });
+
+    loadCustomer();
+    updateQuote();
+</script>
+</body>
+</html>

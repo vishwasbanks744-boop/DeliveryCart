@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="hi">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Ramjicart</title>
+
+
+    <style>
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f7f8fa;
+            color: #172033;
+            padding: 30px;
+        }
+
+
+        /* =========================
+           Header
+        ========================= */
+
+        header {
+            background: white;
+            padding: 25px 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            text-align: center;
+        }
+
+
+        header h1 {
+            font-size: 38px;
+            color: #172033;
+            margin-bottom: 8px;
+        }
+
+
+        header p {
+            color: #687386;
+            font-size: 18px;
+        }
+
+
+        /* =========================
+           Main Cart Layout
+        ========================= */
+
+        .cart-layout {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 25px;
+            align-items: start;
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+
+
+        /* =========================
+           Cart Items Wrapper
+        ========================= */
+
+        .cart-items {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+
+        /* =========================
+           Cart Item
+        ========================= */
+
+        .cart-item {
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 25px;
+            padding: 25px;
+            border-radius: 18px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.07);
+            width: 100%;
+            transition: 0.3s;
+        }
+
+
+        .cart-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.10);
+        }
+
+
+        /* =========================
+           Food Image
+        ========================= */
+
+        .cart-item img {
+            width: 150px;
+            height: 130px;
+            object-fit: cover;
+            border-radius: 15px;
+        }
+
+
+        /* =========================
+           Food Details
+        ========================= */
+
+        .food-details {
+            flex: 1;
+            text-align: center;
+        }
+
+
+        .foodname {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+
+        .description {
+            color: #687386;
+            font-size: 16px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+
+        .food-type {
+            display: inline-block;
+            background: #e8f8ed;
+            color: #16853d;
+            padding: 7px 13px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+
+        .itemprice {
+            color: #ff5a00;
+            font-size: 22px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+
+        /* =========================
+           Quantity
+        ========================= */
+
+        .quantity {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            border-radius: 30px;
+        }
+
+
+        .quantity button {
+            width: 35px;
+            height: 35px;
+            border: none;
+            border-radius: 50%;
+            background: #fff1e8;
+            color: #ff5a00;
+            font-size: 22px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+
+        .quantity button:hover {
+            background: #ff5a00;
+            color: white;
+        }
+
+
+        .quantity span {
+            font-size: 18px;
+            font-weight: bold;
+            min-width: 20px;
+            text-align: center;
+        }
+
+
+        /* =========================
+           Total Price
+        ========================= */
+
+        .total-price {
+            font-size: 22px;
+            font-weight: bold;
+            min-width: 80px;
+            text-align: center;
+        }
+
+
+        /* =========================
+           Delete Button
+        ========================= */
+
+        .delete-btn {
+            border: none;
+            background: #fff0f0;
+            color: #e53935;
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+
+        .delete-btn:hover {
+            background: #e53935;
+            color: white;
+        }
+
+
+        /* =========================
+           Bill Summary
+        ========================= */
+
+        .bill-summary {
+            background: white;
+            width: 100%;
+            padding: 30px;
+            border-radius: 18px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            text-align: center;
+            position: sticky;
+            top: 20px;
+        }
+
+
+        .bill-summary h2 {
+            font-size: 28px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+
+        .bill-summary hr {
+            border: none;
+            border-top: 1px solid #ddd;
+            margin: 18px 0;
+        }
+
+
+        /* =========================
+           Bill Rows
+        ========================= */
+
+        .bill-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 15px 0;
+            font-size: 17px;
+            color: #596579;
+        }
+
+
+        .bill-row span:last-child {
+            font-weight: bold;
+            color: #172033;
+        }
+
+
+        /* =========================
+           Discount
+        ========================= */
+
+        .discount span:last-child {
+            color: #159447;
+        }
+
+
+        /* =========================
+           Total
+        ========================= */
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+
+        .total-row h1 {
+            font-size: 28px;
+        }
+
+
+        .total-row h1:last-child {
+            color: #ff5a00;
+            font-size: 32px;
+        }
+
+
+        /* =========================
+           Checkout Button
+        ========================= */
+
+        .checkout {
+            width: 100%;
+            padding: 16px;
+            margin-top: 20px;
+            border: none;
+            border-radius: 12px;
+            background: #ff5a00;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+
+        .checkout:hover {
+            background: #e84f00;
+            transform: translateY(-2px);
+        }
+
+
+        /* =========================
+           Empty Cart
+        ========================= */
+
+        .empty-cart {
+            display: none;
+            background: white;
+            padding: 50px;
+            text-align: center;
+            border-radius: 18px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.07);
+        }
+
+
+        .empty-cart h2 {
+            margin-bottom: 10px;
+        }
+
+
+        .empty-cart p {
+            color: #687386;
+        }
+
+
+        /* =========================
+           Message
+        ========================= */
+
+        .cart-message {
+            text-align: center;
+            color: #687386;
+            padding: 20px;
+        }
+
+
+        /* =========================
+           Tablet
+        ========================= */
+
+        @media (max-width: 900px) {
+
+            .cart-layout {
+                grid-template-columns: 1fr;
+            }
+
+
+            .bill-summary {
+                position: static;
+                max-width: 600px;
+                margin: 0 auto;
+            }
+
+        }
+
+
+        /* =========================
+           Mobile
+        ========================= */
+
+        @media (max-width: 600px) {
+
+            body {
+                padding: 15px;
+            }
+
+
+            header h1 {
+                font-size: 30px;
+            }
+
+
+            .cart-item {
+                flex-wrap: wrap;
+                gap: 15px;
+                padding: 20px;
+            }
+
+
+            .cart-item img {
+                width: 110px;
+                height: 100px;
+            }
+
+
+            .food-details {
+                min-width: 180px;
+            }
+
+
+            .foodname {
+                font-size: 20px;
+            }
+
+
+            .description {
+                font-size: 14px;
+            }
+
+        }
+
+
+        /* =========================
+           Small Mobile
+        ========================= */
+
+        @media (max-width: 450px) {
+
+            .cart-item {
+                display: flex;
+                flex-direction: column;
+            }
+
+
+            .cart-item img {
+                width: 140px;
+                height: 120px;
+            }
+
+
+            .food-details {
+                min-width: 0;
+                width: 100%;
+            }
+
+
+            .quantity {
+                margin: 0 auto;
+            }
+
+
+            .total-price {
+                margin: 0 auto;
+            }
+
+
+            .delete-btn {
+                margin: 0 auto;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+    <!-- Header -->
+
+    <header>
+
+        <a href="/" aria-label="Ramjicart home"><img src="/static/logo%20(2).png" alt="Ramjicart logo" style="width:64px;height:64px;object-fit:contain"></a>
+        <h1>🛒 Your Cart</h1>
+
+        <p>
+            Review your item before checkout
+        </p>
+
+    </header>
+
+
+
+    <!-- Cart Layout -->
+
+    <div class="cart-layout">
+
+
+        <!-- Cart Items -->
+
+        <div
+            class="cart-items"
+            id="cartItems"
+        >
+
+            <!--
+                Cart items backend se
+                JavaScript ke through aayenge.
+            -->
+
+
+            <p
+                id="cartMessage"
+                class="cart-message"
+            >
+                Loading cart...
+            </p>
+
+
+            <!-- Empty Cart -->
+
+            <div
+                class="empty-cart"
+                id="emptyCart"
+            >
+
+                <h2>
+                    Your Cart is Empty 🛒
+                </h2>
+
+
+                <p>
+                    Add some delicious food to your cart.
+                </p>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- Bill Summary -->
+
+        <div
+            class="bill-summary"
+            id="billSummary"
+        >
+
+            <h2>
+                Bill summary
+            </h2>
+
+
+            <hr>
+
+
+            <!-- Item Total -->
+
+            <p class="bill-row">
+
+                <span>
+                    Item Total
+                </span>
+
+
+                <span id="itemTotalAmount">
+                    ₹0
+                </span>
+
+            </p>
+
+
+            <!-- Delivery Fee -->
+
+            <p class="bill-row">
+
+                <span>
+                    Delivery Fee
+                </span>
+
+
+                <span id="deliveryFeeAmount">
+                    ₹0
+                </span>
+
+            </p>
+
+
+            <!-- Discount -->
+
+            <p class="bill-row discount">
+
+                <span>
+                    Discount
+                </span>
+
+
+                <span id="discountAmount">
+                    ₹0
+                </span>
+
+            </p>
+
+
+            <hr>
+
+
+            <!-- Total -->
+
+            <div class="total-row">
+
+                <h1>
+                    Total
+                </h1>
+
+
+                <h1 id="total">
+                    ₹0
+                </h1>
+
+            </div>
+
+
+            <!-- Checkout -->
+
+            <button
+                id="checkout"
+                class="checkout"
+                type="button"
+            >
+                Proceed To Checkout
+            </button>
+
+
+        </div>
+
+
+    </div>
+
+
+
+    <script>
+
+
+        /*
+        ============================================
+        CART API
+        ============================================
+        */
+
+        const cartApi =
+            "/api/customer/cart";
+
+        function csrfHeaders(headers) {
+            const cookie = document.cookie
+                .split("; ")
+                .find(function(value) {
+                    return value.startsWith("csrftoken=");
+                });
+            headers["X-CSRFToken"] = cookie
+                ? decodeURIComponent(cookie.split("=")[1])
+                : "";
+            return headers;
+        }
+
+        /*
+        ============================================
+        ELEMENTS
+        ============================================
+        */
+
+        const cartItems =
+            document.getElementById("cartItems");
+
+
+        const cartMessage =
+            document.getElementById("cartMessage");
+
+
+        const emptyCart =
+            document.getElementById("emptyCart");
+
+
+        const billSummary =
+            document.getElementById("billSummary");
+
+
+        const itemTotalAmount =
+            document.getElementById(
+                "itemTotalAmount"
+            );
+
+
+        const deliveryFeeAmount =
+            document.getElementById(
+                "deliveryFeeAmount"
+            );
+
+
+        const discountAmount =
+            document.getElementById(
+                "discountAmount"
+            );
+
+
+        const total =
+            document.getElementById("total");
+
+
+        /*
+        ============================================
+        LOAD CART FROM BACKEND
+        ============================================
+        */
+
+        async function loadCart() {
+
+            try {
+
+                cartMessage.textContent =
+                    "Loading cart...";
+
+
+                const response =
+                    await fetch(cartApi);
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        "Cart load nahi hua"
+                    );
+
+                }
+
+
+                const data =
+                    await response.json();
+
+
+                /*
+                Backend se expected data:
+
+                {
+                    items: [],
+                    itemTotal: 0,
+                    deliveryFee: 0,
+                    discount: 0,
+                    total: 0
+                }
+                */
+
+
+                displayCart(data);
+
+
+            } catch (error) {
+
+                cartMessage.textContent =
+                    error.message;
+
+            }
+
+        }
+
+
+        /*
+        ============================================
+        DISPLAY CART
+        ============================================
+        */
+
+        function displayCart(data) {
+
+
+            cartItems
+                .querySelectorAll(".cart-item")
+                .forEach(function(item) {
+
+                    item.remove();
+
+                });
+
+
+            cartMessage.textContent = "";
+
+
+            /*
+            Cart empty hai
+            */
+
+            if (
+                !data.items ||
+                data.items.length === 0
+            ) {
+
+                emptyCart.style.display =
+                    "block";
+
+
+                billSummary.style.display =
+                    "none";
+
+
+                return;
+
+            }
+
+
+            emptyCart.style.display =
+                "none";
+
+
+            billSummary.style.display =
+                "block";
+
+
+            /*
+            ========================================
+            CREATE CART ITEMS
+            ========================================
+            */
+
+
+            data.items.forEach(function(item) {
+
+
+                const cartItem =
+                    document.createElement("div");
+
+
+                cartItem.className =
+                    "cart-item";
+
+
+                cartItem.dataset.id =
+                    item.id;
+
+
+                /*
+                Image
+                */
+
+                const image =
+                    document.createElement("img");
+
+
+                image.src =
+                    item.image || "/static/food-placeholder.svg";
+                image.onerror = function() {
+                    this.onerror = null;
+                    this.src = "/static/food-placeholder.svg";
+                };
+
+
+                image.alt =
+                    item.name || "Food";
+
+
+                /*
+                Food Details
+                */
+
+                const details =
+                    document.createElement("div");
+
+
+                details.className =
+                    "food-details";
+
+
+                const name =
+                    document.createElement("p");
+
+
+                name.className =
+                    "foodname";
+
+
+                name.textContent =
+                    item.name;
+
+
+                const description =
+                    document.createElement("p");
+
+
+                description.className =
+                    "description";
+
+
+                description.textContent =
+                    item.description || "";
+
+
+                const foodType =
+                    document.createElement("p");
+
+
+                foodType.className =
+                    "food-type";
+
+
+                foodType.textContent =
+                    item.foodType || "";
+
+
+                const price =
+                    document.createElement("p");
+
+
+                price.className =
+                    "itemprice";
+
+
+                price.textContent =
+                    "₹" + item.price;
+
+
+                details.appendChild(name);
+
+                details.appendChild(description);
+
+                details.appendChild(foodType);
+
+                details.appendChild(price);
+
+
+                /*
+                Quantity
+                */
+
+                const quantity =
+                    document.createElement("div");
+
+
+                quantity.className =
+                    "quantity";
+
+
+                const minusButton =
+                    document.createElement("button");
+
+
+                minusButton.className =
+                    "minus-btn";
+
+
+                minusButton.type =
+                    "button";
+
+
+                minusButton.textContent =
+                    "-";
+
+
+                const quantityNumber =
+                    document.createElement("span");
+
+
+                quantityNumber.className =
+                    "quantity-number";
+
+
+                quantityNumber.textContent =
+                    item.quantity;
+
+
+                const plusButton =
+                    document.createElement("button");
+
+
+                plusButton.className =
+                    "plus-btn";
+
+
+                plusButton.type =
+                    "button";
+
+
+                plusButton.textContent =
+                    "+";
+
+
+                quantity.appendChild(
+                    minusButton
+                );
+
+                quantity.appendChild(
+                    quantityNumber
+                );
+
+                quantity.appendChild(
+                    plusButton
+                );
+
+
+                /*
+                Item Total
+                */
+
+                const itemTotal =
+                    document.createElement("p");
+
+
+                itemTotal.className =
+                    "total-price";
+
+
+                itemTotal.textContent =
+                    "₹" +
+                    (
+                        item.price *
+                        item.quantity
+                    );
+
+
+                /*
+                Delete Button
+                */
+
+                const deleteButton =
+                    document.createElement("button");
+
+
+                deleteButton.className =
+                    "delete-btn";
+
+
+                deleteButton.type =
+                    "button";
+
+
+                deleteButton.textContent =
+                    "🗑️";
+
+
+                /*
+                ====================================
+                PLUS
+                ====================================
+                */
+
+                plusButton.addEventListener(
+                    "click",
+                    function() {
+
+                        updateQuantity(
+                            item.id,
+                            item.quantity + 1
+                        );
+
+                    }
+                );
+
+
+                /*
+                ====================================
+                MINUS
+                ====================================
+                */
+
+                minusButton.addEventListener(
+                    "click",
+                    function() {
+
+                        if (item.quantity > 1) {
+
+                            updateQuantity(
+                                item.id,
+                                item.quantity - 1
+                            );
+
+                        }
+
+                    }
+                );
+
+
+                /*
+                ====================================
+                DELETE
+                ====================================
+                */
+
+                deleteButton.addEventListener(
+                    "click",
+                    function() {
+
+                        removeFromCart(
+                            item.id
+                        );
+
+                    }
+                );
+
+
+                cartItem.appendChild(image);
+
+                cartItem.appendChild(details);
+
+                cartItem.appendChild(quantity);
+
+                cartItem.appendChild(itemTotal);
+
+                cartItem.appendChild(deleteButton);
+
+
+                cartItems.appendChild(cartItem);
+
+            });
+
+
+            /*
+            ========================================
+            BILL FROM BACKEND
+            ========================================
+            */
+
+            itemTotalAmount.textContent =
+                "₹" + (data.itemTotal || 0);
+
+
+            deliveryFeeAmount.textContent =
+                "₹" + (data.deliveryFee || 0);
+
+
+            discountAmount.textContent =
+                "₹" + (data.discount || 0);
+
+
+            total.textContent =
+                "₹" + (data.total || 0);
+
+        }
+
+
+        /*
+        ============================================
+        UPDATE QUANTITY
+        ============================================
+        */
+
+        async function updateQuantity(
+            itemId,
+            quantity
+        ) {
+
+            try {
+
+                const response =
+                    await fetch(
+                        cartApi + "/" + itemId,
+                        {
+                            method: "PUT",
+
+                            headers: csrfHeaders({
+                                "Content-Type":
+                                    "application/json"
+                            }),
+
+                            body: JSON.stringify({
+                                quantity: quantity
+                            })
+                        }
+                    );
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        "Quantity update nahi hui"
+                    );
+
+                }
+
+
+                /*
+                Backend updated cart return
+                karega, phir page refresh data
+                */
+
+                const data =
+                    await response.json();
+
+
+                displayCart(data);
+
+
+            } catch (error) {
+
+                alert(error.message);
+
+            }
+
+        }
+
+
+        /*
+        ============================================
+        REMOVE CART ITEM
+        ============================================
+        */
+
+        async function removeFromCart(itemId) {
+
+            try {
+
+                const response =
+                    await fetch(
+                        cartApi + "/" + itemId,
+                        {
+                            method: "DELETE",
+                            headers: csrfHeaders({})
+                        }
+                    );
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        "Item remove nahi hua"
+                    );
+
+                }
+
+
+                const data =
+                    await response.json();
+
+
+                displayCart(data);
+
+
+            } catch (error) {
+
+                alert(error.message);
+
+            }
+
+        }
+
+
+        /*
+        ============================================
+        CHECKOUT
+        ============================================
+        */
+
+        document
+            .getElementById("checkout")
+            .addEventListener(
+                "click",
+                function() {
+
+
+                    const empty =
+                        emptyCart.style.display ===
+                        "block";
+
+
+                    if (empty) {
+
+                        alert(
+                            "Your cart is empty!"
+                        );
+
+                        return;
+
+                    }
+
+
+                    /*
+                    Actual checkout page.
+                    */
+
+                    window.location.href =
+                        "checkout.html";
+
+                }
+            );
+
+
+        /*
+        ============================================
+        PAGE LOAD
+        ============================================
+        */
+
+        loadCart();
+
+    </script>
+
+
+</body>
+
+</html>

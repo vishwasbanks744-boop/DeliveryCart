@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Ramjicart - Delivery Partner</title>
+
+<style>
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f7f8f5;
+    color: #222;
+}
+
+/* Header */
+
+header {
+    background: white;
+    border-bottom: 1px solid #eee;
+    padding: 18px 30px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.header-container {
+    max-width: 1200px;
+    margin: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    color: #ff5a16;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.partner-name {
+    color: #666;
+    font-size: 14px;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.header-actions button,
+.section-refresh {
+    border: 1px solid #e2e5e9;
+    background: #ffffff;
+    color: #344054;
+    cursor: pointer;
+}
+
+.header-actions button {
+    padding: 9px 13px;
+}
+
+.section-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.section-title-row h2 {
+    margin-bottom: 20px;
+}
+
+.section-refresh {
+    margin-bottom: 16px;
+    padding: 8px 12px;
+    border-radius: 8px;
+}
+
+.dashboard-message {
+    padding: 13px;
+    border-radius: 8px;
+    background: #fff8f2;
+    color: #8a4b21;
+}
+
+.dashboard-error {
+    padding: 13px;
+    border-radius: 8px;
+    background: #fff0f0;
+    color: #b42318;
+}
+
+.order-items {
+    margin: 12px 0;
+    padding: 12px;
+    border-radius: 9px;
+    background: #f8f9fb;
+}
+
+.order-item-row,
+.order-total {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 5px 0;
+}
+
+.order-total {
+    margin-top: 6px;
+    border-top: 1px solid #e4e7ec;
+    font-weight: bold;
+}
+
+.order-phone a {
+    color: #1769aa;
+    text-decoration: none;
+}
+
+.empty-state {
+    padding: 24px 12px;
+    color: #778397;
+    text-align: center;
+}
+
+.delivery-btn:disabled,
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Main */
+
+.delivery-page {
+    max-width: 1200px;
+    margin: auto;
+    padding: 30px 20px;
+}
+
+/* Welcome */
+
+.welcome {
+    background: linear-gradient(135deg, #ff5a16, #ff7a3d);
+    color: white;
+    padding: 28px;
+    border-radius: 18px;
+    margin-bottom: 25px;
+}
+
+.welcome h1 {
+    margin-bottom: 8px;
+}
+
+.welcome p {
+    opacity: 0.9;
+}
+
+/* Stats */
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-bottom: 25px;
+}
+
+.stat-card {
+    background: white;
+    padding: 22px;
+    border-radius: 16px;
+    border: 1px solid #eee;
+}
+
+.stat-card p {
+    color: #777;
+    margin-bottom: 8px;
+}
+
+.stat-card h2 {
+    color: #ff5a16;
+}
+
+/* Available Orders */
+
+.orders-box {
+    background: white;
+    padding: 25px;
+    border-radius: 18px;
+    border: 1px solid #eee;
+    margin-bottom: 25px;
+}
+
+.orders-box h2 {
+    margin-bottom: 20px;
+}
+
+.order-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.order-card {
+    border: 1px solid #eee;
+    border-radius: 14px;
+    padding: 20px;
+}
+
+.order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.order-id {
+    font-weight: bold;
+}
+
+.status {
+    background: #fff1e8;
+    color: #ff5a16;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.order-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.info-box {
+    background: #f7f7f7;
+    padding: 12px;
+    border-radius: 10px;
+}
+
+.info-box small {
+    display: block;
+    color: #777;
+    margin-bottom: 5px;
+}
+
+.info-box strong {
+    font-size: 14px;
+}
+
+/* Buttons */
+
+button {
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 9px;
+    padding: 11px 18px;
+}
+
+.accept-btn {
+    background: #ff5a16;
+    color: white;
+}
+
+.accept-btn:hover {
+    background: #e94d0d;
+}
+
+.pickup-btn {
+    background: #ff5a16;
+    color: white;
+}
+
+.delivery-btn {
+    background: #27ae60;
+    color: white;
+}
+
+.cancel-btn {
+    background: white;
+    color: #e53935;
+    border: 1px solid #e53935;
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* Current Delivery */
+
+.current-delivery {
+    background: white;
+    padding: 25px;
+    border-radius: 18px;
+    border: 1px solid #eee;
+    margin-bottom: 25px;
+}
+
+.current-delivery h2 {
+    margin-bottom: 18px;
+}
+
+.delivery-status {
+    background: #f7f7f7;
+    padding: 18px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+}
+
+.delivery-status h3 {
+    color: #ff5a16;
+    margin-bottom: 8px;
+}
+
+.delivery-status p {
+    color: #666;
+}
+
+/* OTP */
+
+.otp-box {
+    background: #fff8f2;
+    border: 1px solid #ffe0ca;
+    padding: 20px;
+    border-radius: 14px;
+    margin-top: 18px;
+}
+
+.otp-box h3 {
+    margin-bottom: 8px;
+}
+
+.otp-box p {
+    color: #777;
+    margin-bottom: 12px;
+}
+
+[id^="deliveryOtp-"] {
+    width: 180px;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    outline: none;
+    font-size: 16px;
+    letter-spacing: 4px;
+}
+
+[id^="verifyOtpButton-"] {
+    background: #27ae60;
+    color: white;
+    margin-left: 8px;
+}
+
+/* Messages */
+
+.message {
+    margin-top: 15px;
+    color: #666;
+}
+
+/* Mobile */
+
+@media (max-width: 700px) {
+
+    header {
+        padding: 15px;
+    }
+
+    .delivery-page {
+        padding: 20px 12px;
+    }
+
+    .stats {
+        grid-template-columns: 1fr;
+    }
+
+    .order-info {
+        grid-template-columns: 1fr;
+    }
+
+    .order-header {
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    #verifyOtpButton {
+        margin-left: 0;
+        margin-top: 10px;
+    }
+
+}
+
+@media (max-width: 400px) {
+    .header-container {
+        gap: 10px;
+    }
+
+    .logo {
+        font-size: 20px;
+    }
+
+    .partner-name {
+        display: none;
+    }
+
+    .header-actions {
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .header-actions button {
+        padding: 8px 10px;
+    }
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- Header -->
+
+<header>
+
+    <div class="header-container">
+
+        <div class="logo">
+            <img src="/static/logo%20(2).png" alt="Ramjicart logo" style="width:44px;height:44px;object-fit:contain;vertical-align:middle;background:white;border-radius:6px"> Ramjicart
+        </div>
+
+        <div class="partner-name" id="deliveryPartnerName">
+            Delivery Partner
+        </div>
+        <div class="header-actions">
+            <button type="button" id="refreshDashboardButton">Refresh</button>
+            <button type="button" id="deliveryLogoutButton">Sign out</button>
+        </div>
+
+    </div>
+
+</header>
+
+
+<main class="delivery-page">
+
+
+    <!-- Welcome -->
+
+    <section class="welcome">
+
+        <h1 id="welcomeText">
+            Welcome
+        </h1>
+
+        <p>
+            Manage your deliveries and deliver orders safely.
+        </p>
+
+    </section>
+
+
+    <!-- Stats -->
+
+    <section class="stats">
+
+        <div class="stat-card">
+
+            <p>Today's Deliveries</p>
+
+            <h2 id="todayDeliveries">
+                0
+            </h2>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <p>Completed Deliveries</p>
+
+            <h2 id="completedDeliveries">
+                0
+            </h2>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <p>Earnings (payment tracking off)</p>
+
+            <h2 id="todayEarnings">
+                ₹0
+            </h2>
+
+        </div>
+
+    </section>
+
+
+    <!-- Available Orders -->
+
+    <section class="orders-box">
+
+        <div class="section-title-row">
+            <h2>Available Delivery Orders</h2>
+            <button type="button" class="section-refresh" id="refreshOrdersButton">Refresh list</button>
+        </div>
+
+        <div
+            id="availableOrders"
+            class="order-list"
+        ></div>
+
+        <p id="ordersMessage" class="message" role="status"></p>
+
+    </section>
+
+
+    <!-- Current Delivery -->
+
+    <section class="current-delivery">
+
+        <h2>Active Deliveries</h2>
+
+        <div id="currentDelivery">
+
+            <p class="message">
+                No active delivery.
+            </p>
+
+        </div>
+
+    </section>
+
+    <section class="orders-box">
+        <div class="section-title-row">
+            <h2>Recent completed deliveries</h2>
+        </div>
+        <div id="deliveryHistory" class="order-list">
+            <p class="empty-state">Loading delivery history...</p>
+        </div>
+    </section>
+
+</main>
+
+
+<script>
+
+/* Current delivery */
+
+let currentDeliveryIds = new Set();
+
+function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, function(character) {
+        return {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;"
+        }[character];
+    });
+}
+
+function csrfToken() {
+    const cookie = document.cookie.split("; ")
+        .find(function(value) { return value.startsWith("csrftoken="); });
+    return cookie ? decodeURIComponent(cookie.split("=")[1]) : "";
+}
+
+
+/* Load delivery partner profile */
+
+async function loadDeliveryProfile() {
+
+    try {
+
+        const response = await fetch(
+            "/api/delivery/profile"
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || "Unable to load profile"
+            );
+        }
+
+        document.getElementById(
+            "deliveryPartnerName"
+        ).textContent =
+            data.name || "Delivery Partner";
+
+
+        document.getElementById(
+            "welcomeText"
+        ).textContent =
+            `Welcome ${data.name || ""}`;
+
+    } catch (error) {
+
+        document.getElementById("welcomeText").textContent =
+            error.message || "Unable to load delivery partner profile.";
+
+    }
+
+}
+
+
+/* Load dashboard */
+
+async function loadDashboard() {
+
+    try {
+
+        const response = await fetch(
+            "/api/delivery/dashboard"
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || "Unable to load dashboard"
+            );
+        }
+
+
+        document.getElementById(
+            "todayDeliveries"
+        ).textContent =
+            data.todayDeliveries ?? 0;
+
+
+        document.getElementById(
+            "completedDeliveries"
+        ).textContent =
+            data.completedDeliveries ?? 0;
+
+
+        document.getElementById(
+            "todayEarnings"
+        ).textContent =
+            data.earningsTracked ? `₹${data.todayEarnings ?? 0}` : "Not tracked";
+
+        renderDeliveryHistory(data.recentCompleted || []);
+
+
+    } catch (error) {
+
+        document.getElementById("todayEarnings").textContent = "Unavailable";
+        document.getElementById("deliveryHistory").innerHTML =
+            `<p class="dashboard-error">${escapeHtml(error.message)}</p>`;
+
+    }
+
+}
+
+function renderDeliveryHistory(orders) {
+    const container = document.getElementById("deliveryHistory");
+    if (!orders.length) {
+        container.innerHTML =
+            '<p class="empty-state">Completed deliveries will appear here.</p>';
+        return;
+    }
+    container.innerHTML = orders.map(function(order) {
+        const items = (order.items || []).map(function(item) {
+            return `<div class="order-item-row"><span>${escapeHtml(item.quantity)} × ${escapeHtml(item.name)}</span></div>`;
+        }).join("");
+        return `
+            <article class="order-card">
+                <div class="order-header">
+                    <span class="order-id">Order #${escapeHtml(order.orderNumber)}</span>
+                    <span class="status">Delivered</span>
+                </div>
+                <p class="message">${escapeHtml(order.date)}</p>
+                <p><strong>${escapeHtml(order.restaurant?.name || "Restaurant")}</strong> → ${escapeHtml(order.customer?.name || "Customer")}</p>
+                <div class="order-items">
+                    ${items}
+                    <div class="order-total"><span>Restaurant payout</span><span>₹${escapeHtml(order.restaurantPayout)}</span></div>
+                </div>
+            </article>`;
+    }).join("");
+}
+
+
+/* Load available orders */
+
+async function loadAvailableOrders() {
+
+    const container =
+        document.getElementById("availableOrders");
+
+    try {
+
+        const response = await fetch(
+            "/api/delivery/orders/available"
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.message || "Unable to load orders"
+            );
+
+        }
+
+
+        container.innerHTML = "";
+        document.getElementById("ordersMessage").textContent = "";
+
+
+        if (!data.orders || !data.orders.length) {
+
+            document.getElementById(
+                "ordersMessage"
+            ).textContent =
+                "No delivery orders available right now. New orders appear after the restaurant marks them ready.";
+            container.innerHTML =
+                '<p class="empty-state">You are all caught up.</p>';
+
+            return;
+        }
+
+        data.orders.forEach(function(order) {
+
+            const card =
+                document.createElement("div");
+
+            card.className = "order-card";
+
+
+            card.innerHTML = `
+
+                <div class="order-header">
+
+                    <span class="order-id">
+                        Order #${escapeHtml(order.orderNumber)}
+                    </span>
+
+                    <span class="status">
+                        Ready for pickup
+                    </span>
+
+                </div>
+
+                <p class="message">${escapeHtml(order.date)}</p>
+
+
+                <div class="order-info">
+
+                    <div class="info-box">
+
+                        <small>
+                            Restaurant
+                        </small>
+
+                        <strong>
+                            ${escapeHtml(order.restaurant?.name || "Restaurant")}
+                        </strong>
+
+                    </div>
+
+
+                    <div class="info-box">
+
+                        <small>
+                            Pickup Address
+                        </small>
+
+                        <strong>
+                            ${escapeHtml(order.restaurant?.address || "Address not provided")}
+                        </strong>
+
+                    </div>
+
+
+                    <div class="info-box">
+
+                        <small>
+                            Customer
+                        </small>
+
+                        <strong>
+                            ${escapeHtml(order.customer?.name || "Customer")}
+                        </strong>
+                        <p class="order-phone"><a href="tel:${escapeHtml(order.customer?.phone || "")}">${escapeHtml(order.customer?.phone || "Phone not provided")}</a></p>
+
+                    </div>
+
+
+                    <div class="info-box">
+
+                        <small>
+                            Delivery Address
+                        </small>
+
+                        <strong>
+                            ${escapeHtml(order.customer?.address || "Delivery address not provided")}
+                        </strong>
+
+                    </div>
+
+                </div>
+
+                <div class="order-items">
+                    ${(order.items || []).map(function(item) {
+                        return `<div class="order-item-row"><span>${escapeHtml(item.quantity)} × ${escapeHtml(item.name)}</span></div>`;
+                    }).join("")}
+                    <div class="order-total"><span>Restaurant payout</span><span>₹${escapeHtml(order.restaurantPayout)}</span></div>
+                </div>
+
+                <div class="button-group">
+
+                    <button
+                        class="accept-btn"
+                        onclick="acceptDelivery('${order.id}')"
+                    >
+                        Accept Delivery
+                    </button>
+
+                </div>
+
+            `;
+
+
+            container.appendChild(card);
+
+        });
+
+
+    } catch (error) {
+
+        document.getElementById(
+            "ordersMessage"
+        ).textContent =
+            error.message;
+        container.innerHTML =
+            '<p class="dashboard-error">Could not load available deliveries.</p>';
+
+    }
+
+}
+
+
+/* Accept delivery */
+
+async function acceptDelivery(orderId) {
+
+    try {
+
+        const response = await fetch(
+            `/api/delivery/orders/${orderId}/accept`,
+            {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken()
+                }
+            }
+        );
+
+
+        const data = await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.message || "Unable to accept delivery"
+            );
+
+        }
+
+
+        alert(
+            data.message || "Delivery accepted"
+        );
+
+
+        await loadAvailableOrders();
+        await loadCurrentDelivery();
+
+
+    } catch (error) {
+
+        alert(error.message);
+
+    }
+
+}
+
+
+/* Load current delivery */
+
+async function loadCurrentDelivery() {
+
+    const container =
+        document.getElementById("currentDelivery");
+    const enteredCodes = new Map(
+        Array.from(container.querySelectorAll("[data-delivery-otp]")).map(
+            function(input) {
+                return [input.dataset.deliveryOtp, input.value];
+            }
+        )
+    );
+
+
+    try {
+
+        const response = await fetch(
+            "/api/delivery/orders/current"
+        );
+
+        const data = await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.message || "Unable to load delivery"
+            );
+
+        }
+
+
+        const orders = data.orders || (data.order ? [data.order] : []);
+        currentDeliveryIds = new Set(orders.map(function(order) {
+            return order.id;
+        }));
+
+        if (!orders.length) {
+            container.innerHTML = `
+                <p class="message">
+                    No active delivery. Accept an available order to get started.
+                </p>
+            `;
+
+            return;
+        }
+
+        container.innerHTML = orders.map(function(order) {
+            let actionButtons = "";
+            if (order.statusCode === "assigned") {
+                actionButtons = `
+                    <button class="pickup-btn" onclick="updateDeliveryStatus('${order.id}', 'PICKED_UP')">
+                        Confirm restaurant pickup
+                    </button>`;
+            } else if (order.statusCode === "picked_up") {
+                actionButtons = `
+                    <button class="delivery-btn" onclick="updateDeliveryStatus('${order.id}', 'ON_THE_WAY')">
+                        Start delivery / On the way
+                    </button>`;
+            }
+            return `
+                <article class="order-card" data-active-order="${order.id}">
+                    <div class="delivery-status">
+                        <h3>${escapeHtml(order.status || "")}</h3>
+                        <p><strong>Order #${escapeHtml(order.orderNumber)}</strong> · ${escapeHtml(order.date)}</p>
+                        <p>Restaurant: ${escapeHtml(order.restaurant?.name || "")}</p>
+                        <p>Pickup: ${escapeHtml(order.restaurant?.address || "Address not provided")}</p>
+                        <p>Customer: ${escapeHtml(order.customer?.name || "")}</p>
+                        <p class="order-phone">Phone: <a href="tel:${escapeHtml(order.customer?.phone || "")}">${escapeHtml(order.customer?.phone || "Not provided")}</a></p>
+                        <p>Delivery: ${escapeHtml(order.customer?.address || "Address not provided")}</p>
+                    </div>
+                    <div class="order-items">
+                        <strong>Order items</strong>
+                        ${(order.items || []).map(function(item) {
+                            return `<div class="order-item-row"><span>${escapeHtml(item.quantity)} × ${escapeHtml(item.name)}</span></div>`;
+                        }).join("")}
+                        <div class="order-total"><span>Restaurant payout</span><span>₹${escapeHtml(order.restaurantPayout)}</span></div>
+                    </div>
+                    <div class="button-group">${actionButtons}</div>
+                    <div class="otp-box">
+                        <h3>Customer Delivery OTP</h3>
+                        <p>Customer se OTP lekar isi order ki delivery confirm karein.</p>
+                        <input
+                            type="text"
+                            id="deliveryOtp-${order.id}"
+                            data-delivery-otp="${order.id}"
+                            placeholder="Enter 4-digit code"
+                            inputmode="numeric"
+                            maxlength="4"
+                            pattern="[0-9]{4}"
+                            autocomplete="one-time-code"
+                        >
+                        <button
+                            id="verifyOtpButton-${order.id}"
+                            onclick="verifyDeliveryOtp('${order.id}')"
+                        >
+                            Confirm Delivery
+                        </button>
+                    </div>
+                    <p id="deliveryMessage-${order.id}" class="message" role="status" aria-live="polite"></p>
+                </article>`;
+        }).join("");
+
+        container.querySelectorAll("[data-delivery-otp]").forEach(function(input) {
+            input.value = enteredCodes.get(input.dataset.deliveryOtp) || "";
+        });
+
+    } catch (error) {
+
+        container.innerHTML = `
+            <p class="dashboard-error">${escapeHtml(error.message)}</p>
+        `;
+
+    }
+
+}
+
+
+/* Update delivery status */
+
+async function updateDeliveryStatus(orderId, status) {
+
+    if (!currentDeliveryIds.has(orderId)) {
+        return;
+    }
+
+
+    try {
+
+        const response = await fetch(
+            `/api/delivery/orders/${orderId}/status`,
+            {
+                method: "PUT",
+
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken()
+                },
+
+                body: JSON.stringify({
+                    status: status
+                })
+            }
+        );
+
+
+        const data = await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.message || "Unable to update status"
+            );
+
+        }
+
+
+        await loadCurrentDelivery();
+        await loadAvailableOrders();
+
+
+    } catch (error) {
+
+        alert(error.message);
+
+    }
+
+}
+
+
+/* Verify customer OTP */
+
+async function verifyDeliveryOtp(orderId) {
+
+    if (!currentDeliveryIds.has(orderId)) {
+        return;
+    }
+
+
+    const otp =
+        document.getElementById(
+            `deliveryOtp-${orderId}`
+        ).value.trim();
+
+
+    if (!/^\d{4}$/.test(otp)) {
+
+        document.getElementById(
+            `deliveryMessage-${orderId}`
+        ).textContent =
+            "Enter the customer's 4-digit delivery code.";
+
+        return;
+    }
+
+
+    try {
+
+        const response = await fetch(
+            `/api/delivery/orders/${orderId}/complete`,
+            {
+                method: "PUT",
+
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken()
+                },
+
+                body: JSON.stringify({
+                    confirmationCode: otp
+                })
+            }
+        );
+
+
+        const data = await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.message || "Invalid OTP"
+            );
+
+        }
+
+
+        alert(
+            data.message || "Order delivered successfully"
+        );
+
+
+        await refreshDeliveryDashboard();
+
+
+    } catch (error) {
+
+        document.getElementById(
+            `deliveryMessage-${orderId}`
+        ).textContent =
+            error.message;
+
+    }
+
+}
+
+
+async function refreshDeliveryDashboard() {
+    await Promise.all([
+        loadDeliveryProfile(),
+        loadDashboard(),
+        loadAvailableOrders(),
+        loadCurrentDelivery()
+    ]);
+}
+
+document.getElementById("refreshDashboardButton").addEventListener(
+    "click",
+    refreshDeliveryDashboard
+);
+document.getElementById("refreshOrdersButton").addEventListener(
+    "click",
+    refreshDeliveryDashboard
+);
+document.getElementById("deliveryLogoutButton").addEventListener("click", async function() {
+    try {
+        const response = await fetch("/api/auth/logout", {
+            method: "POST",
+            headers: { "X-CSRFToken": csrfToken() }
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || "Could not sign out.");
+        }
+        window.location.href = "/resturentloginpage.html";
+    } catch (error) {
+        alert(error.message || "Could not sign out. Try again.");
+    }
+});
+
+/* Start */
+
+refreshDeliveryDashboard();
+
+window.setInterval(function() {
+    if (!document.hidden) {
+        loadDashboard();
+        loadAvailableOrders();
+        loadCurrentDelivery();
+    }
+}, 15000);
+
+</script>
+
+</body>
+</html>

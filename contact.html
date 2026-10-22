@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Us</title>
+    <style>
+        /* पूरे पेज का बैकग्राउंड और फॉन्ट */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 16px;
+        }
+
+        /* मेन कार्ड बॉक्स */
+        .contact-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+            width: min(320px, 100%);
+        }
+
+        /* हेडिंग स्टाइल */
+        .contact-card h2 {
+            margin-bottom: 25px;
+            color: #333;
+        }
+        .contact-card .site-logo {
+            width: 82px;
+            height: 82px;
+            object-fit: contain;
+        }
+
+        /* सभी बटन्स के लिए कॉमन स्टाइल */
+        .btn {
+            display: block;
+            text-decoration: none;
+            padding: 12px;
+            margin: 15px 0;
+            border-radius: 8px;
+            font-weight: bold;
+            color: white;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        /* बटन पर होवर (माउस ले जाने) का इफेक्ट */
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        /* 1. जीमेल बटन का कलर (Reddish) */
+        .btn-gmail {
+            background-color: #db4437;
+        }
+
+        /* 2. इंस्टाग्राम बटन का कलर (Instagram Pink/Purple Gradient) */
+        .btn-instagram {
+            background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+        }
+
+        /* 3. मोबाइल बटन का कलर (Green) */
+        .btn-phone {
+            background-color: #25d366;
+        }
+
+        @media (max-width: 360px) {
+            .contact-card {
+                padding: 24px 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="contact-card">
+        <a href="/" aria-label="Ramjicart home"><img class="site-logo" src="/static/logo%20(2).png" alt="Ramjicart logo"></a>
+        <h2>Contact Me</h2>
+
+        <a href="mailto:vishwasshukla4321@dmail.com" class="btn btn-gmail">
+            Mail us on Gmail
+        </a>
+
+        <a href="https://instagram.com" target="_blank" class="btn btn-instagram">
+            Meet on Instagram
+        </a>
+        <a href="tel:9305165943" class="btn btn-phone">
+            Call Mobile No
+        </a>
+    </div>
+
+</body>
+</html>

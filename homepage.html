@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ramjicart - Food Delivery</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #f8f9fa;
+            color: #222;
+        }
+
+        header {
+            background: white;
+            padding: 18px 7%;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        nav h1 {
+            color: #ff4d2d;
+            font-size: 27px;
+        }
+
+        nav > div {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: #333;
+            font-size: 16px;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        nav a:hover {
+            color: #ff4d2d;
+        }
+
+        .account-menu {
+            position: relative;
+            display: block;
+        }
+
+        #customerProfile {
+            position: absolute;
+            top: calc(100% + 14px);
+            right: 0;
+            width: min(620px, calc(100vw - 32px));
+            padding: 16px;
+            border: 1px solid #f0e4df;
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+            text-align: left;
+        }
+
+        #customerProfile h2 {
+            margin-bottom: 12px;
+            font-size: 18px;
+        }
+
+        .customer-profile-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .customer-profile-field {
+            min-width: 0;
+            padding: 12px;
+            border: 1px solid #e6ebf1;
+            border-radius: 10px;
+            background: #fff;
+        }
+
+        .customer-profile-field span {
+            display: block;
+            margin-bottom: 6px;
+            color: #777;
+            font-size: 13px;
+        }
+
+        .customer-profile-field strong {
+            overflow-wrap: anywhere;
+        }
+
+        #signOutButton {
+            display: block;
+            margin: 12px 0 0 auto;
+            padding: 8px 14px;
+            border: 0;
+            border-radius: 8px;
+            background: #ff4d2d;
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        #signOutButton:hover {
+            background: #e63e20;
+        }
+
+        main > section:first-child {
+            min-height: 430px;
+            background: linear-gradient(135deg, #fff1eb, #ffe0d5);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        main > section:first-child h1 {
+            font-size: 48px;
+            max-width: 750px;
+            line-height: 1.2;
+            margin-bottom: 18px;
+        }
+
+        main > section:first-child p {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        main > section:first-child > div {
+            display: flex;
+        }
+
+        main > section:first-child input {
+            width: 420px;
+            max-width: 75%;
+            padding: 16px 20px;
+            border: none;
+            outline: none;
+            border-radius: 10px 0 0 10px;
+            font-size: 16px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.1);
+        }
+
+        main > section:first-child button {
+            padding: 16px 28px;
+            border: none;
+            background: #ff4d2d;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 0 10px 10px 0;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        main > section:first-child button:hover {
+            background: #e63e20;
+        }
+
+        main > section:not(:first-child) {
+            max-width: 1200px;
+            margin: 60px auto;
+            padding: 0 25px;
+        }
+
+        .ad-slot {
+            display: grid;
+            min-height: 96px;
+            width: min(1150px, calc(100% - 40px));
+            align-content: center;
+            justify-items: center;
+            gap: 7px;
+            margin: 24px auto 0;
+            padding: 14px 20px;
+            border: 1px dashed #d5dbe3;
+            border-radius: 12px;
+            background: #fff;
+            color: #667085;
+            text-align: center;
+        }
+
+        .ad-slot span {
+            color: #8995a5;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+        }
+
+        .ad-slot p {
+            font-size: 14px;
+        }
+
+        main > section h2 {
+            font-size: 30px;
+            margin-bottom: 25px;
+        }
+
+        /* CATEGORIES */
+
+        #categoryList {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+
+        .category-card {
+            background: white;
+            padding: 30px 20px;
+            text-align: center;
+            border-radius: 15px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.07);
+            transition: 0.3s;
+        }
+
+        .category-card:hover {
+            transform: translateY(-7px);
+            box-shadow: 0 10px 25px rgba(255,77,45,0.18);
+            color: #ff4d2d;
+        }
+
+        /* FOOD CARDS */
+
+        #foodList {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+        }
+
+        .food-card {
+            background: white;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 5px 18px rgba(0,0,0,0.08);
+            transition: 0.3s;
+        }
+
+        .food-card img {
+            width: 100%;
+            aspect-ratio: 16 / 10;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 14px;
+        }
+
+        .food-restaurant {
+            color: #555 !important;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .food-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+        }
+
+        .food-card h3 {
+            font-size: 22px;
+            margin-bottom: 12px;
+        }
+
+        .food-card p {
+            color: #777;
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+
+        .food-price {
+            color: #ff4d2d !important;
+            font-size: 21px;
+            font-weight: bold;
+        }
+
+        .food-card button {
+            width: 100%;
+            padding: 13px;
+            border: none;
+            border-radius: 8px;
+            background: #ff4d2d;
+            color: white;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .food-card button:hover {
+            background: #e63e20;
+        }
+
+        /* ORDER TRACKING */
+
+        #orderTracking {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 5px 18px rgba(0,0,0,0.07);
+        }
+
+        #trackingSteps p {
+            display: inline-block;
+            margin: 5px 15px 5px 0;
+            padding: 12px 18px;
+            background: #f5f5f5;
+            border-radius: 25px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        footer {
+            background: #222;
+            color: #aaa;
+            text-align: center;
+            padding: 25px;
+            margin-top: 50px;
+        }
+
+        footer p {
+            font-size: 14px;
+        }
+
+        .message {
+            text-align: center;
+            color: #777;
+            padding: 20px;
+        }
+
+        @media (max-width: 800px) {
+
+            nav {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            nav > div {
+                gap: 15px;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            main > section:first-child h1 {
+                font-size: 35px;
+            }
+
+            #categoryList {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            #foodList {
+                grid-template-columns: 1fr;
+            }
+
+            #trackingSteps p {
+                display: block;
+                margin: 10px 0;
+            }
+
+            #customerProfile {
+                right: 50%;
+                transform: translateX(50%);
+            }
+
+            .customer-profile-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 500px) {
+
+            main > section:first-child {
+                min-height: 400px;
+            }
+
+            main > section:first-child h1 {
+                font-size: 30px;
+            }
+
+            main > section:first-child p {
+                font-size: 16px;
+            }
+
+            main > section:first-child > div {
+                width: 100%;
+                display: block;
+            }
+
+            main > section:first-child input {
+                width: 100%;
+                max-width: 100%;
+                border-radius: 8px;
+                margin-bottom: 10px;
+            }
+
+            main > section:first-child button {
+                width: 100%;
+                border-radius: 8px;
+            }
+
+            #categoryList {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            main > section h2 {
+                font-size: 25px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- NAVBAR -->
+
+    <header>
+        <nav>
+
+            <h1><img src="/static/logo%20(2).png" alt="Ramjicart logo" style="width:42px;height:42px;object-fit:contain;vertical-align:middle"> Ramjicart</h1>
+
+            <div>
+
+                <a href="resturentpage.html">Restaurants</a>
+
+                <a href="#orderHistory">Order history</a>
+
+                <a href="cartpage.html" id="cartLink">
+                    🛒 Cart
+                </a>
+
+                <a href="contact.html">
+                    contact us
+                </a>
+
+                <div class="account-menu">
+                    <a href="login.html" id="accountLink">Sign in</a>
+                    <section id="customerProfile" aria-label="Customer profile" hidden>
+                        <h2>Your profile</h2>
+                        <div class="customer-profile-grid">
+                            <div class="customer-profile-field">
+                                <span>Name</span>
+                                <strong id="customerProfileName"></strong>
+                            </div>
+                            <div class="customer-profile-field">
+                                <span>Email</span>
+                                <strong id="customerProfileEmail"></strong>
+                            </div>
+                            <div class="customer-profile-field">
+                                <span>Phone</span>
+                                <strong id="customerProfilePhone"></strong>
+                            </div>
+                        </div>
+                        <button id="signOutButton" type="button">Sign out</button>
+                    </section>
+                </div>
+
+            </div>
+
+        </nav>
+
+    </header>
+
+
+    <!-- MAIN -->
+
+    <main>
+
+        <!-- HERO -->
+
+        <section>
+            <h1>
+                Delicious Food, Delivered Fast 🍕
+            </h1>
+
+            <p>
+                Order your favourite food from the best restaurants
+                near you.
+            </p>
+
+            <div>
+
+                <input
+                    type="text"
+                    id="searchInput"
+                    placeholder="Search for food or restaurant"
+                >
+
+                <button id="searchButton">
+                    Search
+                </button>
+
+            </div>
+
+        </section>
+
+        <aside class="ad-slot" id="homepage-ad-slot" aria-label="Advertisement">
+            <span>ADVERTISEMENT</span>
+            <p>Promote your business to nearby customers.</p>
+        </aside>
+
+        <!-- CATEGORIES -->
+
+        <section>
+
+            <h2>
+                What are you craving?
+            </h2>
+
+            <div id="categoryList">
+
+                <!-- Backend se categories yahan aayengi -->
+
+            </div>
+
+            <p
+                id="categoryMessage"
+                class="message"
+            ></p>
+
+        </section>
+
+
+        <!-- POPULAR FOOD -->
+
+        <section>
+
+            <h2>
+                Popular Near You
+            </h2>
+
+            <div id="foodList">
+
+                <!-- Backend se food yahan aayega -->
+
+            </div>
+
+            <p
+                id="foodMessage"
+                class="message"
+            ></p>
+
+        </section>
+
+
+        <!-- ORDER TRACKING -->
+
+        <section id="orderTracking">
+
+            <h2>
+                Track Your Order 🚴
+            </h2>
+
+            <div id="trackingSteps">
+
+                <!-- Backend se current order status aayega -->
+
+            </div>
+
+            <p
+                id="trackingMessage"
+                class="message"
+            ></p>
+
+        </section>
+
+        <section id="orderHistory">
+            <h2>Order history</h2>
+            <div id="orderHistoryList"></div>
+            <p id="orderHistoryMessage" class="message" aria-live="polite"></p>
+        </section>
+
+    </main>
+
+
+    <!-- FOOTER -->
+
+    <footer>
+
+        <p>
+            © 2026 Ramjicart. All rights reserved.
+        </p>
+        <p>
+            <a href="/terms.html">Terms and Conditions</a> ·
+            <a href="/privacy.html">Privacy Policy</a>
+        </p>
+
+    </footer>
+
+
+    <script>
+
+        /*
+        ==========================================
+        BACKEND API
+        ==========================================
+        */
+
+        const foodApi = "/api/customer/foods";
+        const categoryApi = "/api/customer/categories";
+        const orderApi = "/api/customer/orders/current";
+        const orderHistoryApi = "/api/customer/orders/history";
+
+
+        /*
+        ==========================================
+        ELEMENTS
+        ==========================================
+        */
+
+        const foodList =
+            document.getElementById("foodList");
+
+        const categoryList =
+            document.getElementById("categoryList");
+
+        const trackingSteps =
+            document.getElementById("trackingSteps");
+
+        const foodMessage =
+            document.getElementById("foodMessage");
+
+        const categoryMessage =
+            document.getElementById("categoryMessage");
+
+        const trackingMessage =
+            document.getElementById("trackingMessage");
+
+        const orderHistoryList =
+            document.getElementById("orderHistoryList");
+
+        const orderHistoryMessage =
+            document.getElementById("orderHistoryMessage");
+
+        const searchInput =
+            document.getElementById("searchInput");
+
+        const searchButton =
+            document.getElementById("searchButton");
+
+        const cartLink =
+            document.getElementById("cartLink");
+
+        const accountLink = document.getElementById("accountLink");
+        const customerProfile = document.getElementById("customerProfile");
+
+        async function signOut() {
+            const cookie = document.cookie.split("; ")
+                .find(function(value) { return value.startsWith("csrftoken="); });
+            const response = await fetch("/api/auth/logout", {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": cookie
+                        ? decodeURIComponent(cookie.split("=")[1])
+                        : ""
+                }
+            });
+            if (response.ok) window.location.href = "login.html";
+        }
+
+        accountLink.addEventListener("click", function(event) {
+            if (accountLink.dataset.authenticated !== "true") return;
+            event.preventDefault();
+            if (accountLink.dataset.role === "customer") {
+                customerProfile.hidden = !customerProfile.hidden;
+                accountLink.setAttribute("aria-expanded", String(!customerProfile.hidden));
+                return;
+            }
+            signOut();
+        });
+
+        document.getElementById("signOutButton").addEventListener("click", signOut);
+
+        document.addEventListener("click", function(event) {
+            if (!customerProfile.hidden && !event.target.closest(".account-menu")) {
+                customerProfile.hidden = true;
+                accountLink.setAttribute("aria-expanded", "false");
+            }
+        });
+
+        async function loadAccountAction() {
+            try {
+                const response = await fetch("/api/auth/me");
+                if (!response.ok) {
+                    accountLink.textContent = "Sign in";
+                    accountLink.href = "login.html";
+                    accountLink.dataset.authenticated = "false";
+                    customerProfile.hidden = true;
+                    return;
+                }
+                const account = await response.json();
+                accountLink.dataset.authenticated = "true";
+                accountLink.dataset.role = account.role || "";
+                if (account.role !== "customer") {
+                    accountLink.textContent = "Sign out";
+                    return;
+                }
+                const accountEmail = typeof account.email === "string" ? account.email.trim() : "";
+                const accountName = typeof account.name === "string" ? account.name.trim() : "";
+                const firstName = typeof account.first_name === "string"
+                    ? account.first_name.trim()
+                    : "";
+                const fullName = accountName || firstName || accountEmail.split("@")[0] || "Customer";
+                document.getElementById("customerProfileName").textContent = fullName;
+                document.getElementById("customerProfileEmail").textContent =
+                    accountEmail || "Not provided";
+                document.getElementById("customerProfilePhone").textContent =
+                    typeof account.phone === "string" && account.phone.trim()
+                        ? account.phone.trim()
+                        : "Not provided";
+                accountLink.textContent = fullName.split(/\s+/)[0];
+                accountLink.href = "#";
+                accountLink.setAttribute("aria-expanded", "false");
+                customerProfile.hidden = true;
+            } catch (error) {
+                accountLink.textContent = "Sign in";
+                accountLink.href = "login.html";
+                accountLink.dataset.authenticated = "false";
+                customerProfile.hidden = true;
+            }
+        }
+
+
+        /*
+        ==========================================
+        LOAD CATEGORIES
+        ==========================================
+        */
+
+        async function loadCategories() {
+
+            try {
+
+                const response =
+                    await fetch(categoryApi);
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        "Categories load nahi hui"
+                    );
+
+                }
+
+                const categories =
+                    await response.json();
+
+                categoryList.innerHTML = "";
+
+                if (!categories.length) {
+
+                    categoryMessage.textContent =
+                        "No categories available.";
+
+                    return;
+                }
+
+                categories.forEach(function(category) {
+
+                    const categoryCard =
+                        document.createElement("div");
+
+                    categoryCard.className =
+                        "category-card";
+
+                    categoryCard.textContent =
+                        category.name;
+
+                    categoryCard.addEventListener(
+                        "click",
+                        function() {
+
+                            loadFoods(category.id);
+
+                        }
+                    );
+
+                    categoryList.appendChild(
+                        categoryCard
+                    );
+
+                });
+
+            } catch (error) {
+
+                categoryMessage.textContent =
+                    error.message;
+
+            }
+
+        }
+
+
+        /*
+        ==========================================
+        LOAD FOOD
+        ==========================================
+        */
+
+        async function loadFoods(categoryId = "") {
+
+            try {
+
+                foodMessage.textContent =
+                    "Loading food...";
+
+                const params = new URLSearchParams();
+                const restaurantId = new URLSearchParams(window.location.search)
+                    .get("restaurantId");
+                if (categoryId) params.set("categoryId", categoryId);
+                if (restaurantId) params.set("restaurantId", restaurantId);
+                const url = params.size ? foodApi + "?" + params.toString() : foodApi;
+
+                const response =
+                    await fetch(url);
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        "Food load nahi hua"
+                    );
+
+                }
+
+                const foods =
+                    await response.json();
+
+                renderFoodCards(foods);
+
+            } catch (error) {
+
+                foodList.innerHTML = "";
+
+                foodMessage.textContent =
+                    error.message;
+
+            }
+
+        }
+
+        function renderFoodCards(foods) {
+            foodList.innerHTML = "";
+            foodMessage.textContent = "";
+
+            if (!foods.length) {
+                foodMessage.textContent = "No food available.";
+                return;
+            }
+
+            foods.forEach(function(food) {
+                const card = document.createElement("article");
+                card.className = "food-card";
+
+                if (food.image) {
+                    const image = document.createElement("img");
+                    image.src = food.image;
+                    image.alt = food.name;
+                    image.loading = "lazy";
+                    card.appendChild(image);
+                }
+
+                const title = document.createElement("h3");
+                title.textContent = food.name;
+
+                const restaurant = document.createElement("p");
+                restaurant.className = "food-restaurant";
+                restaurant.textContent = food.restaurantName || "";
+
+                const description = document.createElement("p");
+                description.textContent = food.description || "";
+
+                const price = document.createElement("p");
+                price.className = "food-price";
+                price.textContent = "₹" + food.price;
+
+                const button = document.createElement("button");
+                button.textContent = "Order Now";
+                button.addEventListener("click", function() {
+                    addToCart(food);
+                });
+
+                card.appendChild(title);
+                card.appendChild(restaurant);
+                card.appendChild(description);
+                card.appendChild(price);
+                card.appendChild(button);
+                foodList.appendChild(card);
+            });
+        }
+
+
+        /*
+        ==========================================
+        ADD TO CART
+        ==========================================
+        */
+
+        async function addToCart(food) {
+            try {
+                const csrfToken = document.cookie
+                    .split("; ")
+                    .find(function(cookie) {
+                        return cookie.startsWith("csrftoken=");
+                    });
+                const response = await fetch("/api/customer/cart", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": csrfToken
+                            ? decodeURIComponent(csrfToken.split("=")[1])
+                            : ""
+                    },
+                    body: JSON.stringify({ foodId: food.id, quantity: 1 })
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.message || "Could not add food to cart.");
+                }
+
+                updateCartCount(data);
+                alert(food.name + " added to cart 🛒");
+            } catch (error) {
+                foodMessage.textContent = error.message;
+            }
+
+        }
+
+
+        /*
+        ==========================================
+        SEARCH FOOD
+        ==========================================
+        */
+
+        async function searchFood() {
+
+            const searchText =
+                searchInput.value.trim();
+
+
+            if (!searchText) {
+
+                loadFoods();
+
+                return;
+            }
+
+
+            try {
+
+                foodMessage.textContent =
+                    "Searching...";
+
+                const params = new URLSearchParams({ search: searchText });
+                const restaurantId = new URLSearchParams(window.location.search)
+                    .get("restaurantId");
+                if (restaurantId) params.set("restaurantId", restaurantId);
+                const response = await fetch(foodApi + "?" + params.toString());
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        "Search failed"
+                    );
+
+                }
+
+
+                const foods = await response.json();
+                renderFoodCards(foods);
+
+
+            } catch (error) {
+
+                foodMessage.textContent =
+                    error.message;
+
+            }
+
+        }
+
+
+        searchButton.addEventListener(
+            "click",
+            searchFood
+        );
+
+
+        searchInput.addEventListener(
+            "keydown",
+            function(event) {
+
+                if (event.key === "Enter") {
+
+                    searchFood();
+
+                }
+
+            }
+        );
+
+
+        /*
+        ==========================================
+        CURRENT ORDER TRACKING
+        ==========================================
+        */
+
+        async function loadCurrentOrder() {
+
+            try {
+
+                const response =
+                    await fetch(orderApi);
+
+
+                if (response.status === 404) {
+                    trackingSteps.innerHTML = "";
+                    trackingMessage.textContent = "No order found yet.";
+                    return;
+                }
+
+                if (response.status === 401) {
+                    trackingSteps.innerHTML = "";
+                    trackingMessage.textContent = "Sign in to track your orders.";
+                    return;
+                }
+
+                if (!response.ok) {
+                    const error = await response.json();
+
+                    throw new Error(
+                        error.message || "Order status load nahi hua"
+                    );
+
+                }
+
+
+                const order =
+                    await response.json();
+
+
+                trackingSteps.innerHTML = "";
+
+                trackingMessage.textContent = "";
+
+
+                if (!order) {
+
+                    trackingMessage.textContent =
+                        "No active order.";
+
+                    return;
+
+                }
+
+
+                const statuses =
+                    order.statuses || order.timeline || [];
+
+
+                statuses.forEach(function(status) {
+
+                    const step =
+                        document.createElement("p");
+
+                    step.textContent =
+                        status.status || status.name;
+
+                    trackingSteps.appendChild(
+                        step
+                    );
+
+                });
+
+
+            } catch (error) {
+
+                trackingMessage.textContent =
+                    error.message;
+
+            }
+
+        }
+
+        async function loadOrderHistory() {
+            orderHistoryList.innerHTML = "";
+            orderHistoryMessage.textContent = "Loading order history...";
+
+            try {
+                const response = await fetch(orderHistoryApi);
+                const data = await response.json();
+
+                if (response.status === 401) {
+                    orderHistoryMessage.textContent = "Sign in to view your order history.";
+                    return;
+                }
+                if (!response.ok) {
+                    throw new Error(data.message || "Order history could not be loaded.");
+                }
+
+                const orders = data.orders || [];
+                orderHistoryMessage.textContent = orders.length
+                    ? ""
+                    : "You have not placed any orders yet.";
+
+                orders.forEach(function(order) {
+                    const card = document.createElement("article");
+                    card.className = "food-card order-history-card";
+
+                    const heading = document.createElement("h3");
+                    heading.textContent = "Order #" + order.orderNumber;
+
+                    const restaurant = document.createElement("p");
+                    restaurant.textContent = order.restaurantName;
+
+                    const date = document.createElement("p");
+                    date.textContent = order.createdAt;
+
+                    const status = document.createElement("p");
+                    status.textContent = "Status: " + order.status;
+
+                    const itemSummary = document.createElement("p");
+                    itemSummary.textContent = (order.items || []).map(function(item) {
+                        return item.quantity + " × " + item.name;
+                    }).join(", ");
+
+                    const total = document.createElement("p");
+                    total.className = "food-price";
+                    total.textContent = "Total: ₹" + order.total;
+
+                    const detailsLink = document.createElement("a");
+                    detailsLink.href = "orderpage.html?id=" + encodeURIComponent(order.id);
+                    detailsLink.textContent = "View details";
+
+                    card.appendChild(heading);
+                    card.appendChild(restaurant);
+                    card.appendChild(date);
+                    card.appendChild(status);
+                    card.appendChild(itemSummary);
+                    card.appendChild(total);
+                    card.appendChild(detailsLink);
+                    orderHistoryList.appendChild(card);
+                });
+            } catch (error) {
+                orderHistoryMessage.textContent = error.message;
+            }
+        }
+
+
+        /*
+        ==========================================
+        CART COUNT
+        ==========================================
+        */
+
+        function updateCartCount(cart) {
+            const totalQuantity = (cart?.items || []).reduce(function(total, item) {
+                return total + Number(item.quantity || 0);
+            }, 0);
+
+            if (totalQuantity > 0) {
+
+                cartLink.textContent =
+                    "🛒 Cart (" +
+                    totalQuantity +
+                    ")";
+
+            } else {
+
+                cartLink.textContent =
+                    "🛒 Cart";
+
+            }
+
+        }
+
+        async function loadCartCount() {
+            try {
+                const response = await fetch("/api/customer/cart");
+                if (!response.ok) {
+                    updateCartCount(null);
+                    return;
+                }
+                updateCartCount(await response.json());
+            } catch (error) {
+                updateCartCount(null);
+            }
+        }
+
+
+        /*
+        ==========================================
+        PAGE LOAD
+        ==========================================
+        */
+
+        loadCategories();
+
+        loadFoods();
+
+        loadCurrentOrder();
+
+        loadOrderHistory();
+
+        loadCartCount();
+
+        loadAccountAction();
+
+    </script>
+
+</body>
+</html>

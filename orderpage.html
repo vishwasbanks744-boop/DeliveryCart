@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Tracking</title>
+
+<style>
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f7f8f5;
+    color: #202020;
+    padding: 20px;
+}
+
+/* Order */
+.order-top {
+    max-width: 1100px;
+    margin: 0 auto 25px;
+    background: white;
+    padding: 20px 28px;
+    border-radius: 20px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06);
+}
+
+.order-top h2 {
+    color: #ff6b00;
+    margin-bottom: 5px;
+}
+
+/* Main heading */
+h1 {
+    max-width: 1100px;
+    margin: 30px auto 8px;
+    font-size: 34px;
+}
+
+.page-subtitle {
+    max-width: 1100px;
+    margin: 6px auto;
+    color: #777;
+    font-weight: normal;
+}
+
+/* Estimated arrival */
+.arrival-box {
+    max-width: 1100px;
+    margin: 25px auto;
+    background: #fff4e9;
+    border: 1px solid #ffe0c2;
+    padding: 18px 22px;
+    border-radius: 16px;
+}
+
+#arrivalTime {
+    margin-top: 5px;
+    color: #ff6b00;
+    font-size: 25px;
+    font-weight: bold;
+}
+
+/* Timeline */
+.timeline-container {
+    max-width: 1100px;
+    margin: 25px auto;
+    background: white;
+    padding: 30px 25px;
+    border-radius: 20px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06);
+    overflow-x: auto;
+}
+
+.timeline {
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+    min-width: 650px;
+}
+
+.timeline::before {
+    content: "";
+    position: absolute;
+    top: 23px;
+    left: 10%;
+    right: 10%;
+    height: 5px;
+    background: #e5e5e5;
+    border-radius: 10px;
+}
+
+.step {
+    position: relative;
+    z-index: 2;
+    width: 25%;
+    text-align: center;
+}
+
+.icon {
+    width: 48px;
+    height: 48px;
+    margin: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #e9e9e9;
+    border: 4px solid white;
+}
+
+.completed .icon {
+    background: #27ae60;
+    color: white;
+}
+
+.active .icon {
+    background: #ff6b00;
+    color: white;
+    box-shadow: 0 0 0 6px #ffe3cc;
+}
+
+.pending .icon {
+    background: #eeeeee;
+    color: #999;
+}
+
+.status {
+    margin-top: 10px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.time {
+    margin-top: 5px;
+    color: #888;
+    font-size: 13px;
+}
+
+/* Delivery address */
+.delivery-address {
+    max-width: 1100px;
+    margin: 22px auto;
+    background: white;
+    padding: 25px;
+    border-radius: 20px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06);
+}
+
+#deliveryaddress {
+    margin-top: 12px;
+    padding: 15px;
+    background: #f7f7f7;
+    border-radius: 12px;
+}
+
+/* Bill summary */
+.bill-summary {
+    max-width: 1100px;
+    margin: 22px auto;
+    background: white;
+    padding: 25px;
+    border-radius: 20px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06);
+}
+
+.bill-row {
+    padding: 10px 0;
+    color: #666;
+    border-bottom: 1px solid #eee;
+}
+
+#discount1 {
+    color: #27ae60;
+}
+
+#totalamount1 {
+    margin-top: 15px;
+}
+
+/* You saved */
+.saved-box {
+    max-width: 1100px;
+    margin: 22px auto;
+    background: #eafff1;
+    border: 1px solid #c9f1d8;
+    padding: 22px 25px;
+    border-radius: 20px;
+}
+
+#discount2 {
+    color: #20a653;
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+/* Cancel order */
+.cancel-box {
+    max-width: 1100px;
+    margin: 22px auto;
+    background: white;
+    padding: 25px;
+    border-radius: 20px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06);
+}
+
+.cancel-box h2 {
+    margin-bottom: 8px;
+}
+
+.cancel-box p {
+    color: #777;
+    margin-bottom: 15px;
+}
+
+#cancel-order-btn {
+    padding: 12px 25px;
+    background: white;
+    color: #e53935;
+    border: 1px solid #e53935;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+#cancel-order-btn:hover {
+    background: #e53935;
+    color: white;
+}
+
+/* Order items */
+.order-items {
+    max-width: 1100px;
+    margin: 22px auto;
+    background: white;
+    padding: 25px;
+    border-radius: 20px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06);
+}
+
+.order-items-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 22px;
+}
+
+.order-items-header a {
+    color: #ff6b00;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+/* Restaurant */
+.restaurant-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.restaurant-info img {
+    width: 65px;
+    height: 65px;
+    object-fit: cover;
+    border-radius: 14px;
+}
+
+.restaurant-info p {
+    color: #777;
+    font-size: 14px;
+}
+
+/* Food items */
+.food-item {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 18px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.food-item img {
+    width: 75px;
+    height: 75px;
+    object-fit: cover;
+    border-radius: 14px;
+}
+
+.food-item div {
+    flex: 1;
+}
+
+.food-item p {
+    color: #888;
+    font-size: 14px;
+}
+
+.food-item span {
+    background: #f2f2f2;
+    padding: 7px 13px;
+    border-radius: 8px;
+    font-weight: bold;
+}
+
+.food-item strong {
+    min-width: 70px;
+    text-align: right;
+    font-size: 17px;
+}
+
+/* Mobile */
+@media (max-width: 700px) {
+
+    body {
+        padding: 12px;
+    }
+
+    h1 {
+        font-size: 26px;
+    }
+
+    .timeline {
+        min-width: 650px;
+    }
+
+    .order-items-header {
+        gap: 10px;
+    }
+
+    .food-item {
+        gap: 10px;
+    }
+
+    .food-item img {
+        width: 60px;
+        height: 60px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+    <!-- Order ID -->
+    <div class="order-top">
+        <a href="/" aria-label="Ramjicart home"><img src="/static/logo%20(2).png" alt="Ramjicart logo" style="width:54px;height:54px;object-fit:contain;vertical-align:middle"></a>
+        <h2>Check your Order</h2>
+        <p id="orderid"></p>
+    </div>
+
+    <h1 id="orderHeading">Your food is on the way!</h1>
+
+    <h4 class="page-subtitle">
+        Delicious food is on its way to your doorstep
+    </h4>
+
+    <h4 class="page-subtitle">
+        Track your order in real time
+    </h4>
+
+    <!-- Estimated Arrival -->
+    <div class="arrival-box">
+        <span>🕐 Estimated arrival</span>
+        <p id="arrivalTime"></p>
+    </div>
+
+    <div id="confirmationBox" class="arrival-box" hidden>
+        <strong id="confirmationLabel">Your 4-digit confirmation code</strong>
+        <p id="confirmationCode" style="font-size: 32px; letter-spacing: 8px; font-weight: 700;"></p>
+        <p id="confirmationHelp"></p>
+    </div>
+
+    <!-- Timeline -->
+    <div class="timeline-container">
+
+        <div class="timeline">
+
+            <div id="step-1" class="step">
+                <div class="icon" id="icon-1">✓</div>
+                <div class="status" id="status-1"></div>
+                <div class="time" id="time-1"></div>
+            </div>
+
+            <div id="step-2" class="step">
+                <div class="icon" id="icon-2">🍳</div>
+                <div class="status" id="status-2"></div>
+                <div class="time" id="time-2"></div>
+            </div>
+
+            <div id="step-3" class="step">
+                <div class="icon" id="icon-3">🛵</div>
+                <div class="status" id="status-3"></div>
+                <div class="time" id="time-3"></div>
+            </div>
+
+            <div id="step-4" class="step">
+                <div class="icon" id="icon-4">🏠</div>
+                <div class="status" id="status-4"></div>
+                <div class="time" id="time-4"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Delivery Address -->
+    <div class="delivery-address">
+
+        <h2>Delivery address</h2>
+
+        <p id="deliveryaddress"></p>
+
+    </div>
+
+    <!-- Bill Summary -->
+    <div class="bill-summary">
+
+        <h2>Bill summary</h2>
+
+        <p id="totalitem1" class="bill-row">Item total</p>
+
+        <p id="deliveryfee1" class="bill-row">Delivery fee</p>
+
+        <p id="platformfee1" class="bill-row">Platform fee</p>
+
+        <p id="discount1" class="bill-row">Discount</p>
+
+        <hr>
+
+        <h2 id="totalamount1">Total Amount</h2>
+
+    </div>
+
+    <!-- Saved -->
+    <div class="saved-box">
+
+        <p id="discount2">You saved</p>
+
+        <h3>Thanks for ordering with Ramjicart</h3>
+
+    </div>
+
+    <!-- Cancel Order -->
+    <div class="cancel-box">
+
+        <h2>Cancel order</h2>
+
+        <p>You can cancel your order if needed</p>
+
+        <button id="cancel-order-btn">
+            Cancel Order
+        </button>
+
+    </div>
+
+    <!-- Order Items -->
+    <section class="order-items">
+
+        <div class="order-items-header">
+
+            <h2>🛍️ Order Items</h2>
+
+            <a href="#" id="restaurantLink">
+                View Restaurant
+            </a>
+
+        </div>
+
+        <!-- Restaurant -->
+        <div class="restaurant-info">
+
+            <img id="restaurantImage" src="/static/food-placeholder.svg" alt="Restaurant">
+
+            <div>
+
+                <h3 id="restaurantName"></h3>
+
+                <p id="restaurantDetails"></p>
+
+            </div>
+
+        </div>
+
+        <!-- Food items will come from backend -->
+        <div id="orderFoodItems"></div>
+
+        <p id="orderMessage"></p>
+
+    </section>
+
+
+<script>
+
+let currentOrder = null;
+
+/* Get order ID from URL */
+const urlParams = new URLSearchParams(window.location.search);
+const orderId = urlParams.get("id");
+
+
+/* Load Order */
+async function loadOrder() {
+
+    if (!orderId) {
+
+        document.getElementById("orderMessage").textContent =
+            "Order ID not found.";
+
+        return;
+    }
+
+    try {
+
+        const response = await fetch(
+            `/api/customer/orders/${orderId}`
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.message || "Unable to load order"
+            );
+        }
+
+        currentOrder = data;
+
+        displayOrder(data);
+
+    } catch (error) {
+
+        document.getElementById("orderMessage").textContent =
+            error.message;
+
+    }
+
+}
+
+
+/* Display complete order */
+function displayOrder(order) {
+
+    document.getElementById("orderMessage").textContent =
+        order.statusText || "";
+
+    /* Order ID */
+
+    document.getElementById("orderid").textContent =
+        "Order ID: " + order.id;
+
+
+    /* Heading */
+
+    const isPickup = order.orderType === "pickup";
+    document.getElementById("orderHeading").textContent = isPickup
+        ? "Pickup order: you're on the way to the restaurant"
+        : (order.statusText || "Your order is being prepared");
+    document.querySelector(".delivery-address").hidden = isPickup;
+    document.getElementById("step-3").hidden = isPickup;
+    document.getElementById("step-4").hidden = isPickup;
+    document.getElementById("cancel-order-btn").hidden =
+        order.status !== "placed";
+    const confirmationBox = document.getElementById("confirmationBox");
+    confirmationBox.hidden = ["completed", "cancelled"].includes(order.status);
+    document.getElementById("confirmationCode").textContent =
+        order.confirmationCode || "";
+    document.getElementById("confirmationHelp").textContent = isPickup
+        ? "Show this code to the restaurant when you arrive. The restaurant confirms your pickup with this code."
+        : "Share this code with your delivery partner only when your order arrives. They will confirm delivery with it.";
+    if (isPickup) {
+        document.getElementById("confirmationLabel").textContent =
+            "Your restaurant pickup code";
+    } else {
+        document.getElementById("confirmationLabel").textContent =
+            "Your delivery confirmation code";
+    }
+    const subtitles = document.querySelectorAll(".page-subtitle");
+    if (isPickup) {
+        subtitles[0].textContent = "Your food will be ready for pickup at the restaurant.";
+        subtitles[1].textContent = "Check your order status below.";
+    }
+
+
+    /* Estimated arrival */
+
+    document.getElementById("arrivalTime").textContent =
+        order.estimatedArrival || "--:--";
+
+
+    /* Address */
+
+    document.getElementById("deliveryaddress").textContent =
+        order.deliveryAddress || "Address not available";
+
+
+    /* Bill */
+
+    document.getElementById("totalitem1").textContent =
+        "Item total: ₹" + (order.itemTotal ?? 0);
+
+    document.getElementById("deliveryfee1").textContent =
+        "Delivery fee: ₹" + (order.deliveryFee ?? 0);
+
+    document.getElementById("platformfee1").textContent =
+        "Platform fee: ₹" + (order.platformFee ?? 0);
+
+    document.getElementById("discount1").textContent =
+        "Discount: ₹" + (order.discount ?? 0);
+
+    document.getElementById("totalamount1").textContent =
+        "Total Amount: ₹" + (order.total ?? 0);
+
+
+    /* Saved amount */
+
+    document.getElementById("discount2").textContent =
+        "You saved ₹" + (order.discount ?? 0);
+
+
+    /* Restaurant */
+
+    if (order.restaurant) {
+
+        document.getElementById("restaurantName").textContent =
+            order.restaurant.name || "";
+
+        document.getElementById("restaurantDetails").textContent =
+            order.restaurant.details || "";
+
+        const restaurantImage = document.getElementById("restaurantImage");
+        restaurantImage.src =
+            order.restaurant.image || "/static/food-placeholder.svg";
+        restaurantImage.onerror = function() {
+            this.onerror = null;
+            this.src = "/static/food-placeholder.svg";
+        };
+
+        if (order.restaurant.id) {
+
+            document.getElementById("restaurantLink").href =
+                `resturentpage.html?id=${order.restaurant.id}`;
+
+        }
+
+    }
+
+
+    /* Order timeline */
+
+    if (order.timeline) {
+
+        displayTimeline(order.timeline);
+
+    }
+
+
+    /* Food items */
+
+    displayFoodItems(order.items || []);
+
+}
+
+
+/* Timeline */
+function displayTimeline(timeline) {
+
+    const steps = [
+        {
+            id: 1,
+            name: "Order Placed"
+        },
+        {
+            id: 2,
+            name: "Preparing"
+        },
+        {
+            id: 3,
+            name: "On the way"
+        },
+        {
+            id: 4,
+            name: "Delivered"
+        }
+    ];
+
+
+    steps.forEach(function(step) {
+
+        const stepData = timeline[step.id - 1];
+
+        const stepElement =
+            document.getElementById(`step-${step.id}`);
+
+        const statusElement =
+            document.getElementById(`status-${step.id}`);
+
+        const timeElement =
+            document.getElementById(`time-${step.id}`);
+
+
+        stepElement.className = "step";
+
+
+        statusElement.textContent =
+            stepData?.status || step.name;
+
+
+        timeElement.textContent =
+            stepData?.time || "--:--";
+
+
+        if (stepData?.completed) {
+
+            stepElement.classList.add("completed");
+
+        } else if (stepData?.active) {
+
+            stepElement.classList.add("active");
+
+        } else {
+
+            stepElement.classList.add("pending");
+
+        }
+
+    });
+
+}
+
+
+/* Display Food Items */
+function displayFoodItems(items) {
+
+    const container =
+        document.getElementById("orderFoodItems");
+
+    container.innerHTML = "";
+
+
+    if (!items.length) {
+
+        document.getElementById("orderMessage").textContent =
+            "No items found in this order.";
+
+        return;
+    }
+
+
+    items.forEach(function(item) {
+
+        const foodItem =
+            document.createElement("div");
+
+        foodItem.className = "food-item";
+
+
+        const image = document.createElement("img");
+        image.src = item.image || "/static/food-placeholder.svg";
+        image.alt = item.name || "Food";
+        image.onerror = function() {
+            this.onerror = null;
+            this.src = "/static/food-placeholder.svg";
+        };
+
+        const details = document.createElement("div");
+        const name = document.createElement("h3");
+        name.textContent = item.name || "";
+        const description = document.createElement("p");
+        description.textContent = item.description || "";
+        details.append(name, description);
+
+        const quantity = document.createElement("span");
+        quantity.textContent = String(item.quantity || 0);
+
+        const price = document.createElement("strong");
+        price.textContent = `₹${item.price || 0}`;
+
+        foodItem.append(image, details, quantity, price);
+
+
+        container.appendChild(foodItem);
+
+    });
+
+}
+
+
+/* Cancel Order */
+document
+    .getElementById("cancel-order-btn")
+    .addEventListener("click", async function() {
+
+        if (!orderId) {
+            return;
+        }
+
+        const confirmCancel =
+            confirm("Are you sure you want to cancel this order?");
+
+        if (!confirmCancel) {
+            return;
+        }
+
+
+        try {
+
+            const response = await fetch(
+                `/api/customer/orders/${orderId}/cancel`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": (document.cookie
+                            .split("; ")
+                            .find(function(cookie) {
+                                return cookie.startsWith("csrftoken=");
+                            }) || "csrftoken=").split("=").slice(1).join("=")
+                    }
+                }
+            );
+
+
+            const data = await response.json();
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.message || "Order could not be cancelled"
+                );
+
+            }
+
+
+            alert(
+                data.message || "Order cancelled successfully"
+            );
+
+
+            loadOrder();
+
+
+        } catch (error) {
+
+            alert(error.message);
+
+        }
+
+    });
+
+
+/* Load order when page opens */
+loadOrder();
+window.setInterval(function() {
+    if (!document.hidden) loadOrder();
+}, 15000);
+
+</script>
+
+</body>
+</html>

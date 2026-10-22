@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ramjicart - Settings</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            color: #222;
+        }
+
+        /* Header */
+        header {
+            height: 65px;
+            background: #ff5a16;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+        }
+
+        header h2 {
+            font-size: 22px;
+        }
+
+        .restaurant-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .restaurant-info img {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: white;
+        }
+
+        .logout-button {
+            min-height: 36px;
+            padding: 0 12px;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            border-radius: 7px;
+            background: transparent;
+            color: white;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Main */
+        main {
+            padding: 40px;
+        }
+
+        .page-title {
+            margin-bottom: 25px;
+        }
+
+        .back-to-dashboard {
+            display: inline-flex;
+            align-items: center;
+            min-height: 38px;
+            margin-bottom: 16px;
+            padding: 0 12px;
+            border: 1px solid #ddd;
+            border-radius: 7px;
+            color: #526075;
+            background: white;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .page-title h1 {
+            font-size: 28px;
+            margin-bottom: 7px;
+        }
+
+        .page-title p {
+            color: #777;
+        }
+
+        /* Settings */
+        .settings-container {
+            max-width: 900px;
+        }
+
+        .settings-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        .settings-card h2 {
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+
+        .settings-card > p {
+            color: #777;
+            margin-bottom: 22px;
+        }
+
+        .setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            padding: 18px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .setting-row:last-child {
+            border-bottom: none;
+        }
+
+        .setting-text h3 {
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .setting-text p {
+            color: #777;
+            font-size: 14px;
+        }
+
+        /* Toggle */
+        .toggle {
+            width: 48px;
+            height: 25px;
+            position: relative;
+        }
+
+        .toggle input {
+            display: none;
+        }
+
+        .slider {
+            position: absolute;
+            inset: 0;
+            background: #ccc;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+
+        .slider::before {
+            content: "";
+            position: absolute;
+            width: 19px;
+            height: 19px;
+            left: 3px;
+            top: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.2s;
+        }
+
+        .toggle input:checked + .slider {
+            background: #ff5a16;
+        }
+
+        .toggle input:checked + .slider::before {
+            transform: translateX(23px);
+        }
+
+        /* Input */
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 7px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 7px;
+            font-size: 15px;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: #ff5a16;
+        }
+
+        .save-button {
+            background: #ff5a16;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 7px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+        }
+
+        .save-button:hover {
+            background: #e94d0b;
+        }
+
+        #settingsMessage {
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        /* Mobile */
+        @media (max-width: 600px) {
+
+            header {
+                padding: 0 15px;
+            }
+
+            main {
+                padding: 25px 15px;
+            }
+
+            .setting-row {
+                align-items: flex-start;
+            }
+
+            .restaurant-info p {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header>
+
+        <h2><img src="/static/logo%20(2).png" alt="Ramjicart logo" style="width:42px;height:42px;object-fit:contain;vertical-align:middle;background:white;border-radius:5px"> Ramjicart</h2>
+
+        <div class="restaurant-info">
+
+            <img id="headerLogo" src="" alt="Restaurant">
+
+            <p id="resturant-name">Restaurant</p>
+
+            <button type="button" class="logout-button" id="restaurantLogoutButton">Sign out</button>
+
+        </div>
+
+    </header>
+
+
+    <!-- Main -->
+    <main>
+
+        <a class="back-to-dashboard" href="/resturenthomepage.html">← Dashboard</a>
+
+        <div class="page-title">
+
+            <h1>Settings</h1>
+
+            <p>Manage your restaurant settings</p>
+
+        </div>
+
+
+        <div class="settings-container">
+
+
+            <!-- Restaurant Status -->
+            <div class="settings-card">
+
+                <h2>Restaurant Status</h2>
+
+                <p>Control whether customers can place orders from your restaurant.</p>
+
+
+                <div class="setting-row">
+
+                    <div class="setting-text">
+
+                        <h3>Accept Orders</h3>
+
+                        <p>Turn this off when your restaurant is closed.</p>
+
+                    </div>
+
+
+                    <label class="toggle">
+
+                        <input
+                            type="checkbox"
+                            id="acceptOrders"
+                        >
+
+                        <span class="slider"></span>
+
+                    </label>
+
+                </div>
+
+            </div>
+
+
+            <!-- Notifications -->
+            <div class="settings-card">
+
+                <h2>Notifications</h2>
+
+                <p>Choose which notifications you want to receive.</p>
+
+
+                <div class="setting-row">
+
+                    <div class="setting-text">
+
+                        <h3>Order Notifications</h3>
+
+                        <p>Get notified when a new order is received.</p>
+
+                    </div>
+
+
+                    <label class="toggle">
+
+                        <input
+                            type="checkbox"
+                            id="orderNotifications"
+                        >
+
+                        <span class="slider"></span>
+
+                    </label>
+
+                </div>
+
+
+                <div class="setting-row">
+
+                    <div class="setting-text">
+
+                        <h3>Order Sound</h3>
+
+                        <p>Play a sound when a new order arrives.</p>
+
+                    </div>
+
+
+                    <label class="toggle">
+
+                        <input
+                            type="checkbox"
+                            id="orderSound"
+                        >
+
+                        <span class="slider"></span>
+
+                    </label>
+
+                </div>
+
+            </div>
+
+
+            <!-- Account -->
+            <div class="settings-card">
+
+                <h2>Account Settings</h2>
+
+                <p>Manage your restaurant account.</p>
+
+
+                <form id="settingsForm">
+
+                    <div class="form-group">
+
+                        <label for="accountEmail">
+                            Account Email
+                        </label>
+
+                        <input
+                            type="email"
+                            id="accountEmail"
+                            name="email"
+                            placeholder="Enter your email"
+                            required
+                        >
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label for="currentPassword">
+                            Current Password
+                        </label>
+
+                        <input
+                            type="password"
+                            id="currentPassword"
+                            name="currentPassword"
+                            placeholder="Enter current password"
+                        >
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label for="newPassword">
+                            New Password
+                        </label>
+
+                        <input
+                            type="password"
+                            id="newPassword"
+                            name="newPassword"
+                            placeholder="Enter new password"
+                        >
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label for="confirmPassword">
+                            Confirm New Password
+                        </label>
+
+                        <input
+                            type="password"
+                            id="confirmPassword"
+                            name="confirmPassword"
+                            placeholder="Confirm new password"
+                        >
+
+                    </div>
+
+
+                    <button
+                        type="submit"
+                        class="save-button"
+                        id="saveSettingsButton"
+                    >
+                        Save Settings
+                    </button>
+
+
+                    <p id="settingsMessage"></p>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </main>
+
+
+    <script>
+
+        const settingsForm =
+            document.getElementById("settingsForm");
+
+        const settingsMessage =
+            document.getElementById("settingsMessage");
+
+        const saveSettingsButton =
+            document.getElementById("saveSettingsButton");
+
+
+        // Settings backend se load hongi
+        async function loadSettings() {
+
+            try {
+
+                const response = await fetch(
+                    "/api/restaurant/settings"
+                );
+
+                if (!response.ok) {
+                    throw new Error("Settings load nahi hui");
+                }
+
+                const data = await response.json();
+
+
+                document.getElementById("acceptOrders").checked =
+                    data.acceptOrders ?? true;
+
+                document.getElementById("orderNotifications").checked =
+                    data.orderNotifications ?? true;
+
+                document.getElementById("orderSound").checked =
+                    data.orderSound ?? true;
+
+                document.getElementById("accountEmail").value =
+                    data.email || "";
+
+
+            } catch (error) {
+
+                console.log(error);
+
+            }
+
+        }
+
+
+        // Settings save
+        settingsForm.addEventListener("submit", async function(event) {
+
+            event.preventDefault();
+
+
+            const newPassword =
+                document.getElementById("newPassword").value;
+
+            const confirmPassword =
+                document.getElementById("confirmPassword").value;
+
+
+            if (newPassword && newPassword !== confirmPassword) {
+
+                settingsMessage.textContent =
+                    "New password aur confirm password same nahi hai.";
+
+                settingsMessage.style.color = "red";
+
+                return;
+            }
+
+
+            const settingsData = {
+
+                acceptOrders:
+                    document.getElementById("acceptOrders").checked,
+
+                orderNotifications:
+                    document.getElementById("orderNotifications").checked,
+
+                orderSound:
+                    document.getElementById("orderSound").checked,
+
+                email:
+                    document.getElementById("accountEmail").value,
+
+                currentPassword:
+                    document.getElementById("currentPassword").value,
+
+                newPassword:
+                    newPassword
+
+            };
+
+
+            saveSettingsButton.disabled = true;
+
+            saveSettingsButton.textContent = "Saving...";
+
+
+            try {
+
+                const response = await fetch(
+                    "/api/restaurant/settings",
+                    {
+                        method: "PUT",
+
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": (document.cookie
+                                .split("; ")
+                                .find(function(cookie) {
+                                    return cookie.startsWith("csrftoken=");
+                                }) || "csrftoken=").split("=").slice(1).join("=")
+                        },
+
+                        body: JSON.stringify(settingsData)
+                    }
+                );
+
+
+                const data = await response.json();
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        data.message || "Settings save nahi hui"
+                    );
+
+                }
+
+
+                settingsMessage.textContent =
+                    "Settings successfully updated.";
+
+                settingsMessage.style.color = "green";
+
+
+                document.getElementById("currentPassword").value = "";
+                document.getElementById("newPassword").value = "";
+                document.getElementById("confirmPassword").value = "";
+
+
+            } catch (error) {
+
+                settingsMessage.textContent =
+                    error.message;
+
+                settingsMessage.style.color = "red";
+
+            }
+
+
+            saveSettingsButton.disabled = false;
+
+            saveSettingsButton.textContent = "Save Settings";
+
+        });
+
+
+        // Restaurant name/logo backend se
+        async function loadRestaurantDetails() {
+
+            try {
+
+                const response = await fetch(
+                    "/api/restaurant/profile"
+                );
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const data = await response.json();
+
+
+                document.getElementById("resturant-name").textContent =
+                    data.restaurantName || "Restaurant";
+
+
+                if (data.logo) {
+
+                    document.getElementById("headerLogo").src =
+                        data.logo;
+
+                }
+
+            } catch (error) {
+
+                console.log(error);
+
+            }
+
+        }
+
+
+        document.getElementById("restaurantLogoutButton").addEventListener("click", async function() {
+            this.disabled = true;
+            try {
+                const csrfToken = document.cookie.split("; ")
+                    .find(function(cookie) { return cookie.startsWith("csrftoken="); });
+                const response = await fetch("/api/auth/logout", {
+                    method: "POST",
+                    headers: {
+                        "X-CSRFToken": csrfToken
+                            ? decodeURIComponent(csrfToken.split("=").slice(1).join("="))
+                            : ""
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error("Sign out nahi ho saka. Dobara try karo.");
+                }
+                window.location.href = "/resturentloginpage.html";
+            } catch (error) {
+                alert(error.message || "Sign out nahi ho saka. Dobara try karo.");
+                this.disabled = false;
+            }
+        });
+
+        loadSettings();
+
+        loadRestaurantDetails();
+
+    </script>
+
+</body>
+</html>

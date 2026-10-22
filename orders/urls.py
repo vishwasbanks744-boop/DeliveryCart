@@ -1,0 +1,52 @@
+from django.urls import path
+
+from . import views
+
+
+urlpatterns = [
+    path("auth/register", views.auth_register),
+    path("auth/login", views.auth_login),
+    path("auth/logout", views.auth_logout),
+    path("auth/me", views.auth_me),
+    path("restaurant/register", views.restaurant_register),
+    path(
+        "restaurant/certificate",
+        views.restaurant_certificate,
+        name="restaurant-certificate",
+    ),
+    path(
+        "certificate/verify/<str:registration_number>",
+        views.verify_certificate,
+        name="verify-certificate",
+    ),
+    path("delivery/register", views.delivery_register),
+    path("customer/categories", views.categories),
+    path("customer/restaurants", views.customer_restaurants),
+    path("customer/foods", views.foods),
+    path("customer/cart", views.cart),
+    path("customer/cart/<int:food_id>", views.cart_item),
+    path("customer/checkout/quote", views.checkout_quote),
+    path("customer/orders", views.create_order),
+    path("customer/orders/history", views.customer_order_history),
+    path("customer/orders/current", views.current_order),
+    path("customer/orders/<uuid:order_id>", views.order_detail),
+    path("customer/orders/<uuid:order_id>/cancel", views.cancel_order),
+    path("restaurant/profile", views.restaurant_profile),
+    path("restaurant/profile/logo", views.restaurant_profile_logo),
+    path("restaurant/settings", views.restaurant_settings),
+    path("restaurant/dashboard", views.restaurant_dashboard),
+    path("restaurant/products", views.restaurant_products),
+    path("restaurant/orders", views.restaurant_orders),
+    path("restaurant/orders/<uuid:order_id>", views.restaurant_update_order),
+    path(
+        "restaurant/orders/<uuid:order_id>/confirm-pickup",
+        views.restaurant_confirm_pickup,
+    ),
+    path("delivery/profile", views.delivery_profile),
+    path("delivery/dashboard", views.delivery_dashboard),
+    path("delivery/orders/available", views.delivery_available_orders),
+    path("delivery/orders/current", views.delivery_current_order),
+    path("delivery/orders/<uuid:order_id>/accept", views.delivery_accept_order),
+    path("delivery/orders/<uuid:order_id>/status", views.delivery_update_status),
+    path("delivery/orders/<uuid:order_id>/complete", views.delivery_complete_order),
+]

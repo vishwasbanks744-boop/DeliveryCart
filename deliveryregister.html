@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Delivery partner registration - Ramjicart</title>
+    <style>
+        * { box-sizing: border-box; font-family: Arial, sans-serif; }
+        body { margin: 0; padding: 28px 16px; background: #f7f8fa; color: #222; }
+        main { max-width: 480px; margin: 4vh auto; background: #fff; padding: 28px; border-radius: 14px; box-shadow: 0 4px 20px #0001; }
+        h1 { color: #ff4d2d; }
+        label { display: block; margin: 16px 0 7px; font-weight: 600; }
+        input { width: 100%; padding: 12px; border: 1px solid #ccd1d8; border-radius: 8px; font-size: 16px; }
+        button { width: 100%; margin-top: 22px; padding: 13px; border: 0; border-radius: 8px; background: #ff4d2d; color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; }
+        .site-brand { display: block; margin-bottom: 14px; text-align: center; }
+        .site-brand img { width: 74px; height: 74px; object-fit: contain; }
+        #message { min-height: 24px; }
+        @media (max-width: 480px) {
+            body { padding: 16px 12px; }
+            main { margin: 12px auto; padding: 22px 18px; }
+            h1 { font-size: 28px; }
+        }
+    </style>
+</head>
+<body>
+<main>
+    <a class="site-brand" href="/" aria-label="Ramjicart home"><img src="/static/logo%20(2).png" alt="Ramjicart logo"></a>
+    <h1>Delivery partner registration</h1>
+    <p>Admin approval is required before you can accept deliveries.</p>
+    <form id="deliveryRegistrationForm">
+        <label for="name">Full name</label>
+        <input id="name" name="name" autocomplete="name" required maxlength="150">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="email" required>
+        <label for="phone">Phone number</label>
+        <input id="phone" name="phone" type="tel" autocomplete="tel" required maxlength="30">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="new-password" required minlength="8">
+        <label for="confirmPassword">Confirm password</label>
+        <input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" required minlength="8">
+        <button id="submitButton" type="submit">Create account</button>
+        <p id="message" role="status"></p>
+    </form>
+    <a href="resturentloginpage.html">Already registered? Log in</a>
+</main>
+<script>
+    document.getElementById("deliveryRegistrationForm").addEventListener("submit", async function(event) {
+        event.preventDefault();
+        const message = document.getElementById("message");
+        const button = document.getElementById("submitButton");
+        const password = document.getElementById("password").value;
+        if (password !== document.getElementById("confirmPassword").value) {
+            message.textContent = "Passwords do not match.";
+            return;
+        }
+        const cookie = document.cookie.split("; ").find(function(value) {
+            return value.startsWith("csrftoken=");
+        });
+        button.disabled = true;
+        try {
+            const response = await fetch("/api/delivery/register", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": cookie ? decodeURIComponent(cookie.split("=")[1]) : ""
+                },
+                body: JSON.stringify({
+                    name: document.getElementById("name").value.trim(),
+                    email: document.getElementById("email").value.trim(),
+                    phone: document.getElementById("phone").value.trim(),
+                    password: password
+                })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || "Registration failed.");
+            message.textContent = data.message;
+            window.setTimeout(function() {
+                window.location.href = data.redirect;
+            }, 900);
+        } catch (error) {
+            message.textContent = error.message;
+        } finally {
+            button.disabled = false;
+        }
+    });
+</script>
+</body>
+</html>

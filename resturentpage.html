@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>resturent page</title>
+    <style>
+    /* ==============================
+   BASIC RESET
+================================ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f7f8f6;
+    color: #202020;
+}
+
+
+/* ==============================
+   HEADER / HERO
+================================ */
+
+header {
+    width: 100%;
+    background: linear-gradient(135deg, #fff1df, #fff8ef);
+    padding: 55px 7% 50px;
+    border-bottom-left-radius: 35px;
+    border-bottom-right-radius: 35px;
+}
+
+header > div {
+    max-width: 1200px;
+    margin: auto;
+}
+
+header b {
+    display: inline-block;
+    color: #ff6500;
+    font-size: 15px;
+    margin-bottom: 15px;
+}
+
+header h1 {
+    font-size: 46px;
+    line-height: 1.12;
+    color: #191919;
+    margin-bottom: 15px;
+}
+
+header h4 {
+    color: #777;
+    font-size: 16px;
+    line-height: 1.6;
+    font-weight: normal;
+    margin-bottom: 25px;
+}
+
+
+/* ==============================
+   SEARCH
+================================ */
+
+.search-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 650px;
+}
+
+.search-box {
+    flex: 1;
+    height: 52px;
+    background: white;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+}
+
+.search-icon {
+    color: #999;
+    margin-right: 10px;
+}
+
+.search-box input {
+    width: 100%;
+    border: none;
+    outline: none;
+    font-size: 15px;
+    color: #333;
+}
+
+.search-box input::placeholder {
+    color: #999;
+}
+
+.search-btn {
+    height: 52px;
+    padding: 0 25px;
+    border: none;
+    border-radius: 12px;
+    background: #ff6500;
+    color: white;
+    font-weight: bold;
+    font-size: 15px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.search-btn:hover {
+    background: #e95700;
+    transform: translateY(-1px);
+}
+
+
+/* ==============================
+   MAIN
+================================ */
+
+main {
+    max-width: 1200px;
+    margin: 35px auto;
+    padding: 0 20px;
+}
+
+.ad-slot {
+    display: grid;
+    min-height: 88px;
+    align-content: center;
+    justify-items: center;
+    gap: 7px;
+    margin: 0 0 35px;
+    padding: 14px 20px;
+    border: 1px dashed #d5dbe3;
+    border-radius: 12px;
+    background: #fff;
+    color: #667085;
+    text-align: center;
+}
+
+.ad-slot span {
+    color: #8995a5;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+}
+
+.ad-slot p {
+    font-size: 14px;
+}
+
+main > h1 {
+    font-size: 28px;
+    margin-bottom: 20px;
+}
+
+
+/* ==============================
+   LOCATION FORM
+================================ */
+
+form {
+    background: white;
+    padding: 22px;
+    border-radius: 18px;
+    margin-bottom: 35px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06);
+
+    display: flex;
+    gap: 20px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.form-group {
+    flex: 1;
+    min-width: 230px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #444;
+}
+
+.form-group select,
+.form-group textarea,
+.form-group input {
+    width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 12px;
+    outline: none;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+}
+
+.form-group select {
+    height: 45px;
+    background: white;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 45px;
+}
+
+.form-group select:focus,
+.form-group textarea:focus,
+.form-group input:focus {
+    border-color: #ff6500;
+}
+
+form > button {
+    flex: 0 0 auto;
+    height: 45px;
+    padding: 0 22px;
+    border: none;
+    border-radius: 10px;
+    background: #ff6500;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+form > button:hover {
+    background: #e95700;
+}
+
+form > .message {
+    flex-basis: 100%;
+}
+
+
+/* ==============================
+   CATEGORIES
+================================ */
+
+#categories {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 15px;
+    margin-bottom: 45px;
+}
+
+.category {
+    background: white;
+    min-height: 115px;
+    border-radius: 17px;
+    padding: 13px 8px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.category:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 9px 22px rgba(0, 0, 0, 0.09);
+}
+
+.category-image {
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    background: #fff1e5;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-bottom: 9px;
+    overflow: hidden;
+}
+
+.category-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.category p {
+    font-size: 13px;
+    font-weight: bold;
+    color: #333;
+}
+
+
+/* ==============================
+   RESTAURANT HEADING
+================================ */
+
+#restaurants {
+    margin-top: 10px;
+}
+
+.restaurant-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+}
+
+.restaurant-heading h2 {
+    font-size: 26px;
+}
+
+#location {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: white;
+    padding: 9px 13px;
+    border-radius: 10px;
+    color: #555;
+    font-size: 13px;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05);
+}
+
+#location-icon {
+    color: #ff6500;
+}
+
+
+/* ==============================
+   RESTAURANT GRID
+================================ */
+
+#restaurants {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+}
+
+#restaurants .restaurant-heading {
+    grid-column: 1 / -1;
+}
+
+.restaurant-list {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.restaurant-match-label {
+    color: #168a45;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.restaurant-address {
+    color: #777;
+    font-size: 12px;
+    margin: 6px 0;
+    overflow-wrap: anywhere;
+}
+
+.restaurant-info > p:not(.restaurant-address) {
+    color: #777;
+    font-size: 12px;
+    margin: 8px 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.restaurant-image-fallback {
+    color: #ff6500;
+    font-size: 36px;
+    font-weight: 700;
+}
+
+
+/* ==============================
+   RESTAURANT CARD
+================================ */
+
+.restaurant-card {
+    background: white;
+    border-radius: 16px;
+    padding: 10px;
+
+    display: flex;
+    gap: 12px;
+
+    border: 1px solid #eeeeee;
+
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+
+    transition: 0.2s;
+}
+
+.restaurant-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 9px 22px rgba(0, 0, 0, 0.09);
+}
+
+
+/* ==============================
+   RESTAURANT IMAGE
+================================ */
+
+.restaurant-image {
+    width: 125px;
+    min-width: 125px;
+    height: 125px;
+
+    position: relative;
+    overflow: hidden;
+
+    border-radius: 12px;
+    background: #eeeeee;
+}
+
+.restaurant-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.restaurant-discount {
+    position: absolute;
+    top: 7px;
+    left: 7px;
+
+    background: #ff6500;
+    color: white;
+
+    padding: 5px 7px;
+    border-radius: 6px;
+
+    font-size: 11px;
+    font-weight: bold;
+}
+
+
+/* ==============================
+   RESTAURANT INFO
+================================ */
+
+.restaurant-info {
+    flex: 1;
+    min-width: 0;
+    padding: 4px 3px;
+}
+
+.restaurant-name {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.restaurant-name h3 {
+    font-size: 17px;
+    color: #222;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+[id^="restaurant-rating-"] {
+    background: #fff7df;
+    color: #d78b00;
+
+    padding: 5px 7px;
+    border-radius: 7px;
+
+    font-size: 11px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+[id^="restaurant-food-type-"] {
+    color: #777;
+    font-size: 12px;
+    margin: 8px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.restaurant-details {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+
+    color: #777;
+    font-size: 11px;
+    margin-bottom: 12px;
+}
+
+.restaurant-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+
+/* OPEN STATUS */
+
+.restaurant-status {
+    color: #168a45;
+    background: #e8f9ed;
+
+    padding: 4px 9px;
+    border-radius: 20px;
+
+    font-size: 11px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+
+/* VIEW MENU */
+
+.restaurant-menu-button {
+    border: none;
+    background: #ff6500;
+    color: white;
+
+    padding: 8px 13px;
+    border-radius: 8px;
+
+    font-size: 11px;
+    font-weight: bold;
+
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.restaurant-menu-button:hover {
+    background: #e95700;
+}
+
+
+/* ==============================
+   MOBILE
+================================ */
+
+@media (max-width: 900px) {
+
+    header {
+        padding: 40px 5%;
+    }
+
+    header h1 {
+        font-size: 38px;
+    }
+
+    #categories {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    #restaurants {
+        grid-template-columns: 1fr;
+    }
+
+    .restaurant-list {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+@media (max-width: 600px) {
+
+    header {
+        padding: 30px 20px;
+    }
+
+    header h1 {
+        font-size: 30px;
+    }
+
+    .search-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .search-btn {
+        width: 100%;
+    }
+
+    main {
+        padding: 0 12px;
+    }
+
+    form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    #categories {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+    }
+
+    .category {
+        min-height: 95px;
+    }
+
+    .category-image {
+        width: 45px;
+        height: 45px;
+    }
+
+    .category p {
+        font-size: 11px;
+    }
+
+    .restaurant-heading {
+        align-items: flex-start;
+        gap: 10px;
+        flex-direction: column;
+    }
+
+    .restaurant-card {
+        padding: 8px;
+    }
+
+    .restaurant-image {
+        width: 105px;
+        min-width: 105px;
+        height: 110px;
+    }
+
+    .restaurant-bottom {
+        flex-wrap: wrap;
+    }
+
+    .restaurant-menu-button {
+        padding: 8px 10px;
+    }
+
+    .form-group {
+        min-width: 0;
+        width: 100%;
+    }
+}
+</style>
+</head>
+<body>
+    <header>
+        <div>
+         <a href="/" aria-label="Ramjicart home"><img src="/static/logo%20(2).png" alt="Ramjicart logo" style="width:58px;height:58px;object-fit:contain"></a>
+         <b>   Good Food . Good Mood  </b>
+         <h1>Discover The Best Restaurants<br> Near You</h1>
+            <h4> Explore top resturents,delicious food and amazing offers <br>- all in one place.</h4>
+
+<div class="search-container">
+    <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input type="search" id="restaurantSearchInput" placeholder="Search restaurant or food">
+    </div>
+    <button class="search-btn" id="restaurantSearchButton" type="button">Search</button>
+</div>
+</div>
+    </header>
+<main>
+    <h1>What are you craving</h1>
+
+<form id="restaurantLocationForm">
+
+
+    <div class="form-group">
+        <label for="nearbyLandmark">Nearby landmark <span>(optional, best match)</span></label>
+        <input id="nearbyLandmark" name="nearbyLandmark" type="text" maxlength="160" placeholder="e.g. City Hospital">
+    </div>
+
+    <div class="form-group">
+        <label for="market">Market <span>(optional)</span></label>
+        <input id="market" name="market" type="text" maxlength="160" placeholder="e.g. Hazratganj Market">
+    </div>
+
+    <div class="form-group">
+        <label for="address">6-digit PIN code</label>
+        <input id="address" name="address" type="text" inputmode="numeric" maxlength="6" placeholder="e.g. 226001" required>
+    </div>
+
+    <div class="form-group">
+        <label for="city">City</label>
+        <input id="city" name="city" type="text" maxlength="100" placeholder="e.g. Lucknow" required>
+    </div>
+
+    <button type="submit">Find nearby restaurants</button>
+    <p id="locationMessage" class="message" role="status" aria-live="polite"></p>
+
+</form>
+    <aside class="ad-slot" id="restaurant-browse-ad-slot" aria-label="Advertisement">
+        <span>ADVERTISEMENT</span>
+        <p>Apne business ko yahan promote karein.</p>
+    </aside>
+    <section id="categories">
+
+        <div class="category">
+            <div class="category-image">
+                <img id="category-image-1" alt="Pizza">
+            </div>
+            <p id="category-name-1">Pizza</p>
+        </div>
+
+        <div class="category">
+            <div class="category-image">
+                <img id="category-image-2" alt="Burger">
+            </div>
+            <p id="category-name-2">Burger</p>
+        </div>
+
+        <div class="category">
+            <div class="category-image">
+                <img id="category-image-3" alt="Chicken">
+            </div>
+            <p id="category-name-3">Chicken</p>
+        </div>
+
+        <div class="category">
+            <div class="category-image">
+                <img id="category-image-4" alt="Noodles">
+            </div>
+            <p id="category-name-4">Noodles</p>
+        </div>
+
+        <div class="category">
+            <div class="category-image">
+                <img id="category-image-5" alt="Biryani">
+            </div>
+            <p id="category-name-5">Biryani</p>
+        </div>
+
+        <div class="category">
+            <div class="category-image">
+                <img id="category-image-6" alt="Healthy">
+            </div>
+            <p id="category-name-6">Healthy</p>
+        </div>
+
+        <div class="category">
+            <div class="category-image">
+                <img id="category-image-7" alt="Desserts">
+            </div>
+            <p id="category-name-7">Desserts</p>
+        </div>
+
+        <div class="category">
+            <div class="category-image">
+                <img id="category-image-8" alt="Beverages">
+            </div>
+            <p id="category-name-8">Beverages</p>
+        </div>
+
+    </section>
+
+
+    <!-- Restaurant Section -->
+
+    <section id="restaurants">
+
+        <div class="restaurant-heading">
+
+            <h2>Restaurants near you</h2>
+
+            <div id="location">
+                <span id="location-icon">📍</span>
+                <span id="user-location"></span>
+            </div>
+
+        </div>
+
+
+        <div id="restaurant-list" class="restaurant-list" aria-live="polite"></div>
+        <p id="restaurant-message" class="message" role="status" aria-live="polite">
+            Add your city and PIN code. Landmark matches appear first, followed by market, PIN code, and city matches.
+        </p>
+
+    </section>
+</main>
+<script>
+const restaurantList = document.getElementById("restaurant-list");
+const restaurantMessage = document.getElementById("restaurant-message");
+const locationForm = document.getElementById("restaurantLocationForm");
+const locationLabel = document.getElementById("user-location");
+const restaurantSearchInput = document.getElementById("restaurantSearchInput");
+let availableRestaurants = [];
+let searchText = "";
+
+function renderRestaurants() {
+    const filtered = availableRestaurants.filter(function(restaurant) {
+        const searchable = [
+            restaurant.name,
+            restaurant.address,
+            restaurant.nearbyLandmark,
+            restaurant.market,
+            restaurant.city,
+            ...(restaurant.categories || [])
+        ].join(" ").toLowerCase();
+        return searchable.includes(searchText);
+    });
+
+    restaurantList.innerHTML = "";
+    if (!filtered.length) {
+        restaurantMessage.textContent = availableRestaurants.length
+            ? "No restaurants match that search."
+            : "No restaurants currently match these location details.";
+        return;
+    }
+
+    restaurantMessage.textContent = "";
+    filtered.forEach(function(restaurant) {
+        const card = document.createElement("article");
+        card.className = "restaurant-card";
+
+        const imageWrap = document.createElement("div");
+        imageWrap.className = "restaurant-image";
+        const fallback = document.createElement("span");
+        fallback.className = "restaurant-image-fallback";
+        fallback.textContent = (restaurant.name || "R").charAt(0).toUpperCase();
+        imageWrap.appendChild(fallback);
+        if (restaurant.logo) {
+            const image = document.createElement("img");
+            image.src = restaurant.logo;
+            image.alt = restaurant.name + " logo";
+            image.loading = "lazy";
+            image.onerror = function() { image.remove(); };
+            fallback.hidden = true;
+            imageWrap.appendChild(image);
+        }
+
+        const info = document.createElement("div");
+        info.className = "restaurant-info";
+        const name = document.createElement("div");
+        name.className = "restaurant-name";
+        const heading = document.createElement("h3");
+        heading.textContent = restaurant.name;
+        name.appendChild(heading);
+
+        const cuisine = document.createElement("p");
+        cuisine.textContent = (restaurant.categories || []).join(", ") || "Menu available";
+        const address = document.createElement("p");
+        address.className = "restaurant-address";
+        address.textContent = [
+            restaurant.address,
+            restaurant.nearbyLandmark,
+            restaurant.market,
+            restaurant.city,
+            restaurant.pincode
+        ]
+            .filter(Boolean).join(", ");
+
+        const details = document.createElement("div");
+        details.className = "restaurant-details";
+        const match = document.createElement("span");
+        match.className = "restaurant-match-label";
+        match.textContent = restaurant.proximityMatch || "Same city";
+        details.appendChild(match);
+
+        const bottom = document.createElement("div");
+        bottom.className = "restaurant-bottom";
+        const status = document.createElement("span");
+        status.className = "restaurant-status";
+        status.textContent = "Accepting orders";
+        const menuButton = document.createElement("button");
+        menuButton.className = "restaurant-menu-button";
+        menuButton.type = "button";
+        menuButton.textContent = "View menu";
+        menuButton.addEventListener("click", function() {
+            window.location.href = "homepage.html?restaurantId=" + encodeURIComponent(restaurant.id);
+        });
+        bottom.append(status, menuButton);
+
+        info.append(name, cuisine, address, details, bottom);
+        card.append(imageWrap, info);
+        restaurantList.appendChild(card);
+    });
+}
+
+async function loadNearbyRestaurants(location) {
+    restaurantMessage.textContent = "Finding restaurants...";
+    restaurantList.innerHTML = "";
+    const params = new URLSearchParams(location);
+    try {
+        const response = await fetch("/api/customer/restaurants?" + params.toString());
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || "Restaurants could not be loaded.");
+        }
+        availableRestaurants = data.restaurants || [];
+        locationLabel.textContent = [
+            location.nearbyLandmark,
+            location.market,
+            location.pincode,
+            location.city
+        ].filter(Boolean).join(" · ");
+        renderRestaurants();
+    } catch (error) {
+        restaurantMessage.textContent = error.message;
+    }
+}
+
+locationForm.addEventListener("submit", function(event) {
+    event.preventDefault();
+    const city = document.getElementById("city").value.trim();
+    const pincode = document.getElementById("address").value.trim();
+    const nearbyLandmark = document.getElementById("nearbyLandmark").value.trim();
+    const market = document.getElementById("market").value.trim();
+    if (!city) {
+        restaurantMessage.textContent = "City ka naam dalo.";
+        return;
+    }
+    if (!/^\d{6}$/.test(pincode)) {
+        restaurantMessage.textContent = "Valid 6-digit PIN code dalo.";
+        return;
+    }
+
+    const location = {
+        nearbyLandmark: nearbyLandmark,
+        market: market,
+        pincode: pincode,
+        city: city
+    };
+    sessionStorage.setItem("restaurantSearchLocation", JSON.stringify(location));
+    loadNearbyRestaurants(location);
+});
+
+function filterRestaurants() {
+    searchText = restaurantSearchInput.value.trim().toLowerCase();
+    renderRestaurants();
+}
+
+document.getElementById("restaurantSearchButton").addEventListener("click", filterRestaurants);
+restaurantSearchInput.addEventListener("input", filterRestaurants);
+
+try {
+    const savedLocation = JSON.parse(sessionStorage.getItem("restaurantSearchLocation") || "null");
+    if (savedLocation && savedLocation.city && savedLocation.pincode) {
+        document.getElementById("city").value = savedLocation.city;
+        document.getElementById("address").value = savedLocation.pincode;
+        document.getElementById("nearbyLandmark").value =
+            savedLocation.nearbyLandmark || "";
+        document.getElementById("market").value = savedLocation.market || "";
+        loadNearbyRestaurants({
+            nearbyLandmark: savedLocation.nearbyLandmark || "",
+            market: savedLocation.market || "",
+            pincode: savedLocation.pincode,
+            city: savedLocation.city
+        });
+    }
+} catch (error) {
+    sessionStorage.removeItem("restaurantSearchLocation");
+}
+</script>
+</body>
+</html>

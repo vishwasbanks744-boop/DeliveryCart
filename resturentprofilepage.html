@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ramjicart - Profile</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            color: #222;
+        }
+
+        /* Header */
+        header {
+            height: 65px;
+            background: #ff5a16;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 25px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+        }
+
+        header h2 {
+            font-size: 22px;
+        }
+
+        .restaurant-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .restaurant-info img {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: white;
+        }
+
+        .logout-button {
+            min-height: 36px;
+            padding: 0 12px;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            border-radius: 7px;
+            background: transparent;
+            color: white;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Sidebar */
+        aside {
+            position: fixed;
+            top: 65px;
+            left: 0;
+            bottom: 0;
+            width: 230px;
+            background: white;
+            border-right: 1px solid #ddd;
+            padding: 20px 12px;
+        }
+
+        aside a {
+            display: block;
+            text-decoration: none;
+            color: #333;
+            padding: 13px 15px;
+            margin-bottom: 5px;
+            border-radius: 8px;
+        }
+
+        aside a:hover {
+            background: #fff0e8;
+            color: #ff5a16;
+        }
+
+        aside a.active {
+            background: #ff5a16;
+            color: white;
+        }
+
+        /* Main */
+        main {
+    padding: 95px 30px 30px;
+}
+
+        .page-title {
+            margin-bottom: 25px;
+        }
+
+        .back-to-dashboard {
+            display: inline-flex;
+            align-items: center;
+            min-height: 38px;
+            margin-bottom: 16px;
+            padding: 0 12px;
+            border: 1px solid #ddd;
+            border-radius: 7px;
+            color: #526075;
+            background: white;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .page-title h1 {
+            font-size: 28px;
+            margin-bottom: 6px;
+        }
+
+        .page-title p {
+            color: #777;
+        }
+
+        /* Profile Layout */
+        .profile-container {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 25px;
+            max-width: 1100px;
+        }
+
+        .profile-card,
+        .details-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            padding: 25px;
+        }
+
+        /* Profile Card */
+        .profile-card {
+            text-align: center;
+        }
+
+        .profile-logo {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #f2f2f2;
+            border: 3px solid #ff5a16;
+            margin-bottom: 15px;
+        }
+
+        .profile-card h2 {
+            margin-bottom: 5px;
+            font-size: 21px;
+        }
+
+        .profile-card p {
+            color: #777;
+            margin-bottom: 20px;
+        }
+
+        .logo-button {
+            border: 1px solid #ff5a16;
+            background: white;
+            color: #ff5a16;
+            padding: 10px 18px;
+            border-radius: 7px;
+            cursor: pointer;
+        }
+
+        .logo-button:hover {
+            background: #ff5a16;
+            color: white;
+        }
+
+        /* Form */
+        .details-card h2 {
+            margin-bottom: 22px;
+            font-size: 22px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            margin-bottom: 7px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 7px;
+            font-size: 15px;
+            outline: none;
+            background: white;
+        }
+
+        input:focus,
+        textarea:focus {
+            border-color: #ff5a16;
+        }
+
+        textarea {
+            min-height: 90px;
+            resize: vertical;
+        }
+
+        .save-button {
+            background: #ff5a16;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 7px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+        }
+
+        .save-button:hover {
+            background: #e94d0b;
+        }
+
+        #profileMessage {
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        /* Mobile */
+        @media (max-width: 800px) {
+            aside {
+                width: 190px;
+            }
+
+            main {
+                margin-left: 190px;
+            }
+
+            .profile-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 600px) {
+            header {
+                padding: 0 15px;
+            }
+
+            aside {
+                position: static;
+                width: 100%;
+                height: auto;
+                display: flex;
+                overflow-x: auto;
+                border-right: none;
+                border-bottom: 1px solid #ddd;
+                margin-top: 65px;
+            }
+
+            aside a {
+                white-space: nowrap;
+            }
+
+            main {
+                margin-left: 0;
+                padding: 25px 15px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .form-group.full {
+                grid-column: auto;
+            }
+
+            .restaurant-info p {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header>
+
+        <h2><img src="/static/logo%20(2).png" alt="Ramjicart logo" style="width:42px;height:42px;object-fit:contain;vertical-align:middle;background:white;border-radius:5px"> Ramjicart</h2>
+
+        <div class="restaurant-info">
+            <img id="headerLogo" src="" alt="Restaurant">
+            <p id="resturant-name">Restaurant</p>
+            <button type="button" class="logout-button" id="restaurantLogoutButton">Sign out</button>
+        </div>
+
+    </header>
+
+
+   
+
+
+    <!-- Main Content -->
+    <main>
+
+        <a class="back-to-dashboard" href="/resturenthomepage.html">← Dashboard</a>
+
+        <div class="page-title">
+            <h1>Restaurant Profile</h1>
+            <p>Manage your restaurant information</p>
+        </div>
+
+
+        <div class="profile-container">
+
+            <!-- Profile Left -->
+            <div class="profile-card">
+
+                <img
+                    id="profileLogo"
+                    class="profile-logo"
+                    src=""
+                    alt="Restaurant Logo"
+                >
+
+                <h2 id="profileRestaurantName">Restaurant</h2>
+
+                <p id="profileOwnerName">Owner</p>
+
+                <button
+                    type="button"
+                    class="logo-button"
+                    id="changeLogoButton"
+                >
+                    Change Logo
+                </button>
+
+                <input
+                    type="file"
+                    id="logoInput"
+                    accept="image/*"
+                    hidden
+                >
+
+            </div>
+
+
+            <!-- Profile Details -->
+            <div class="details-card">
+
+                <h2>Restaurant Information</h2>
+
+                <form id="profileForm">
+
+                    <div class="form-row">
+
+                        <div class="form-group">
+
+                            <label for="restaurantName">
+                                Restaurant Name
+                            </label>
+
+                            <input
+                                type="text"
+                                id="restaurantName"
+                                name="restaurantName"
+                                placeholder="Enter restaurant name"
+                                required
+                            >
+
+                        </div>
+
+
+                        <div class="form-group">
+
+                            <label for="ownerName">
+                                Owner Name
+                            </label>
+
+                            <input
+                                type="text"
+                                id="ownerName"
+                                name="ownerName"
+                                placeholder="Enter owner name"
+                                required
+                            >
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="form-row">
+
+                        <div class="form-group">
+
+                            <label for="restaurantEmail">
+                                Email
+                            </label>
+
+                            <input
+                                type="email"
+                                id="restaurantEmail"
+                                name="email"
+                                placeholder="Enter email"
+                                required
+                            >
+
+                        </div>
+
+
+                        <div class="form-group">
+
+                            <label for="restaurantPhone">
+                                Phone Number
+                            </label>
+
+                            <input
+                                type="tel"
+                                id="restaurantPhone"
+                                name="phone"
+                                placeholder="Enter phone number"
+                                required
+                            >
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="form-row">
+
+                        <div class="form-group full">
+
+                            <label for="restaurantAddress">
+                                Address
+                            </label>
+
+                            <textarea
+                                id="restaurantAddress"
+                                name="address"
+                                placeholder="Enter restaurant address"
+                                required
+                            ></textarea>
+
+                        </div>
+
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="restaurantNearbyLandmark">Nearby Landmark (Optional)</label>
+                            <input
+                                type="text"
+                                id="restaurantNearbyLandmark"
+                                maxlength="160"
+                                placeholder="e.g. City Hospital"
+                            >
+                        </div>
+                        <div class="form-group">
+                            <label for="restaurantMarket">Market (Optional)</label>
+                            <input
+                                type="text"
+                                id="restaurantMarket"
+                                maxlength="160"
+                                placeholder="e.g. Hazratganj Market"
+                            >
+                        </div>
+                    </div>
+
+
+                    <div class="form-row">
+
+                        <div class="form-group">
+
+                            <label for="restaurantCity">
+                                City
+                            </label>
+
+                            <input
+                                type="text"
+                                id="restaurantCity"
+                                name="city"
+                                placeholder="Enter city"
+                                required
+                            >
+
+                        </div>
+
+
+                        <div class="form-group">
+
+                            <label for="restaurantPincode">
+                                Pincode
+                            </label>
+
+                            <input
+                                type="text"
+                                id="restaurantPincode"
+                                name="pincode"
+                                placeholder="Enter pincode"
+                                required
+                            >
+
+                        </div>
+
+                    </div>
+
+
+                    <button
+                        type="submit"
+                        class="save-button"
+                        id="saveProfileButton"
+                    >
+                        Save Changes
+                    </button>
+
+                    <p id="profileMessage"></p>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </main>
+
+
+    <script>
+
+        const profileForm = document.getElementById("profileForm");
+
+        const profileMessage =
+            document.getElementById("profileMessage");
+
+        const saveProfileButton =
+            document.getElementById("saveProfileButton");
+
+        const changeLogoButton =
+            document.getElementById("changeLogoButton");
+
+        const logoInput =
+            document.getElementById("logoInput");
+
+
+        // Profile data backend se load hoga
+        async function loadProfile() {
+
+            try {
+
+                const response = await fetch(
+                    "/api/restaurant/profile"
+                );
+
+                if (!response.ok) {
+                    throw new Error("Profile load nahi hua");
+                }
+
+                const data = await response.json();
+
+
+                document.getElementById("restaurantName").value =
+                    data.restaurantName || "";
+
+                document.getElementById("ownerName").value =
+                    data.ownerName || "";
+
+                document.getElementById("restaurantEmail").value =
+                    data.email || "";
+
+                document.getElementById("restaurantPhone").value =
+                    data.phone || "";
+
+                document.getElementById("restaurantAddress").value =
+                    data.address || "";
+
+                document.getElementById("restaurantNearbyLandmark").value =
+                    data.nearbyLandmark || "";
+
+                document.getElementById("restaurantMarket").value =
+                    data.market || "";
+
+                document.getElementById("restaurantCity").value =
+                    data.city || "";
+
+                document.getElementById("restaurantPincode").value =
+                    data.pincode || "";
+
+
+                document.getElementById("profileRestaurantName").textContent =
+                    data.restaurantName || "Restaurant";
+
+                document.getElementById("profileOwnerName").textContent =
+                    data.ownerName || "Owner";
+
+                document.getElementById("resturant-name").textContent =
+                    data.restaurantName || "Restaurant";
+
+
+                if (data.logo) {
+
+                    document.getElementById("profileLogo").src =
+                        data.logo;
+
+                    document.getElementById("headerLogo").src =
+                        data.logo;
+
+                }
+
+            } catch (error) {
+
+                console.log(error);
+
+            }
+
+        }
+
+
+        // Profile update
+        profileForm.addEventListener("submit", async function(event) {
+
+            event.preventDefault();
+
+            saveProfileButton.disabled = true;
+            saveProfileButton.textContent = "Saving...";
+
+            const profileData = {
+
+                restaurantName:
+                    document.getElementById("restaurantName").value,
+
+                ownerName:
+                    document.getElementById("ownerName").value,
+
+                email:
+                    document.getElementById("restaurantEmail").value,
+
+                phone:
+                    document.getElementById("restaurantPhone").value,
+
+                address:
+                    document.getElementById("restaurantAddress").value,
+
+                nearbyLandmark:
+                    document.getElementById("restaurantNearbyLandmark").value,
+
+                market:
+                    document.getElementById("restaurantMarket").value,
+
+                city:
+                    document.getElementById("restaurantCity").value,
+
+                pincode:
+                    document.getElementById("restaurantPincode").value
+
+            };
+
+
+            try {
+
+                const response = await fetch(
+                    "/api/restaurant/profile",
+                    {
+                        method: "PUT",
+
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": (document.cookie
+                                .split("; ")
+                                .find(function(cookie) {
+                                    return cookie.startsWith("csrftoken=");
+                                }) || "csrftoken=").split("=").slice(1).join("=")
+                        },
+
+                        body: JSON.stringify(profileData)
+                    }
+                );
+
+
+                const data = await response.json();
+
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.message || "Profile update nahi hua"
+                    );
+                }
+
+
+                profileMessage.textContent =
+                    "Profile successfully updated.";
+
+                profileMessage.style.color = "green";
+
+
+                document.getElementById("profileRestaurantName")
+                    .textContent = profileData.restaurantName;
+
+                document.getElementById("profileOwnerName")
+                    .textContent = profileData.ownerName;
+
+                document.getElementById("resturant-name")
+                    .textContent = profileData.restaurantName;
+
+
+            } catch (error) {
+
+                profileMessage.textContent =
+                    error.message;
+
+                profileMessage.style.color = "red";
+
+            }
+
+
+            saveProfileButton.disabled = false;
+            saveProfileButton.textContent = "Save Changes";
+
+        });
+
+
+        // Change logo button
+        changeLogoButton.addEventListener("click", function() {
+
+            logoInput.click();
+
+        });
+
+
+        // Logo select hone ke baad backend par upload
+        logoInput.addEventListener("change", async function() {
+
+            if (!logoInput.files.length) {
+                return;
+            }
+
+
+            const formData = new FormData();
+
+            formData.append(
+                "logo",
+                logoInput.files[0]
+            );
+
+
+            try {
+
+                const response = await fetch(
+                    "/api/restaurant/profile/logo",
+                    {
+                        method: "PUT",
+                        headers: {
+                            "X-CSRFToken": (document.cookie
+                                .split("; ")
+                                .find(function(cookie) {
+                                    return cookie.startsWith("csrftoken=");
+                                }) || "csrftoken=").split("=").slice(1).join("=")
+                        },
+                        body: formData
+                    }
+                );
+
+
+                const data = await response.json();
+
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.message || "Logo update nahi hua"
+                    );
+                }
+
+
+                if (data.logo) {
+
+                    document.getElementById("profileLogo").src =
+                        data.logo;
+
+                    document.getElementById("headerLogo").src =
+                        data.logo;
+
+                }
+
+
+            } catch (error) {
+
+                alert(error.message);
+
+            }
+
+        });
+
+
+        document.getElementById("restaurantLogoutButton").addEventListener("click", async function() {
+            this.disabled = true;
+            try {
+                const csrfToken = document.cookie.split("; ")
+                    .find(function(cookie) { return cookie.startsWith("csrftoken="); });
+                const response = await fetch("/api/auth/logout", {
+                    method: "POST",
+                    headers: {
+                        "X-CSRFToken": csrfToken
+                            ? decodeURIComponent(csrfToken.split("=").slice(1).join("="))
+                            : ""
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error("Sign out nahi ho saka. Dobara try karo.");
+                }
+                window.location.href = "/resturentloginpage.html";
+            } catch (error) {
+                alert(error.message || "Sign out nahi ho saka. Dobara try karo.");
+                this.disabled = false;
+            }
+        });
+
+        // Page load
+        loadProfile();
+
+    </script>
+
+</body>
+</html>

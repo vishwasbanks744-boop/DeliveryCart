@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Registration Form</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #fdfcfb 0%, #e2d1c3 100%);
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            min-height: 100vh;
+
+            padding: 20px;
+        }
+
+        main {
+            width: 100%;
+            max-width: 440px;
+        }
+
+        section {
+            background: #ffffff;
+
+            padding: 40px 35px;
+
+            border-radius: 24px;
+
+            box-shadow:
+                0 15px 35px rgba(139, 94, 60, 0.15);
+
+            text-align: center;
+
+            transition: transform 0.3s ease;
+        }
+
+        section:hover {
+            transform: translateY(-5px);
+        }
+
+
+        /* Header */
+
+        header {
+            margin-bottom: 25px;
+        }
+
+        header img {
+            margin-bottom: 12px;
+            object-fit: contain;
+        }
+
+        header h1 {
+            font-size: 26px;
+            font-weight: 700;
+            color: #2c1810;
+        }
+
+
+        /* Form */
+
+        form {
+            text-align: left;
+        }
+
+        .form-group {
+            margin-bottom: 17px;
+        }
+
+        label {
+            display: inline-block;
+
+            font-size: 14px;
+            font-weight: 600;
+
+            color: #4a3728;
+
+            margin-bottom: 6px;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"],
+        input[type="password"] {
+
+            width: 100%;
+
+            padding: 13px 16px;
+
+            font-size: 15px;
+
+            border: 2px solid #eadeb8;
+
+            border-radius: 12px;
+
+            outline: none;
+
+            background-color: #faf8f5;
+
+            color: #2c1810;
+
+            transition: all 0.25s ease;
+        }
+
+        input:focus {
+
+            border-color: #ff6b35;
+
+            background-color: #ffffff;
+
+            box-shadow:
+                0 0 0 4px rgba(255, 107, 53, 0.15);
+        }
+
+
+        /* Terms */
+
+        .terms {
+            display: flex;
+
+            align-items: flex-start;
+
+            gap: 8px;
+
+            margin-bottom: 20px;
+        }
+
+        .terms input[type="checkbox"] {
+
+            width: 16px;
+            height: 16px;
+
+            accent-color: #ff6b35;
+
+            cursor: pointer;
+
+            margin-top: 2px;
+        }
+
+        .terms label {
+
+            margin: 0;
+
+            font-size: 13px;
+
+            font-weight: 400;
+
+            line-height: 1.5;
+        }
+
+
+        /* Links */
+
+        a {
+            color: #ff6b35;
+
+            text-decoration: none;
+
+            font-weight: 600;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+
+        /* Button */
+
+        button[type="submit"] {
+
+            width: 100%;
+
+            padding: 14px;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #ff6b35 0%,
+                    #e84a0c 100%
+                );
+
+            color: white;
+
+            border: none;
+
+            border-radius: 12px;
+
+            font-size: 16px;
+
+            font-weight: 600;
+
+            cursor: pointer;
+
+            box-shadow:
+                0 6px 16px rgba(232, 74, 12, 0.3);
+
+            transition: all 0.25s ease;
+        }
+
+        button[type="submit"]:hover {
+
+            filter: brightness(1.05);
+
+            box-shadow:
+                0 8px 20px rgba(232, 74, 12, 0.4);
+        }
+
+        button[type="submit"]:disabled {
+
+            opacity: 0.7;
+
+            cursor: not-allowed;
+        }
+
+
+        /* Message */
+
+        #registerMessage {
+
+            margin-top: 15px;
+
+            text-align: center;
+
+            font-size: 14px;
+        }
+
+
+        /* Footer */
+
+        footer {
+
+            margin-top: 15px;
+
+            padding-top: 20px;
+
+            border-top: 1px dashed #eadeb8;
+
+            text-align: center;
+        }
+
+        footer p {
+
+            font-size: 14px;
+
+            color: #6b584c;
+        }
+
+
+        /* Mobile */
+
+        @media (max-width: 500px) {
+
+            section {
+                padding: 30px 22px;
+            }
+
+            header h1 {
+                font-size: 23px;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+    <main>
+
+        <section>
+
+
+            <header>
+
+                <a href="/" aria-label="Ramjicart home"><img src="/static/logo%20(2).png" alt="Ramjicart logo" style="width:82px;height:82px"></a>
+                <h1>
+                    Register here
+                </h1>
+
+            </header>
+
+
+
+            <!-- Registration Form -->
+
+            <form id="registrationForm">
+
+
+                <div class="form-group">
+
+                    <label for="fullname">
+                        Full Name
+                    </label>
+
+                    <input
+                        type="text"
+                        id="fullname"
+                        name="fullname"
+                        placeholder="Full Name"
+                        required
+                        autocomplete="name"
+                        minlength="3">
+
+                </div>
+
+
+
+                <div class="form-group">
+
+                    <label for="mobile">
+                        Email Address
+                    </label>
+
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        placeholder="Email Address"
+                        required
+                        autocomplete="email">
+
+                </div>
+
+
+
+                <div class="form-group">
+
+                    <label for="mobile">
+                        Mobile No
+                    </label>
+
+                    <input
+                        type="tel"
+                        id="mobile"
+                        name="mobile"
+                        placeholder="Mobile No"
+                        required
+                        autocomplete="tel">
+
+                </div>
+
+
+
+                <div class="form-group">
+
+                    <label for="password">
+                        Password
+                    </label>
+
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        placeholder="Password"
+                        required
+                        autocomplete="new-password"
+                        minlength="8">
+
+                </div>
+
+
+
+                <div class="form-group">
+
+                    <label for="confirmPassword">
+                        Confirm Password
+                    </label>
+
+                    <input
+                        type="password"
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        placeholder="Confirm Password"
+                        required
+                        autocomplete="new-password">
+
+                </div>
+
+
+
+                <!-- Terms -->
+
+                <div class="terms">
+
+                    <input
+                        type="checkbox"
+                        id="terms"
+                        name="terms"
+                        required>
+
+                    <label for="terms">
+
+                        I agree to
+
+                        <a href="/terms.html">
+                            Terms
+                        </a>
+
+                        and
+
+                        <a href="/privacy.html">
+                            Privacy Policy
+                        </a>.
+
+                    </label>
+
+                </div>
+
+
+
+                <!-- Registration Button -->
+
+                <div>
+
+                    <button
+                        type="submit"
+                        id="registerButton">
+
+                        Registration
+
+                    </button>
+
+                </div>
+
+
+                <p id="registerMessage"></p>
+
+
+            </form>
+
+
+
+            <!-- Footer -->
+
+            <footer>
+
+                <p>
+
+                    Already have an account?
+
+                    <a href="login.html">
+                        Log In
+                    </a>
+
+                </p>
+
+            </footer>
+
+
+        </section>
+
+    </main>
+
+
+
+    <script>
+
+        const registrationForm =
+            document.getElementById("registrationForm");
+
+
+        registrationForm.addEventListener(
+            "submit",
+            async function (event) {
+
+                event.preventDefault();
+
+
+                const fullname =
+                    document.getElementById("fullname").value.trim();
+
+
+                const email =
+                    document.getElementById("email").value.trim();
+
+
+                const mobile =
+                    document.getElementById("mobile").value.trim();
+
+
+                const password =
+                    document.getElementById("password").value;
+
+
+                const confirmPassword =
+                    document.getElementById("confirmPassword").value;
+
+
+                const message =
+                    document.getElementById("registerMessage");
+
+
+                const button =
+                    document.getElementById("registerButton");
+
+
+
+                /* Password check */
+
+                if (password !== confirmPassword) {
+
+                    message.textContent =
+                        "Passwords do not match.";
+
+                    message.style.color =
+                        "#c62828";
+
+                    return;
+                }
+
+
+
+                try {
+
+                    button.disabled = true;
+
+                    button.textContent =
+                        "Registering...";
+
+
+                    const response =
+                        await fetch(
+                            "/api/auth/register",
+                            {
+
+                                method: "POST",
+
+                                headers: {
+                                    "Content-Type":
+                                        "application/json",
+                                    "X-CSRFToken": (document.cookie
+                                        .split("; ")
+                                        .find(function(cookie) {
+                                            return cookie.startsWith("csrftoken=");
+                                        }) || "csrftoken=").split("=").slice(1).join("=")
+                                },
+
+                                body: JSON.stringify({
+
+                                    fullname: fullname,
+
+                                    email: email,
+
+                                    mobile: mobile,
+
+                                    password: password
+
+                                })
+
+                            }
+                        );
+
+
+                    const data =
+                        await response.json();
+
+
+                    if (!response.ok) {
+
+                        throw new Error(
+                            data.message ||
+                            "Registration failed."
+                        );
+
+                    }
+
+
+                    message.textContent =
+                        data.message ||
+                        "Registration successful.";
+
+                    message.style.color =
+                        "#17833d";
+
+
+                    if (data.redirect) {
+
+                        setTimeout(
+                            function () {
+
+                                window.location.href =
+                                    data.redirect;
+
+                            },
+                            600
+                        );
+
+                    }
+
+                }
+
+                catch (error) {
+
+                    message.textContent =
+                        error.message ||
+                        "Something went wrong.";
+
+                    message.style.color =
+                        "#c62828";
+
+                }
+
+                finally {
+
+                    button.disabled = false;
+
+                    button.textContent =
+                        "Registration";
+
+                }
+
+            }
+        );
+
+    </script>
+
+
+</body>
+
+</html>

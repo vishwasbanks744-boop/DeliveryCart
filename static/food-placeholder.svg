@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" role="img" aria-labelledby="title">
+  <title id="title">Food image placeholder</title>
+  <rect width="320" height="220" rx="18" fill="#fff4e8"/>
+  <circle cx="160" cy="108" r="68" fill="#ffffff" stroke="#ffd6b8" stroke-width="4"/>
+  <path d="M105 118h110c-4 25-22 40-55 40s-51-15-55-40Z" fill="#f36b21"/>
+  <path d="M110 110c5-27 21-42 50-42s45 15 50 42H110Z" fill="#ff9c3d"/>
+  <path d="M113 104c14-12 25 12 40 0s25 12 40 0 13 5 14 8H110l3-8Z" fill="#4d9a53"/>
+  <path d="M117 116h86" stroke="#e1a33a" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="138" cy="82" r="3" fill="#fff4d8"/>
+  <circle cx="160" cy="77" r="3" fill="#fff4d8"/>
+  <circle cx="182" cy="83" r="3" fill="#fff4d8"/>
+</svg>
