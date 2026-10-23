@@ -277,6 +277,7 @@
 
     </style>
 
+    <script src="/static/js/auth-client.js"></script>
 </head>
 
 
@@ -302,6 +303,10 @@
             <!-- Registration Form -->
 
             <form id="registrationForm">
+
+                <button type="button" id="googleRegisterButton" style="width:100%;padding:12px;margin-bottom:18px;background:#fff;color:#222;border:1px solid #bbb;border-radius:8px;cursor:pointer">
+                    Continue with Google
+                </button>
 
 
                 <div class="form-group">
@@ -475,6 +480,30 @@
 
         const registrationForm =
             document.getElementById("registrationForm");
+        let googleRegistrationIdentity = null;
+
+        document.getElementById("googleRegisterButton").addEventListener("click", async function() {
+            const button = this;
+            const message = document.getElementById("registerMessage");
+            button.disabled = true;
+            message.textContent = "Connecting your Google account...";
+            try {
+                googleRegistrationIdentity = await RamjicartAuth.startGoogleSignIn();
+                document.getElementById("email").value = googleRegistrationIdentity.email;
+                const nameInput = document.getElementById("fullname");
+                if (!nameInput.value.trim()) nameInput.value = googleRegistrationIdentity.displayName;
+                ["password", "confirmPassword"].forEach(function(id) {
+                    const input = document.getElementById(id);
+                    input.required = false;
+                    input.closest(".form-group").hidden = true;
+                });
+                message.textContent = "Google connected. Complete your name and phone number, then create the account.";
+            } catch (error) {
+                message.textContent = error.message || "Could not connect Google account.";
+            } finally {
+                button.disabled = false;
+            }
+        });
 
 
         registrationForm.addEventListener(
@@ -515,7 +544,7 @@
 
                 /* Password check */
 
-                if (password !== confirmPassword) {
+                if (!googleRegistrationIdentity && password !== confirmPassword) {
 
                     message.textContent =
                         "Passwords do not match.";
@@ -536,37 +565,12 @@
                         "Registering...";
 
 
-                    const response =
-                        await fetch(
-                            "/api/auth/register",
-                            {
-
-                                method: "POST",
-
-                                headers: {
-                                    "Content-Type":
-                                        "application/json",
-                                    "X-CSRFToken": (document.cookie
-                                        .split("; ")
-                                        .find(function(cookie) {
-                                            return cookie.startsWith("csrftoken=");
-                                        }) || "csrftoken=").split("=").slice(1).join("=")
-                                },
-
-                                body: JSON.stringify({
-
-                                    fullname: fullname,
-
-                                    email: email,
-
-                                    mobile: mobile,
-
-                                    password: password
-
-                                })
-
-                            }
-                        );
+                    const response = await RamjicartAuth.registerCustomer({
+                        fullname: fullname,
+                        email: email,
+                        mobile: mobile,
+                        password: password
+                    }, googleRegistrationIdentity);
 
 
                     const data =

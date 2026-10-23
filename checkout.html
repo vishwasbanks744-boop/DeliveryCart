@@ -27,6 +27,8 @@
         .note { color: #667085; line-height: 1.5; font-size: 14px; }
         @media (max-width: 700px) { .layout { grid-template-columns: 1fr; } }
     </style>
+    <script src="/static/js/auth-client.js"></script>
+    <script src="/static/js/maps-client.js"></script>
 </head>
 <body>
 <main>
@@ -45,6 +47,14 @@
             <div class="field" id="addressField" hidden>
                 <label for="deliveryAddress">Delivery address</label>
                 <textarea id="deliveryAddress" autocomplete="street-address"></textarea>
+                <button id="captureDeliveryLocationButton" type="button">
+                    Use my current location
+                </button>
+                <p id="deliveryLocationMessage" class="note" role="status" aria-live="polite">
+                    Location is optional. Your address is still required for delivery.
+                </p>
+                <input id="deliveryLatitude" type="hidden">
+                <input id="deliveryLongitude" type="hidden">
             </div>
         </section>
         <aside class="card">
@@ -56,7 +66,7 @@
             <div class="row"><span>Gateway amount (fees only)</span><strong id="onlinePaymentAmount">₹0.00</strong></div>
             <div class="row"><span id="payLaterLabel">Pay at restaurant</span><strong id="payLaterAmount">₹0.00</strong></div>
             <div class="row total"><span>Total order amount</span><strong id="customerTotal">₹0.00</strong></div>
-            <p class="note">Payment gateway is not connected yet. This is the planned payment split only; no online money is collected right now. Clicking Place order will place the order without taking payment.</p>
+            <p id="paymentNote" class="note">Payment gateway is not connected yet. This is the planned payment split only; no online money is collected right now. Clicking Place order will place the order without taking payment.</p>
             <p id="message" role="status"></p>
             <button id="payButton" type="button">Place order</button>
         </aside>
@@ -66,9 +76,37 @@
     const message = document.getElementById("message");
     const payButton = document.getElementById("payButton");
     let activeQuote = null;
+    let cashfreeConfig = null;
+
+    async function loadCashfreeSdk() {
+        if (window.Cashfree) return;
+        await new Promise(function(resolve, reject) {
+            const script = document.createElement("script");
+            script.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
+            script.onload = resolve;
+            script.onerror = function() {
+                reject(new Error("Cashfree checkout could not be loaded."));
+            };
+            document.head.appendChild(script);
+        });
+    }
+
+    async function loadPaymentConfig() {
+        try {
+            const response = await fetch("/api/config/public");
+            cashfreeConfig = await response.json();
+            if (cashfreeConfig.cashfreeEnabled) {
+                document.getElementById("paymentNote").textContent =
+                    "Cashfree will collect the commission and applicable fees now. The remaining amount is payable at handover.";
+                payButton.textContent = "Pay fees with Cashfree";
+            }
+        } catch (_) {
+            cashfreeConfig = { cashfreeEnabled: false };
+        }
+    }
 
     async function loadCustomer() {
-        const response = await fetch("/api/auth/me");
+        const response = await RamjicartAuth.currentUser();
         if (!response.ok) {
             window.location.href = "login.html";
             return;
@@ -87,6 +125,31 @@
     function selectedOrderType() {
         return document.querySelector('input[name="orderType"]:checked').value;
     }
+
+    document.getElementById("captureDeliveryLocationButton")
+        .addEventListener("click", function() {
+            const locationMessage =
+                document.getElementById("deliveryLocationMessage");
+            if (!navigator.geolocation) {
+                locationMessage.textContent =
+                    "This browser does not support device location. You can enter your address manually.";
+                return;
+            }
+            locationMessage.textContent = "Requesting location permission...";
+            RamjicartMaps.getCurrentPosition(
+                { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+            ).then(function(position) {
+                    document.getElementById("deliveryLatitude").value =
+                        position.coords.latitude.toFixed(6);
+                    document.getElementById("deliveryLongitude").value =
+                        position.coords.longitude.toFixed(6);
+                    locationMessage.textContent =
+                        "Location captured for this order.";
+                }).catch(function(error) {
+                    locationMessage.textContent =
+                        error.message || "Could not read device location.";
+                });
+        });
 
     function formatRupees(value) {
         return "₹" + Number(value || 0).toFixed(2);
@@ -133,8 +196,14 @@
             if (!activeQuote) return;
         }
         const deliveryAddress = document.getElementById("deliveryAddress").value.trim();
+        const deliveryLatitude = document.getElementById("deliveryLatitude").value;
+        const deliveryLongitude = document.getElementById("deliveryLongitude").value;
         if (selectedOrderType() === "delivery" && !deliveryAddress) {
             message.textContent = "Please enter a delivery address.";
+            return;
+        }
+        if (Boolean(deliveryLatitude) !== Boolean(deliveryLongitude)) {
+            message.textContent = "Both delivery location coordinates are required.";
             return;
         }
 
@@ -147,11 +216,25 @@
                 headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken() },
                 body: JSON.stringify({
                     orderType: selectedOrderType(),
-                    deliveryAddress: deliveryAddress
+                    deliveryAddress: deliveryAddress,
+                    latitude: deliveryLatitude,
+                    longitude: deliveryLongitude
                 })
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || "Could not place order.");
+            if (data.paymentRequired) {
+                await loadCashfreeSdk();
+                const cashfree = window.Cashfree({ mode: data.cashfreeMode });
+                const result = await cashfree.checkout({
+                    paymentSessionId: data.paymentSessionId,
+                    redirectTarget: "_self"
+                });
+                if (result && result.error) {
+                    throw new Error(result.error.message || "Cashfree checkout could not start.");
+                }
+                return;
+            }
             sessionStorage.setItem("orderConfirmationCode", data.confirmationCode);
             window.location.href = "orderpage.html?id=" + encodeURIComponent(data.orderId);
         } catch (error) {
@@ -162,6 +245,7 @@
     });
 
     loadCustomer();
+    loadPaymentConfig();
     updateQuote();
 </script>
 </body>

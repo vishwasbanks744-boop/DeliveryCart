@@ -1,4 +1,5 @@
 import os
+
 from pathlib import Path
 
 import dj_database_url
@@ -10,6 +11,56 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 def env_bool(name, default):
     return os.environ.get(name, str(default)).lower() in {"1", "true", "yes"}
+
+
+GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "").strip()
+GOOGLE_MAPS_MAP_ID = os.environ.get("GOOGLE_MAPS_MAP_ID", "").strip()
+FIREBASE_AUTH_ENABLED = env_bool("FIREBASE_AUTH_ENABLED", False)
+FIREBASE_WEB_CONFIG = {
+    "apiKey": os.environ.get("FIREBASE_API_KEY", "").strip(),
+    "authDomain": os.environ.get("FIREBASE_AUTH_DOMAIN", "").strip(),
+    "projectId": os.environ.get("FIREBASE_PROJECT_ID", "").strip(),
+    "appId": os.environ.get("FIREBASE_APP_ID", "").strip(),
+}
+FIREBASE_JS_SDK_VERSION = os.environ.get("FIREBASE_JS_SDK_VERSION", "13.1.0").strip()
+FIREBASE_SERVICE_ACCOUNT_FILE = os.environ.get(
+    "FIREBASE_SERVICE_ACCOUNT_FILE",
+    os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", ""),
+).strip()
+FIREBASE_SERVICE_ACCOUNT_JSON = os.environ.get(
+    "FIREBASE_SERVICE_ACCOUNT_JSON", ""
+).strip()
+if FIREBASE_AUTH_ENABLED:
+    missing_firebase_config = [
+        key for key, value in FIREBASE_WEB_CONFIG.items() if not value
+    ]
+    if missing_firebase_config:
+        raise ImproperlyConfigured(
+            "Firebase Authentication is enabled but its web config is incomplete."
+        )
+    if not FIREBASE_SERVICE_ACCOUNT_FILE and not FIREBASE_SERVICE_ACCOUNT_JSON:
+        raise ImproperlyConfigured(
+            "Firebase Authentication requires a service account file or JSON."
+        )
+    if FIREBASE_SERVICE_ACCOUNT_FILE and not Path(FIREBASE_SERVICE_ACCOUNT_FILE).is_file():
+        raise ImproperlyConfigured("FIREBASE_SERVICE_ACCOUNT_FILE does not exist.")
+DELIVERY_DISPATCH_RADIUS_KM = float(
+    os.environ.get("DELIVERY_DISPATCH_RADIUS_KM", "10")
+)
+if DELIVERY_DISPATCH_RADIUS_KM <= 0:
+    raise ImproperlyConfigured("DELIVERY_DISPATCH_RADIUS_KM must be greater than zero.")
+
+CASHFREE_ENABLED = env_bool("CASHFREE_ENABLED", False)
+CASHFREE_APP_ID = os.environ.get("CASHFREE_APP_ID", "").strip()
+CASHFREE_SECRET_KEY = os.environ.get("CASHFREE_SECRET_KEY", "").strip()
+CASHFREE_ENVIRONMENT = os.environ.get("CASHFREE_ENVIRONMENT", "sandbox").strip().lower()
+CASHFREE_API_VERSION = os.environ.get("CASHFREE_API_VERSION", "2025-01-01").strip()
+if CASHFREE_ENVIRONMENT not in {"sandbox", "production"}:
+    raise ImproperlyConfigured("CASHFREE_ENVIRONMENT must be sandbox or production.")
+if CASHFREE_ENABLED and (not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY):
+    raise ImproperlyConfigured(
+        "Cashfree is enabled but CASHFREE_APP_ID or CASHFREE_SECRET_KEY is missing."
+    )
 
 
 DEBUG = env_bool("DJANGO_DEBUG", True)

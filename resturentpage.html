@@ -247,7 +247,7 @@ form > .message {
 
 #categories {
     display: grid;
-    grid-template-columns: repeat(8, 1fr);
+    grid-template-columns: repeat(8, minmax(0, 1fr));
     gap: 15px;
     margin-bottom: 45px;
 }
@@ -267,6 +267,9 @@ form > .message {
 
     cursor: pointer;
     transition: 0.2s;
+    border: 0;
+    color: inherit;
+    font: inherit;
 }
 
 .category:hover {
@@ -294,6 +297,54 @@ form > .message {
     object-fit: cover;
 }
 
+#category-products {
+    margin: 0 0 44px;
+    scroll-margin-top: 24px;
+}
+
+#category-products h2 { margin-bottom: 16px; }
+
+#category-product-list {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.category-food-card {
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid #ececec;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .06);
+}
+
+.category-food-card img {
+    display: block;
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-bottom: 10px;
+}
+
+.category-food-card h3 { margin-bottom: 6px; font-size: 17px; }
+.category-food-card p { margin: 5px 0; color: #666; }
+.category-food-card .category-food-price { color: #ff6500; font-size: 18px; font-weight: 700; }
+.category-food-card button {
+    width: 100%;
+    margin-top: 8px;
+    padding: 10px;
+    border: 0;
+    border-radius: 8px;
+    background: #ff6500;
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.category-food-card button:hover { background: #e95700; }
+
 .category p {
     font-size: 13px;
     font-weight: bold;
@@ -307,6 +358,7 @@ form > .message {
 
 #restaurants {
     margin-top: 10px;
+    scroll-margin-top: 24px;
 }
 
 .restaurant-heading {
@@ -653,8 +705,17 @@ form > .message {
         min-width: 0;
         width: 100%;
     }
+
+    #category-product-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 420px) {
+    #category-product-list { grid-template-columns: 1fr; }
+    #categories { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 </style>
+    <script src="/static/js/auth-client.js"></script>
+    <script src="/static/js/maps-client.js"></script>
 </head>
 <body>
     <header>
@@ -691,14 +752,17 @@ form > .message {
 
     <div class="form-group">
         <label for="address">6-digit PIN code</label>
-        <input id="address" name="address" type="text" inputmode="numeric" maxlength="6" placeholder="e.g. 226001" required>
+        <input id="address" name="address" type="text" inputmode="numeric" maxlength="6" placeholder="e.g. 226001">
     </div>
 
     <div class="form-group">
         <label for="city">City</label>
-        <input id="city" name="city" type="text" maxlength="100" placeholder="e.g. Lucknow" required>
+        <input id="city" name="city" type="text" maxlength="100" placeholder="e.g. Lucknow">
     </div>
 
+    <input id="latitude" name="latitude" type="hidden">
+    <input id="longitude" name="longitude" type="hidden">
+    <button type="button" id="useCurrentLocationButton">Use my current location</button>
     <button type="submit">Find nearby restaurants</button>
     <p id="locationMessage" class="message" role="status" aria-live="polite"></p>
 
@@ -707,64 +771,12 @@ form > .message {
         <span>ADVERTISEMENT</span>
         <p>Apne business ko yahan promote karein.</p>
     </aside>
-    <section id="categories">
+    <section id="categories" aria-label="Food categories"></section>
 
-        <div class="category">
-            <div class="category-image">
-                <img id="category-image-1" alt="Pizza">
-            </div>
-            <p id="category-name-1">Pizza</p>
-        </div>
-
-        <div class="category">
-            <div class="category-image">
-                <img id="category-image-2" alt="Burger">
-            </div>
-            <p id="category-name-2">Burger</p>
-        </div>
-
-        <div class="category">
-            <div class="category-image">
-                <img id="category-image-3" alt="Chicken">
-            </div>
-            <p id="category-name-3">Chicken</p>
-        </div>
-
-        <div class="category">
-            <div class="category-image">
-                <img id="category-image-4" alt="Noodles">
-            </div>
-            <p id="category-name-4">Noodles</p>
-        </div>
-
-        <div class="category">
-            <div class="category-image">
-                <img id="category-image-5" alt="Biryani">
-            </div>
-            <p id="category-name-5">Biryani</p>
-        </div>
-
-        <div class="category">
-            <div class="category-image">
-                <img id="category-image-6" alt="Healthy">
-            </div>
-            <p id="category-name-6">Healthy</p>
-        </div>
-
-        <div class="category">
-            <div class="category-image">
-                <img id="category-image-7" alt="Desserts">
-            </div>
-            <p id="category-name-7">Desserts</p>
-        </div>
-
-        <div class="category">
-            <div class="category-image">
-                <img id="category-image-8" alt="Beverages">
-            </div>
-            <p id="category-name-8">Beverages</p>
-        </div>
-
+    <section id="category-products" hidden aria-live="polite">
+        <h2 id="category-products-title"></h2>
+        <div id="category-product-list"></div>
+        <p id="category-products-message" class="message"></p>
     </section>
 
 
@@ -786,7 +798,7 @@ form > .message {
 
         <div id="restaurant-list" class="restaurant-list" aria-live="polite"></div>
         <p id="restaurant-message" class="message" role="status" aria-live="polite">
-            Add your city and PIN code. Landmark matches appear first, followed by market, PIN code, and city matches.
+            Share your current location for distance-ranked results, or enter your city and PIN code.
         </p>
 
     </section>
@@ -797,8 +809,135 @@ const restaurantMessage = document.getElementById("restaurant-message");
 const locationForm = document.getElementById("restaurantLocationForm");
 const locationLabel = document.getElementById("user-location");
 const restaurantSearchInput = document.getElementById("restaurantSearchInput");
+const categoryList = document.getElementById("categories");
+const categoryProducts = document.getElementById("category-products");
+const categoryProductList = document.getElementById("category-product-list");
+const categoryProductsTitle = document.getElementById("category-products-title");
+const categoryProductsMessage = document.getElementById("category-products-message");
 let availableRestaurants = [];
 let searchText = "";
+
+const categoryPhotos = [
+    { match: "pizza", url: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=240&q=80" },
+    { match: "burger", url: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=240&q=80" },
+    { match: "chicken", url: "https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&w=240&q=80" },
+    { match: "noodle", url: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=240&q=80" },
+    { match: "biryani", url: "https://images.unsplash.com/photo-1563379091339-03246963d29a?auto=format&fit=crop&w=240&q=80" },
+    { match: "healthy", url: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=240&q=80" },
+    { match: "dessert", url: "https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&w=240&q=80" },
+    { match: "beverage", url: "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=240&q=80" },
+    { match: "drink", url: "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=240&q=80" }
+];
+
+function categoryPhoto(name) {
+    const key = String(name || "").toLowerCase();
+    const match = categoryPhotos.find(function(item) { return key.includes(item.match); });
+    return match ? match.url : "/static/food-placeholder.svg";
+}
+
+async function loadCategories() {
+    categoryList.innerHTML = "";
+    try {
+        const response = await fetch("/api/customer/categories");
+        const categories = await response.json();
+        if (!response.ok) throw new Error(categories.message || "Food categories could not be loaded.");
+        categories.forEach(function(category) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "category";
+            button.setAttribute("aria-label", "Show " + category.name + " products");
+            const imageWrap = document.createElement("span");
+            imageWrap.className = "category-image";
+            const image = document.createElement("img");
+            image.src = categoryPhoto(category.name);
+            image.alt = category.name;
+            image.loading = "lazy";
+            image.referrerPolicy = "no-referrer";
+            image.onerror = function() {
+                this.onerror = null;
+                this.src = "/static/food-placeholder.svg";
+            };
+            imageWrap.appendChild(image);
+            const label = document.createElement("p");
+            label.textContent = category.name;
+            button.append(imageWrap, label);
+            button.addEventListener("click", function() {
+                loadCategoryFoods(category.id, category.name);
+            });
+            categoryList.appendChild(button);
+        });
+    } catch (error) {
+        restaurantMessage.textContent = error.message || "Food categories could not be loaded.";
+    }
+}
+
+async function loadCategoryFoods(categoryId, categoryName) {
+    categoryProducts.hidden = false;
+    categoryProductsTitle.textContent = categoryName + " products";
+    categoryProductList.innerHTML = "";
+    categoryProductsMessage.textContent = "Loading products...";
+    categoryProducts.scrollIntoView({ behavior: "smooth", block: "start" });
+    try {
+        const params = new URLSearchParams({ categoryId: String(categoryId) });
+        const response = await fetch("/api/customer/foods?" + params.toString());
+        const foods = await response.json();
+        if (!response.ok) throw new Error(foods.message || "Products could not be loaded.");
+        categoryProductsMessage.textContent = foods.length ? "" : "No products in this category yet.";
+        foods.forEach(function(food) {
+            const card = document.createElement("article");
+            card.className = "category-food-card";
+            const image = document.createElement("img");
+            image.src = food.image || "/static/food-placeholder.svg";
+            image.alt = food.name || "Food item";
+            image.loading = "lazy";
+            image.onerror = function() {
+                this.onerror = null;
+                this.src = "/static/food-placeholder.svg";
+            };
+            const title = document.createElement("h3");
+            title.textContent = food.name;
+            const restaurant = document.createElement("p");
+            restaurant.textContent = food.restaurantName || "";
+            const description = document.createElement("p");
+            description.textContent = food.description || "";
+            const price = document.createElement("p");
+            price.className = "category-food-price";
+            price.textContent = "₹" + Number(food.price).toFixed(2);
+            const addButton = document.createElement("button");
+            addButton.type = "button";
+            addButton.textContent = "Order now";
+            addButton.addEventListener("click", function() {
+                addCategoryFoodToCart(food);
+            });
+            card.append(image, title, restaurant, description, price, addButton);
+            categoryProductList.appendChild(card);
+        });
+    } catch (error) {
+        categoryProductsMessage.textContent = error.message || "Products could not be loaded.";
+    }
+}
+
+async function addCategoryFoodToCart(food) {
+    const csrfCookie = document.cookie.split("; ").find(function(cookie) {
+        return cookie.startsWith("csrftoken=");
+    });
+    try {
+        const response = await fetch("/api/customer/cart", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfCookie ? decodeURIComponent(csrfCookie.split("=").slice(1).join("=")) : ""
+            },
+            body: JSON.stringify({ foodId: food.id, quantity: 1 })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || "Sign in to add this item to your cart.");
+        categoryProductsMessage.textContent = food.name + " added to your cart.";
+    } catch (error) {
+        categoryProductsMessage.textContent = error.message || "Could not add the item to your cart.";
+    }
+}
 
 function renderRestaurants() {
     const filtered = availableRestaurants.filter(function(restaurant) {
@@ -869,6 +1008,23 @@ function renderRestaurants() {
         match.className = "restaurant-match-label";
         match.textContent = restaurant.proximityMatch || "Same city";
         details.appendChild(match);
+        if (
+            restaurant.latitude !== null
+            && restaurant.latitude !== undefined
+            && Number.isFinite(Number(restaurant.latitude))
+            && restaurant.longitude !== null
+            && restaurant.longitude !== undefined
+            && Number.isFinite(Number(restaurant.longitude))
+        ) {
+            const mapLink = document.createElement("a");
+            mapLink.href = RamjicartMaps.searchUrl(
+                restaurant.latitude + "," + restaurant.longitude
+            );
+            mapLink.target = "_blank";
+            mapLink.rel = "noopener noreferrer";
+            mapLink.textContent = "View location in Google Maps";
+            details.appendChild(mapLink);
+        }
 
         const bottom = document.createElement("div");
         bottom.className = "restaurant-bottom";
@@ -890,7 +1046,7 @@ function renderRestaurants() {
     });
 }
 
-async function loadNearbyRestaurants(location) {
+async function loadNearbyRestaurants(location, scrollToResults) {
     restaurantMessage.textContent = "Finding restaurants...";
     restaurantList.innerHTML = "";
     const params = new URLSearchParams(location);
@@ -901,13 +1057,18 @@ async function loadNearbyRestaurants(location) {
             throw new Error(data.message || "Restaurants could not be loaded.");
         }
         availableRestaurants = data.restaurants || [];
-        locationLabel.textContent = [
-            location.nearbyLandmark,
-            location.market,
-            location.pincode,
-            location.city
-        ].filter(Boolean).join(" · ");
+        locationLabel.textContent = location.latitude && location.longitude
+            ? "Near your current location"
+            : [
+                location.nearbyLandmark,
+                location.market,
+                location.pincode,
+                location.city
+            ].filter(Boolean).join(" · ");
         renderRestaurants();
+        if (scrollToResults) {
+            document.getElementById("restaurants").scrollIntoView({ behavior: "smooth", block: "start" });
+        }
     } catch (error) {
         restaurantMessage.textContent = error.message;
     }
@@ -919,12 +1080,15 @@ locationForm.addEventListener("submit", function(event) {
     const pincode = document.getElementById("address").value.trim();
     const nearbyLandmark = document.getElementById("nearbyLandmark").value.trim();
     const market = document.getElementById("market").value.trim();
-    if (!city) {
-        restaurantMessage.textContent = "City ka naam dalo.";
+    const latitude = document.getElementById("latitude").value;
+    const longitude = document.getElementById("longitude").value;
+    if (Boolean(latitude) !== Boolean(longitude)) {
+        restaurantMessage.textContent = "Both location coordinates are required.";
         return;
     }
-    if (!/^\d{6}$/.test(pincode)) {
-        restaurantMessage.textContent = "Valid 6-digit PIN code dalo.";
+    if (!latitude && (!city || !/^\d{6}$/.test(pincode))) {
+        restaurantMessage.textContent =
+            "Use your current location or enter your city and valid 6-digit PIN code.";
         return;
     }
 
@@ -932,38 +1096,92 @@ locationForm.addEventListener("submit", function(event) {
         nearbyLandmark: nearbyLandmark,
         market: market,
         pincode: pincode,
-        city: city
+        city: city,
+        latitude: latitude,
+        longitude: longitude
     };
     sessionStorage.setItem("restaurantSearchLocation", JSON.stringify(location));
-    loadNearbyRestaurants(location);
+    loadNearbyRestaurants(location, true);
 });
 
-function filterRestaurants() {
+document.getElementById("useCurrentLocationButton")
+    .addEventListener("click", function() {
+        const message = document.getElementById("locationMessage");
+        if (!navigator.geolocation) {
+            message.textContent =
+                "This browser does not support device location. Enter your city and PIN code instead.";
+            return;
+        }
+        message.textContent = "Requesting location permission...";
+        RamjicartMaps.getCurrentPosition(
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+        ).then(function(position) {
+                document.getElementById("latitude").value =
+                    position.coords.latitude.toFixed(6);
+                document.getElementById("longitude").value =
+                    position.coords.longitude.toFixed(6);
+                document.getElementById("city").value = "";
+                document.getElementById("address").value = "";
+                message.textContent = "Location captured. Searching nearby restaurants...";
+                locationForm.requestSubmit();
+            }).catch(function(error) {
+                message.textContent =
+                    error.message || "Could not read device location.";
+            });
+    });
+
+function filterRestaurants(scrollToResults) {
     searchText = restaurantSearchInput.value.trim().toLowerCase();
     renderRestaurants();
+    if (scrollToResults) {
+        document.getElementById("restaurants").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
 }
 
-document.getElementById("restaurantSearchButton").addEventListener("click", filterRestaurants);
-restaurantSearchInput.addEventListener("input", filterRestaurants);
+document.getElementById("restaurantSearchButton").addEventListener("click", function() {
+    filterRestaurants(true);
+});
+restaurantSearchInput.addEventListener("input", function() {
+    filterRestaurants(false);
+});
+restaurantSearchInput.addEventListener("keydown", function(event) {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        filterRestaurants(true);
+    }
+});
 
 try {
     const savedLocation = JSON.parse(sessionStorage.getItem("restaurantSearchLocation") || "null");
-    if (savedLocation && savedLocation.city && savedLocation.pincode) {
-        document.getElementById("city").value = savedLocation.city;
-        document.getElementById("address").value = savedLocation.pincode;
+    if (
+        savedLocation
+        && (
+            (savedLocation.latitude && savedLocation.longitude)
+            || (savedLocation.city && savedLocation.pincode)
+        )
+    ) {
+        document.getElementById("city").value = savedLocation.city || "";
+        document.getElementById("address").value = savedLocation.pincode || "";
         document.getElementById("nearbyLandmark").value =
             savedLocation.nearbyLandmark || "";
         document.getElementById("market").value = savedLocation.market || "";
+        document.getElementById("latitude").value =
+            savedLocation.latitude || "";
+        document.getElementById("longitude").value =
+            savedLocation.longitude || "";
         loadNearbyRestaurants({
             nearbyLandmark: savedLocation.nearbyLandmark || "",
             market: savedLocation.market || "",
-            pincode: savedLocation.pincode,
-            city: savedLocation.city
+            pincode: savedLocation.pincode || "",
+            city: savedLocation.city || "",
+            latitude: savedLocation.latitude || "",
+            longitude: savedLocation.longitude || ""
         });
     }
 } catch (error) {
     sessionStorage.removeItem("restaurantSearchLocation");
 }
+loadCategories();
 </script>
 </body>
 </html>

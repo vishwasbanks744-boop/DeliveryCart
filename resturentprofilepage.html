@@ -247,6 +247,17 @@
             background: #e94d0b;
         }
 
+        #captureRestaurantLocationButton {
+            min-height: 40px;
+            padding: 0 14px;
+            border: 1px solid #ff5a16;
+            border-radius: 7px;
+            background: white;
+            color: #ff5a16;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
         #profileMessage {
             margin-top: 15px;
             font-size: 14px;
@@ -305,6 +316,8 @@
             }
         }
     </style>
+    <script src="/static/js/auth-client.js"></script>
+    <script src="/static/js/maps-client.js"></script>
 </head>
 
 <body>
@@ -532,6 +545,37 @@
 
                     </div>
 
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="restaurantLatitude">Latitude (optional)</label>
+                            <input
+                                type="number"
+                                id="restaurantLatitude"
+                                min="-90"
+                                max="90"
+                                step="0.000001"
+                                placeholder="Use current location or enter coordinates"
+                            >
+                        </div>
+                        <div class="form-group">
+                            <label for="restaurantLongitude">Longitude (optional)</label>
+                            <input
+                                type="number"
+                                id="restaurantLongitude"
+                                min="-180"
+                                max="180"
+                                step="0.000001"
+                                placeholder="Use current location or enter coordinates"
+                            >
+                        </div>
+                        <div class="form-group full">
+                            <button type="button" id="captureRestaurantLocationButton">
+                                Use this device's current location
+                            </button>
+                            <p id="restaurantLocationMessage" role="status" aria-live="polite"></p>
+                        </div>
+                    </div>
+
 
                     <button
                         type="submit"
@@ -612,6 +656,12 @@
                 document.getElementById("restaurantPincode").value =
                     data.pincode || "";
 
+                document.getElementById("restaurantLatitude").value =
+                    data.latitude ?? "";
+
+                document.getElementById("restaurantLongitude").value =
+                    data.longitude ?? "";
+
 
                 document.getElementById("profileRestaurantName").textContent =
                     data.restaurantName || "Restaurant";
@@ -677,7 +727,13 @@
                     document.getElementById("restaurantCity").value,
 
                 pincode:
-                    document.getElementById("restaurantPincode").value
+                    document.getElementById("restaurantPincode").value,
+
+                latitude:
+                    document.getElementById("restaurantLatitude").value,
+
+                longitude:
+                    document.getElementById("restaurantLongitude").value
 
             };
 
@@ -743,6 +799,31 @@
             saveProfileButton.textContent = "Save Changes";
 
         });
+
+        document.getElementById("captureRestaurantLocationButton")
+            .addEventListener("click", function() {
+                const locationMessage =
+                    document.getElementById("restaurantLocationMessage");
+                if (!navigator.geolocation) {
+                    locationMessage.textContent =
+                        "This browser does not support device location.";
+                    return;
+                }
+                locationMessage.textContent = "Requesting location permission...";
+                RamjicartMaps.getCurrentPosition(
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+                ).then(function(position) {
+                        document.getElementById("restaurantLatitude").value =
+                            position.coords.latitude.toFixed(6);
+                        document.getElementById("restaurantLongitude").value =
+                            position.coords.longitude.toFixed(6);
+                        locationMessage.textContent =
+                            "Location added. Save changes to update your restaurant pin.";
+                    }).catch(function(error) {
+                        locationMessage.textContent =
+                            error.message || "Could not read device location.";
+                    });
+            });
 
 
         // Change logo button
@@ -820,16 +901,7 @@
         document.getElementById("restaurantLogoutButton").addEventListener("click", async function() {
             this.disabled = true;
             try {
-                const csrfToken = document.cookie.split("; ")
-                    .find(function(cookie) { return cookie.startsWith("csrftoken="); });
-                const response = await fetch("/api/auth/logout", {
-                    method: "POST",
-                    headers: {
-                        "X-CSRFToken": csrfToken
-                            ? decodeURIComponent(csrfToken.split("=").slice(1).join("="))
-                            : ""
-                    }
-                });
+                const response = await RamjicartAuth.logout();
                 if (!response.ok) {
                     throw new Error("Sign out nahi ho saka. Dobara try karo.");
                 }

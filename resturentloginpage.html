@@ -297,6 +297,7 @@
 
     </style>
 
+    <script src="/static/js/auth-client.js"></script>
 </head>
 
 <body>
@@ -360,6 +361,10 @@
                     Login
                 </button>
 
+                <button type="button" id="googleLoginButton" style="width:100%;padding:12px;margin-top:12px;background:#fff;color:#222;border:1px solid #bbb;border-radius:8px;cursor:pointer">
+                    Continue with Google
+                </button>
+
 
                 <p id="loginMessage"></p>
 
@@ -390,6 +395,7 @@
     const loginMessage = document.getElementById("loginMessage");
 
     const forgotPassword = document.getElementById("forgotPassword");
+    const googleLoginButton = document.getElementById("googleLoginButton");
 
 
     /* =========================
@@ -423,24 +429,9 @@
 
         try {
 
-            const response = await fetch("/api/auth/login", {
-
-                method: "POST",
-
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": (document.cookie
-                        .split("; ")
-                        .find(function(cookie) {
-                            return cookie.startsWith("csrftoken=");
-                        }) || "csrftoken=").split("=").slice(1).join("=")
-                },
-
-                body: JSON.stringify({
-                    email: email,
-                    password: password
-                })
-
+            const response = await RamjicartAuth.login({
+                email: email,
+                password: password
             });
 
 
@@ -451,21 +442,6 @@
 
                 loginMessage.textContent =
                     data.message || "Login successful!";
-
-
-                /*
-                    Backend agar token bhejta hai
-                    to yahan save kar sakte hain.
-                */
-
-                if (data.token) {
-
-                    localStorage.setItem(
-                        "authToken",
-                        data.token
-                    );
-
-                }
 
 
                 /*
@@ -507,17 +483,42 @@
 
     });
 
+    googleLoginButton.addEventListener("click", async function() {
+        googleLoginButton.disabled = true;
+        loginMessage.textContent = "Signing in with Google...";
+        try {
+            const response = await RamjicartAuth.loginWithGoogle();
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || "Google sign-in failed.");
+            loginMessage.textContent = data.message || "Login successful.";
+            window.setTimeout(function() {
+                window.location.href = data.redirect || "resturenthomepage.html";
+            }, 400);
+        } catch (error) {
+            loginMessage.textContent = error.message || "Google sign-in failed.";
+        } finally {
+            googleLoginButton.disabled = false;
+        }
+    });
+
 
     /* =========================
        FORGOT PASSWORD
     ========================= */
 
-    forgotPassword.addEventListener("click", function (event) {
-
+    forgotPassword.addEventListener("click", async function (event) {
         event.preventDefault();
-
-        window.location.href = "forgot-password.html";
-
+        const email = loginEmail.value.trim();
+        if (!email) {
+            loginMessage.textContent = "Enter your email first.";
+            return;
+        }
+        try {
+            await RamjicartAuth.sendPasswordResetEmail(email);
+            loginMessage.textContent = "Password reset email sent. Check your inbox.";
+        } catch (error) {
+            loginMessage.textContent = error.message || "Could not send a reset email.";
+        }
     });
 
 </script>

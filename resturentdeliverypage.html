@@ -428,6 +428,8 @@ button {
 }
 
 </style>
+    <script src="/static/js/auth-client.js"></script>
+    <script src="/static/js/maps-client.js"></script>
 </head>
 
 <body>
@@ -470,6 +472,18 @@ button {
             Manage your deliveries and deliver orders safely.
         </p>
 
+    </section>
+
+    <section class="orders-box" aria-labelledby="dispatchLocationHeading">
+        <div class="section-title-row">
+            <div>
+                <h2 id="dispatchLocationHeading">Nearby delivery offers</h2>
+                <p id="dispatchLocationMessage" class="message" role="status">
+                    Share your current location to check which offers are within 10 km.
+                </p>
+            </div>
+            <button type="button" id="dispatchLocationButton">Share location</button>
+        </div>
     </section>
 
 
@@ -564,6 +578,8 @@ button {
 /* Current delivery */
 
 let currentDeliveryIds = new Set();
+let dispatchLocationWatch = null;
+let dispatchLocationLastSent = 0;
 
 function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, function(character) {
@@ -581,6 +597,23 @@ function csrfToken() {
     const cookie = document.cookie.split("; ")
         .find(function(value) { return value.startsWith("csrftoken="); });
     return cookie ? decodeURIComponent(cookie.split("=")[1]) : "";
+}
+
+function mapsSearchLink(address, latitude, longitude, label) {
+    const hasCoordinates =
+        latitude !== null && latitude !== undefined && latitude !== ""
+        && longitude !== null && longitude !== undefined && longitude !== ""
+        && Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude));
+    const query = hasCoordinates
+        ? latitude + "," + longitude
+        : String(address || "").trim();
+    if (!query) return "";
+    return `<a target="_blank" rel="noopener noreferrer" href="${RamjicartMaps.searchUrl(query)}">${label}</a>`;
+}
+
+function mapsDirectionsLink(from, to, label) {
+    if (!from || !to) return "";
+    return `<a target="_blank" rel="noopener noreferrer" href="${RamjicartMaps.directionsUrl(from, to)}">${label}</a>`;
 }
 
 
@@ -612,6 +645,11 @@ async function loadDeliveryProfile() {
             "welcomeText"
         ).textContent =
             `Welcome ${data.name || ""}`;
+
+        document.getElementById("dispatchLocationMessage").textContent = data.location
+            ? `Location is available for ${Number(data.dispatchRadiusKm || 10)} km delivery offers. Keep sharing on while you are available.`
+            : "Share your current location to check which offers are within "
+                + Number(data.dispatchRadiusKm || 10) + " km.";
 
     } catch (error) {
 
@@ -726,6 +764,18 @@ async function loadAvailableOrders() {
 
         container.innerHTML = "";
         document.getElementById("ordersMessage").textContent = "";
+        if (data.orders && data.orders.length && data.orders.every(function(order) {
+            return !order.nearbyPartnerCount;
+        })) {
+            document.getElementById("ordersMessage").textContent =
+                "No partner is currently online within "
+                + Number(data.dispatchRadiusKm || 10)
+                + " km. These orders stay open until a nearby partner shares location.";
+        } else if (data.orders && data.orders.length && !data.eligibleCount) {
+            document.getElementById("ordersMessage").textContent =
+                "Other nearby partners can accept these offers. Share your location to enable offers within "
+                + Number(data.dispatchRadiusKm || 10) + " km for you.";
+        }
 
 
         if (!data.orders || !data.orders.length) {
@@ -746,6 +796,13 @@ async function loadAvailableOrders() {
                 document.createElement("div");
 
             card.className = "order-card";
+            const eligibility = escapeHtml(order.eligibilityMessage || "Open delivery offer")
+                + (order.distanceKm !== null && order.distanceKm !== undefined
+                    ? ` · ${escapeHtml(order.distanceKm)} km away`
+                    : "");
+            const acceptButton = order.eligible
+                ? `<button class="accept-btn" onclick="acceptDelivery('${order.id}')">Accept Delivery</button>`
+                : `<button class="accept-btn" disabled title="Location must be shared and the restaurant must be within 10 km">Outside dispatch range</button>`;
 
 
             card.innerHTML = `
@@ -763,6 +820,7 @@ async function loadAvailableOrders() {
                 </div>
 
                 <p class="message">${escapeHtml(order.date)}</p>
+                <p class="message" role="status">${eligibility}</p>
 
 
                 <div class="order-info">
@@ -789,6 +847,12 @@ async function loadAvailableOrders() {
                         <strong>
                             ${escapeHtml(order.restaurant?.address || "Address not provided")}
                         </strong>
+                        ${mapsSearchLink(
+                            order.restaurant?.address,
+                            order.restaurant?.latitude,
+                            order.restaurant?.longitude,
+                            "Open pickup location in Google Maps"
+                        )}
 
                     </div>
 
@@ -816,6 +880,12 @@ async function loadAvailableOrders() {
                         <strong>
                             ${escapeHtml(order.customer?.address || "Delivery address not provided")}
                         </strong>
+                        ${mapsSearchLink(
+                            order.customer?.address,
+                            order.customer?.latitude,
+                            order.customer?.longitude,
+                            "Open delivery location in Google Maps"
+                        )}
 
                     </div>
 
@@ -828,16 +898,7 @@ async function loadAvailableOrders() {
                     <div class="order-total"><span>Restaurant payout</span><span>₹${escapeHtml(order.restaurantPayout)}</span></div>
                 </div>
 
-                <div class="button-group">
-
-                    <button
-                        class="accept-btn"
-                        onclick="acceptDelivery('${order.id}')"
-                    >
-                        Accept Delivery
-                    </button>
-
-                </div>
+                <div class="button-group">${acceptButton}</div>
 
             `;
 
@@ -946,6 +1007,19 @@ async function loadCurrentDelivery() {
         currentDeliveryIds = new Set(orders.map(function(order) {
             return order.id;
         }));
+        const locationSharingOrderIds = new Set(
+            orders.filter(function(order) {
+                return order.statusCode === "out_for_delivery";
+            }).map(function(order) {
+                return order.id;
+            })
+        );
+        activeLocationWatches.forEach(function(watchId, orderId) {
+            if (!locationSharingOrderIds.has(orderId)) {
+                RamjicartMaps.clearWatch(watchId);
+                activeLocationWatches.delete(orderId);
+            }
+        });
 
         if (!orders.length) {
             container.innerHTML = `
@@ -969,6 +1043,8 @@ async function loadCurrentDelivery() {
                     <button class="delivery-btn" onclick="updateDeliveryStatus('${order.id}', 'ON_THE_WAY')">
                         Start delivery / On the way
                     </button>`;
+            } else if (order.statusCode === "out_for_delivery") {
+                actionButtons = `<p class="message">Use the dashboard location control to share your position for active deliveries.</p>`;
             }
             return `
                 <article class="order-card" data-active-order="${order.id}">
@@ -977,9 +1053,32 @@ async function loadCurrentDelivery() {
                         <p><strong>Order #${escapeHtml(order.orderNumber)}</strong> · ${escapeHtml(order.date)}</p>
                         <p>Restaurant: ${escapeHtml(order.restaurant?.name || "")}</p>
                         <p>Pickup: ${escapeHtml(order.restaurant?.address || "Address not provided")}</p>
+                        ${mapsSearchLink(
+                            order.restaurant?.address,
+                            order.restaurant?.latitude,
+                            order.restaurant?.longitude,
+                            "Open pickup location in Google Maps"
+                        )}
                         <p>Customer: ${escapeHtml(order.customer?.name || "")}</p>
                         <p class="order-phone">Phone: <a href="tel:${escapeHtml(order.customer?.phone || "")}">${escapeHtml(order.customer?.phone || "Not provided")}</a></p>
                         <p>Delivery: ${escapeHtml(order.customer?.address || "Address not provided")}</p>
+                        ${mapsSearchLink(
+                            order.customer?.address,
+                            order.customer?.latitude,
+                            order.customer?.longitude,
+                            "Open delivery location in Google Maps"
+                        )}
+                        ${mapsDirectionsLink(
+                            order.restaurant?.latitude != null
+                                && order.restaurant?.longitude != null
+                                ? order.restaurant.latitude + "," + order.restaurant.longitude
+                                : order.restaurant?.address,
+                            order.customer?.latitude != null
+                                && order.customer?.longitude != null
+                                ? order.customer.latitude + "," + order.customer.longitude
+                                : order.customer?.address,
+                            "Open route in Google Maps"
+                        )}
                     </div>
                     <div class="order-items">
                         <strong>Order items</strong>
@@ -1080,6 +1179,136 @@ async function updateDeliveryStatus(orderId, status) {
 
 }
 
+const activeLocationWatches = new Map();
+
+async function updateDispatchLocation(position) {
+    const response = await fetch("/api/delivery/location", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken() },
+        body: JSON.stringify({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+        })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "Could not update your location.");
+    document.getElementById("dispatchLocationMessage").textContent =
+        "Location sharing is on. Eligible delivery offers within "
+        + Number(data.dispatchRadiusKm || 10) + " km are enabled.";
+    return data;
+}
+
+async function toggleDispatchLocation() {
+    const button = document.getElementById("dispatchLocationButton");
+    const message = document.getElementById("dispatchLocationMessage");
+    button.disabled = true;
+    try {
+        if (dispatchLocationWatch !== null) {
+            RamjicartMaps.clearWatch(dispatchLocationWatch);
+            dispatchLocationWatch = null;
+            const response = await fetch("/api/delivery/location", {
+                method: "DELETE",
+                headers: { "X-CSRFToken": csrfToken() }
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || "Could not stop sharing.");
+            button.textContent = "Share location";
+            message.textContent = "Location sharing stopped. Open offers remain visible; accepting requires a fresh location within 10 km.";
+            await loadAvailableOrders();
+        } else {
+            message.textContent = "Requesting location permission...";
+            const position = await RamjicartMaps.getCurrentPosition({
+                enableHighAccuracy: true, timeout: 15000, maximumAge: 5000
+            });
+            const data = await updateDispatchLocation(position);
+            dispatchLocationLastSent = Date.now();
+            dispatchLocationWatch = RamjicartMaps.watchPosition(async function(nextPosition) {
+                if (Date.now() - dispatchLocationLastSent < 12000) return;
+                dispatchLocationLastSent = Date.now();
+                try {
+                    await updateDispatchLocation(nextPosition);
+                    await loadAvailableOrders();
+                } catch (error) {
+                    message.textContent = error.message;
+                }
+            }, function(error) {
+                if (dispatchLocationWatch !== null) {
+                    RamjicartMaps.clearWatch(dispatchLocationWatch);
+                    dispatchLocationWatch = null;
+                }
+                button.textContent = "Share location";
+                message.textContent = error.message || "Location access stopped.";
+            }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 });
+            button.textContent = "Stop location sharing";
+            await loadAvailableOrders();
+        }
+    } catch (error) {
+        message.textContent = error.message || "Could not share your location.";
+    } finally {
+        button.disabled = false;
+    }
+}
+
+async function stopDeviceLocation(orderId) {
+    const watchId = activeLocationWatches.get(orderId);
+    if (watchId === undefined) return;
+    RamjicartMaps.clearWatch(watchId);
+    activeLocationWatches.delete(orderId);
+    const message = document.getElementById(`deliveryMessage-${orderId}`);
+    try {
+        const response = await fetch(
+            `/api/delivery/orders/${orderId}/location`,
+            {
+                method: "DELETE",
+                headers: { "X-CSRFToken": csrfToken() }
+            }
+        );
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || "Could not stop location sharing.");
+        }
+        if (message) message.textContent = data.message;
+        await loadCurrentDelivery();
+    } catch (error) {
+        if (message) message.textContent = error.message;
+    }
+}
+
+async function shareDeviceLocation(orderId) {
+    if (!navigator.geolocation) {
+        alert("Location sharing is not supported by this browser.");
+        return;
+    }
+    if (activeLocationWatches.has(orderId)) return;
+    if (!currentDeliveryIds.has(orderId)) return;
+    let lastSentAt = 0;
+    const watchId = RamjicartMaps.watchPosition(async function(position) {
+        if (Date.now() - lastSentAt < 12000) return;
+        lastSentAt = Date.now();
+        try {
+            const response = await fetch(`/api/delivery/orders/${orderId}/location`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken() },
+                body: JSON.stringify({
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude
+                })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || "Location update failed.");
+        } catch (error) {
+            const message = document.getElementById(`deliveryMessage-${orderId}`);
+            if (message) message.textContent = error.message;
+        }
+    }, function(error) {
+        stopDeviceLocation(orderId);
+        alert(error.message || "Allow location access to share your delivery location.");
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 });
+    activeLocationWatches.set(orderId, watchId);
+    const message = document.getElementById(`deliveryMessage-${orderId}`);
+    if (message) message.textContent = "Location sharing is active while this page stays open.";
+}
+
 
 /* Verify customer OTP */
 
@@ -1175,12 +1404,13 @@ document.getElementById("refreshOrdersButton").addEventListener(
     "click",
     refreshDeliveryDashboard
 );
+document.getElementById("dispatchLocationButton").addEventListener(
+    "click",
+    toggleDispatchLocation
+);
 document.getElementById("deliveryLogoutButton").addEventListener("click", async function() {
     try {
-        const response = await fetch("/api/auth/logout", {
-            method: "POST",
-            headers: { "X-CSRFToken": csrfToken() }
-        });
+        const response = await RamjicartAuth.logout();
         const data = await response.json();
         if (!response.ok) {
             throw new Error(data.message || "Could not sign out.");

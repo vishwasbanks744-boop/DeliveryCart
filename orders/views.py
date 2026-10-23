@@ -1,21 +1,29 @@
 import base64
+import hashlib
+import hmac
 import json
+import logging
+import math
 import secrets
-from io import BytesIO
+from datetime import timedelta
 from decimal import Decimal, InvalidOperation
+from io import BytesIO
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
+from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.core.validators import URLValidator
 from django.db import transaction
-from django.db.models import F, Q
+from django.db.models import F, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
+from django.views.decorators.csrf import csrf_exempt, csrf_protect, ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 import qrcode
 from qrcode.image.svg import SvgPathImage
@@ -26,6 +34,8 @@ from .pricing import money, quote_order
 
 
 MAX_CART_QUANTITY = 99
+LIVE_LOCATION_MAX_AGE = timedelta(minutes=2)
+logger = logging.getLogger(__name__)
 FRONTEND_PAGES = {
     "homepage",
     "cartpage",
@@ -53,6 +63,7 @@ def homepage(request):
     return render(request, "homepage.html")
 
 
+@ensure_csrf_cookie
 @ensure_csrf_cookie
 def frontend_page(request, page):
     if page not in FRONTEND_PAGES:
@@ -139,6 +150,225 @@ def _error(message, status=400):
     return JsonResponse({"message": message}, status=status)
 
 
+@require_GET
+def public_client_config(_request):
+    return JsonResponse(
+        {
+            "googleMapsApiKey": settings.GOOGLE_MAPS_API_KEY,
+            "googleMapsMapId": settings.GOOGLE_MAPS_MAP_ID,
+            "firebaseEnabled": settings.FIREBASE_AUTH_ENABLED,
+            "firebaseSdkVersion": settings.FIREBASE_JS_SDK_VERSION,
+            "firebase": (
+                settings.FIREBASE_WEB_CONFIG
+                if settings.FIREBASE_AUTH_ENABLED
+                else None
+            ),
+            "deliveryDispatchRadiusKm": settings.DELIVERY_DISPATCH_RADIUS_KM,
+            "cashfreeEnabled": settings.CASHFREE_ENABLED,
+            "cashfreeMode": settings.CASHFREE_ENVIRONMENT,
+        }
+    )
+
+
+def _cashfree_api(method, path, payload=None):
+    if not settings.CASHFREE_ENABLED:
+        raise RuntimeError("Cashfree payments are not enabled.")
+    base_url = (
+        "https://sandbox.cashfree.com/pg"
+        if settings.CASHFREE_ENVIRONMENT == "sandbox"
+        else "https://api.cashfree.com/pg"
+    )
+    body = json.dumps(payload).encode("utf-8") if payload is not None else None
+    api_request = Request(
+        base_url + path,
+        data=body,
+        method=method,
+        headers={
+            "x-client-id": settings.CASHFREE_APP_ID,
+            "x-client-secret": settings.CASHFREE_SECRET_KEY,
+            "x-api-version": settings.CASHFREE_API_VERSION,
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        with urlopen(api_request, timeout=15) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except HTTPError as error:
+        detail = error.read().decode("utf-8", errors="replace")
+        logger.warning("Cashfree API returned HTTP %s: %s", error.code, detail[:1000])
+        raise RuntimeError("Cashfree could not start or verify this payment.") from error
+    except (URLError, TimeoutError, json.JSONDecodeError) as error:
+        logger.exception("Cashfree API request failed")
+        raise RuntimeError("Cashfree is temporarily unavailable. Please try again.") from error
+
+
+def _mark_cashfree_order_paid(order_id, payment_id, amount, currency="INR"):
+    try:
+        order = Order.objects.get(cashfree_order_id=order_id)
+        paid_amount = Decimal(str(amount)).quantize(Decimal("0.01"))
+    except (Order.DoesNotExist, InvalidOperation, TypeError, ValueError):
+        return False
+    if currency != "INR" or paid_amount != order.gateway_amount:
+        logger.warning("Cashfree amount/currency mismatch for order %s", order_id)
+        return False
+    with transaction.atomic():
+        order = Order.objects.select_for_update().get(pk=order.pk)
+        if order.status in {Order.Status.PLACED, Order.Status.PAID}:
+            return True
+        if order.status not in {
+            Order.Status.PAYMENT_PENDING,
+            Order.Status.PAYMENT_FAILED,
+        }:
+            return False
+        order.status = Order.Status.PLACED
+        order.gateway_payment_status = "success"
+        order.cashfree_payment_id = str(payment_id or "")[:80]
+        order.paid_at = timezone.now()
+        order.save(
+            update_fields=[
+                "status",
+                "gateway_payment_status",
+                "cashfree_payment_id",
+                "paid_at",
+            ]
+        )
+    return True
+
+
+def _firebase_identity(data, require_verified):
+    if not settings.FIREBASE_AUTH_ENABLED:
+        return None, _error("Firebase sign-in is not enabled on this server.", 503)
+    token = str(data.get("firebaseIdToken", "")).strip()
+    if not token:
+        return None, _error("Firebase sign-in token is required.", 401)
+    if not settings.FIREBASE_SERVICE_ACCOUNT_FILE and not settings.FIREBASE_SERVICE_ACCOUNT_JSON:
+        return None, _error("Firebase server credentials are not configured.", 503)
+    try:
+        import firebase_admin
+        from firebase_admin import auth as firebase_auth
+        from firebase_admin import credentials
+
+        try:
+            firebase_app = firebase_admin.get_app()
+        except ValueError:
+            if settings.FIREBASE_SERVICE_ACCOUNT_JSON:
+                credential_data = json.loads(settings.FIREBASE_SERVICE_ACCOUNT_JSON)
+                firebase_credential = credentials.Certificate(credential_data)
+            else:
+                firebase_credential = credentials.Certificate(
+                    settings.FIREBASE_SERVICE_ACCOUNT_FILE
+                )
+            firebase_app = firebase_admin.initialize_app(firebase_credential)
+
+        claims = firebase_auth.verify_id_token(
+            token,
+            check_revoked=True,
+            app=firebase_app,
+        )
+    except ImportError:
+        logger.error("Firebase Admin SDK is not installed.")
+        return None, _error("Firebase authentication is unavailable on this server.", 503)
+    except Exception:
+        logger.exception("Firebase ID-token verification failed.")
+        return None, _error("Firebase sign-in could not be verified.", 401)
+
+    email = str(claims.get("email", "")).strip().lower()
+    if not claims.get("uid") or not email:
+        return None, _error("Firebase account is missing a verified email.", 401)
+    if require_verified and not claims.get("email_verified"):
+        return None, _error("Verify your email before signing in.", 403)
+    return {"uid": claims["uid"], "email": email}, None
+
+
+def _firebase_registration_identity(data):
+    identity, error = _firebase_identity(data, require_verified=False)
+    if error:
+        return None, error
+    supplied_email = str(data.get("email", "")).strip().lower()
+    if supplied_email != identity["email"]:
+        return None, _error("Firebase email does not match the registration email.", 403)
+    return identity, None
+
+
+def _login_firebase_user(request, identity, expected_role=""):
+    user_model = get_user_model()
+    profile = AccountProfile.objects.select_related("user").filter(
+        firebase_uid=identity["uid"]
+    ).first()
+    if profile is None:
+        user = user_model.objects.filter(email__iexact=identity["email"]).first()
+        if user is None:
+            return _error("No account is registered for this Firebase email.", 404)
+        profile = _account_profile_for_user(user)
+        if profile is None:
+            return _error("This account is not configured. Contact support.", 403)
+        if profile.firebase_uid and profile.firebase_uid != identity["uid"]:
+            return _error("This email is linked to a different Firebase account.", 403)
+        profile.firebase_uid = identity["uid"]
+        profile.save(update_fields=["firebase_uid"])
+    else:
+        user = profile.user
+
+    if profile.user.email.lower() != identity["email"]:
+        return _error("Firebase email does not match the registered account.", 403)
+    if expected_role and profile.role != expected_role:
+        return _error("This account cannot sign in from this page.", 403)
+    if profile.role != AccountProfile.Role.CUSTOMER and not _profile_is_approved(profile):
+        return _error(
+            "Your account is waiting for administrator approval before login.",
+            403,
+        )
+    login(request, user)
+    return JsonResponse(
+        {
+            "message": "Login successful.",
+            "role": profile.role,
+            "redirect": _role_redirect(profile),
+        }
+    )
+
+
+def _coordinates_from_data(data):
+    raw_latitude = data.get("latitude")
+    raw_longitude = data.get("longitude")
+    if raw_latitude in (None, "") and raw_longitude in (None, ""):
+        return None, None
+    if raw_latitude in (None, "") or raw_longitude in (None, ""):
+        raise ValueError("Provide both latitude and longitude coordinates.")
+    try:
+        latitude = Decimal(str(raw_latitude))
+        longitude = Decimal(str(raw_longitude))
+    except (InvalidOperation, TypeError, ValueError):
+        raise ValueError("Provide valid latitude and longitude coordinates.")
+    if (
+        not latitude.is_finite()
+        or not longitude.is_finite()
+        or not Decimal("-90") <= latitude <= Decimal("90")
+        or not Decimal("-180") <= longitude <= Decimal("180")
+    ):
+        raise ValueError("Coordinates are outside valid ranges.")
+    return latitude.quantize(Decimal("0.000001")), longitude.quantize(
+        Decimal("0.000001")
+    )
+
+
+def _distance_km(latitude_a, longitude_a, latitude_b, longitude_b):
+    latitude_a, longitude_a, latitude_b, longitude_b = (
+        math.radians(float(value))
+        for value in (latitude_a, longitude_a, latitude_b, longitude_b)
+    )
+    latitude_delta = latitude_b - latitude_a
+    longitude_delta = longitude_b - longitude_a
+    haversine = (
+        math.sin(latitude_delta / 2) ** 2
+        + math.cos(latitude_a)
+        * math.cos(latitude_b)
+        * math.sin(longitude_delta / 2) ** 2
+    )
+    return 6371 * 2 * math.asin(math.sqrt(min(1, haversine)))
+
+
 def _cart_items(request):
     raw_cart = request.session.get("cart", {})
     if not isinstance(raw_cart, dict):
@@ -157,7 +387,9 @@ def _cart_items(request):
         available=True,
         restaurant__approved=True,
         restaurant__accepting_orders=True,
-    ).select_related("restaurant", "category")
+    ).exclude(category_id__in=_non_veg_category_ids()).select_related(
+        "restaurant", "category"
+    )
     food_by_id = {food.id: food for food in foods}
     items = []
     for raw_id, raw_quantity in raw_cart.items():
@@ -232,18 +464,30 @@ def auth_register(request):
         return _error("Enter a valid email address.")
     if len(email) > 150:
         return _error("Email address must be 150 characters or fewer.")
+    firebase_identity = None
+    if settings.FIREBASE_AUTH_ENABLED:
+        firebase_identity, error = _firebase_registration_identity(data)
+        if error:
+            return error
     if get_user_model().objects.filter(email__iexact=email).exists():
         return _error("An account with this email already exists.", 409)
     user = get_user_model()(username=email, email=email, first_name=name)
-    try:
-        validate_password(password, user=user)
-    except ValidationError as error:
-        return _error(" ".join(error.messages))
+    if not firebase_identity:
+        try:
+            validate_password(password, user=user)
+        except ValidationError as error:
+            return _error(" ".join(error.messages))
     with transaction.atomic():
-        user.set_password(password)
+        if firebase_identity:
+            user.set_unusable_password()
+        else:
+            user.set_password(password)
         user.save()
         AccountProfile.objects.create(
-            user=user, role=AccountProfile.Role.CUSTOMER, phone=phone
+            user=user,
+            role=AccountProfile.Role.CUSTOMER,
+            phone=phone,
+            firebase_uid=firebase_identity["uid"] if firebase_identity else None,
         )
     return JsonResponse(
         {
@@ -271,6 +515,10 @@ def restaurant_register(request):
     city = str(data.get("city", "")).strip()
     pincode = str(data.get("pincode", "")).strip()
     password = str(data.get("password", ""))
+    try:
+        latitude, longitude = _coordinates_from_data(data)
+    except ValueError as error:
+        return _error(str(error))
     if (
         not name
         or len(name) > 160
@@ -293,20 +541,30 @@ def restaurant_register(request):
         return _error("Enter a valid email address.")
     if len(email) > 150:
         return _error("Email address must be 150 characters or fewer.")
+    firebase_identity = None
+    if settings.FIREBASE_AUTH_ENABLED:
+        firebase_identity, error = _firebase_registration_identity(data)
+        if error:
+            return error
     if get_user_model().objects.filter(email__iexact=email).exists():
         return _error("An account with this email already exists.", 409)
     user = get_user_model()(username=email, email=email, first_name=owner_name)
-    try:
-        validate_password(password, user=user)
-    except ValidationError as error:
-        return _error(" ".join(error.messages))
+    if not firebase_identity:
+        try:
+            validate_password(password, user=user)
+        except ValidationError as error:
+            return _error(" ".join(error.messages))
     with transaction.atomic():
-        user.set_password(password)
+        if firebase_identity:
+            user.set_unusable_password()
+        else:
+            user.set_password(password)
         user.save()
         AccountProfile.objects.create(
             user=user,
             role=AccountProfile.Role.RESTAURANT,
             phone=phone,
+            firebase_uid=firebase_identity["uid"] if firebase_identity else None,
             approved=False,
         )
         Restaurant.objects.create(
@@ -320,6 +578,8 @@ def restaurant_register(request):
             market=market,
             city=city,
             pincode=pincode,
+            latitude=latitude,
+            longitude=longitude,
             approved=False,
         )
     return JsonResponse(
@@ -354,20 +614,30 @@ def delivery_register(request):
         return _error("Enter a valid email address.")
     if len(email) > 150:
         return _error("Email address must be 150 characters or fewer.")
+    firebase_identity = None
+    if settings.FIREBASE_AUTH_ENABLED:
+        firebase_identity, error = _firebase_registration_identity(data)
+        if error:
+            return error
     if get_user_model().objects.filter(email__iexact=email).exists():
         return _error("An account with this email already exists.", 409)
     user = get_user_model()(username=email, email=email, first_name=name)
-    try:
-        validate_password(password, user=user)
-    except ValidationError as error:
-        return _error(" ".join(error.messages))
+    if not firebase_identity:
+        try:
+            validate_password(password, user=user)
+        except ValidationError as error:
+            return _error(" ".join(error.messages))
     with transaction.atomic():
-        user.set_password(password)
+        if firebase_identity:
+            user.set_unusable_password()
+        else:
+            user.set_password(password)
         user.save()
         AccountProfile.objects.create(
             user=user,
             role=AccountProfile.Role.DELIVERY_PARTNER,
             phone=phone,
+            firebase_uid=firebase_identity["uid"] if firebase_identity else None,
             approved=False,
         )
     return JsonResponse(
@@ -449,6 +719,15 @@ def auth_login(request):
         data = _json_body(request)
     except ValueError as error:
         return _error(str(error))
+    if settings.FIREBASE_AUTH_ENABLED:
+        identity, error = _firebase_identity(data, require_verified=True)
+        if error:
+            return error
+        return _login_firebase_user(
+            request,
+            identity,
+            expected_role=str(data.get("expectedRole", "")).strip(),
+        )
     email = str(data.get("email", "")).strip().lower()
     password = str(data.get("password", ""))
     user = authenticate(request, username=email, password=password)
@@ -506,8 +785,83 @@ def auth_me(request):
 
 @require_GET
 def categories(_request):
-    data = list(Category.objects.order_by("name").values("id", "name"))
+    categories = Category.objects.order_by("name").values("id", "name")
+    data = [
+        category
+        for category in categories
+        if not _is_non_veg_category(category["name"])
+    ]
     return JsonResponse(data, safe=False)
+
+
+def _non_veg_category_ids():
+    return [
+        category_id
+        for category_id, name in Category.objects.values_list("id", "name")
+        if _is_non_veg_category(name)
+    ]
+
+
+def _is_non_veg_category(name):
+    normalized = "".join(character for character in str(name).lower() if character.isalpha())
+    return normalized.startswith("nonveg") or normalized.startswith("nonvegetarian")
+
+
+@require_GET
+def popular_foods(_request):
+    confirmed_statuses = [
+        Order.Status.PLACED,
+        Order.Status.PAID,
+        Order.Status.ACCEPTED,
+        Order.Status.PREPARING,
+        Order.Status.READY_FOR_PICKUP,
+        Order.Status.ASSIGNED,
+        Order.Status.PICKED_UP,
+        Order.Status.OUT_FOR_DELIVERY,
+        Order.Status.COMPLETED,
+    ]
+    base_query = Food.objects.filter(
+        available=True,
+        restaurant__approved=True,
+        restaurant__accepting_orders=True,
+    ).exclude(category_id__in=_non_veg_category_ids()).select_related(
+        "restaurant", "category"
+    )
+    ranked_foods = list(
+        base_query.annotate(
+            order_count=Sum(
+                "orderitem__quantity",
+                filter=Q(orderitem__order__status__in=confirmed_statuses),
+            )
+        )
+        .filter(order_count__gt=0)
+        .order_by("-order_count", "name")[:4]
+    )
+    foods = ranked_foods
+    if len(foods) < 4:
+        ranked_ids = [food.id for food in foods]
+        foods += list(
+            base_query.exclude(id__in=ranked_ids)
+            .order_by("name")[: 4 - len(foods)]
+        )
+
+    return JsonResponse(
+        [
+            {
+                "id": food.id,
+                "name": food.name,
+                "description": food.description,
+                "image": food.image,
+                "price": float(food.price),
+                "restaurantId": food.restaurant_id,
+                "restaurantName": food.restaurant.name,
+                "categoryId": food.category_id,
+                "orderCount": int(getattr(food, "order_count", 0) or 0),
+            }
+            for food in foods
+        ],
+        safe=False,
+    )
 
 
 @require_GET
@@ -516,9 +870,16 @@ def customer_restaurants(request):
     pincode = request.GET.get("pincode", "").strip()
     nearby_landmark = request.GET.get("nearbyLandmark", "").strip()
     market = request.GET.get("market", "").strip()
-    if not city or not pincode:
-        return _error("Enter your city and 6-digit pincode to find restaurants.")
-    if not pincode.isdigit() or len(pincode) != 6:
+    try:
+        latitude, longitude = _coordinates_from_data(request.GET)
+    except ValueError as error:
+        return _error(str(error))
+    has_coordinates = latitude is not None
+    if not has_coordinates and (not city or not pincode):
+        return _error(
+            "Share your location or enter your city and 6-digit pincode."
+        )
+    if pincode and (not pincode.isdigit() or len(pincode) != 6):
         return _error("Enter a valid 6-digit pincode.")
     if len(city) > 100 or len(nearby_landmark) > 160 or len(market) > 160:
         return _error("Location details are too long.")
@@ -528,16 +889,26 @@ def customer_restaurants(request):
         accepting_orders=True,
         foods__available=True,
     ).distinct().prefetch_related("foods__category")
-    if city and pincode:
+    if not has_coordinates:
         restaurants = restaurants.filter(
             Q(city__iexact=city) | Q(pincode=pincode)
         )
-    elif city:
-        restaurants = restaurants.filter(city__iexact=city)
-    elif pincode:
-        restaurants = restaurants.filter(pincode=pincode)
 
     restaurant_list = list(restaurants)
+
+    def restaurant_distance(restaurant):
+        if (
+            has_coordinates
+            and restaurant.latitude is not None
+            and restaurant.longitude is not None
+        ):
+            return _distance_km(
+                latitude,
+                longitude,
+                restaurant.latitude,
+                restaurant.longitude,
+            )
+        return None
 
     def location_match(restaurant):
         landmark_match = bool(
@@ -553,6 +924,9 @@ def customer_restaurants(request):
         return landmark_match, market_match, pincode_match, city_match
 
     def location_sort_key(restaurant):
+        distance = restaurant_distance(restaurant)
+        if distance is not None:
+            return 0, distance, restaurant.name.casefold()
         matches = location_match(restaurant)
         supplied = (nearby_landmark, market, pincode, city)
         priority = tuple(
@@ -560,7 +934,7 @@ def customer_restaurants(request):
             for match, value in zip(matches, supplied)
             if value
         )
-        return (*priority, restaurant.name.casefold())
+        return (1, *priority, restaurant.name.casefold())
 
     restaurant_list.sort(key=location_sort_key)
 
@@ -569,13 +943,17 @@ def customer_restaurants(request):
             "restaurants": [
                 {
                     "proximityMatch": (
-                        "Nearby landmark"
+                        f"{restaurant_distance(restaurant):.1f} km away"
+                        if restaurant_distance(restaurant) is not None
+                        else "Nearby landmark"
                         if location_match(restaurant)[0]
                         else "Same market"
                         if location_match(restaurant)[1]
                         else "Same PIN code"
                         if location_match(restaurant)[2]
                         else "Same city"
+                        if location_match(restaurant)[3]
+                        else "Location not set"
                     ),
                     "id": restaurant.id,
                     "name": restaurant.name,
@@ -584,12 +962,29 @@ def customer_restaurants(request):
                     "pincode": restaurant.pincode,
                     "nearbyLandmark": restaurant.nearby_landmark,
                     "market": restaurant.market,
+                    "latitude": (
+                        float(restaurant.latitude)
+                        if restaurant.latitude is not None
+                        else None
+                    ),
+                    "longitude": (
+                        float(restaurant.longitude)
+                        if restaurant.longitude is not None
+                        else None
+                    ),
+                    "distanceKm": (
+                        round(restaurant_distance(restaurant), 2)
+                        if restaurant_distance(restaurant) is not None
+                        else None
+                    ),
                     "logo": _restaurant_logo_url(restaurant),
                     "categories": sorted(
                         {
                             food.category.name
                             for food in restaurant.foods.all()
-                            if food.available and food.category
+                            if food.available
+                            and food.category
+                            and not _is_non_veg_category(food.category.name)
                         }
                     ),
                 }
@@ -605,7 +1000,14 @@ def foods(request):
         available=True,
         restaurant__approved=True,
         restaurant__accepting_orders=True,
-    ).select_related("restaurant", "category")
+    ).exclude(category_id__in=_non_veg_category_ids()).select_related(
+        "restaurant", "category"
+    )
+    try:
+        latitude, longitude = _coordinates_from_data(request.GET)
+    except ValueError as error:
+        return _error(str(error))
+    has_coordinates = latitude is not None
     category_id = request.GET.get("categoryId")
     if category_id:
         try:
@@ -627,6 +1029,26 @@ def foods(request):
             | Q(description__icontains=search)
             | Q(restaurant__name__icontains=search)
         )
+    food_list = list(queryset)
+    if has_coordinates:
+        food_list.sort(
+            key=lambda food: (
+                0
+                if food.restaurant.latitude is not None
+                and food.restaurant.longitude is not None
+                else 1,
+                _distance_km(
+                    latitude,
+                    longitude,
+                    food.restaurant.latitude,
+                    food.restaurant.longitude,
+                )
+                if food.restaurant.latitude is not None
+                and food.restaurant.longitude is not None
+                else 0,
+                food.name.casefold(),
+            )
+        )
     data = [
         {
             "id": food.id,
@@ -637,8 +1059,33 @@ def foods(request):
             "restaurantId": food.restaurant_id,
             "restaurantName": food.restaurant.name,
             "categoryId": food.category_id,
+            "restaurantLatitude": (
+                float(food.restaurant.latitude)
+                if food.restaurant.latitude is not None
+                else None
+            ),
+            "restaurantLongitude": (
+                float(food.restaurant.longitude)
+                if food.restaurant.longitude is not None
+                else None
+            ),
+            "restaurantDistanceKm": (
+                round(
+                    _distance_km(
+                        latitude,
+                        longitude,
+                        food.restaurant.latitude,
+                        food.restaurant.longitude,
+                    ),
+                    2,
+                )
+                if has_coordinates
+                and food.restaurant.latitude is not None
+                and food.restaurant.longitude is not None
+                else None
+            ),
         }
-        for food in queryset
+        for food in food_list
     ]
     return JsonResponse(data, safe=False)
 
@@ -664,7 +1111,7 @@ def cart(request):
         available=True,
         restaurant__approved=True,
         restaurant__accepting_orders=True,
-    ).first()
+    ).exclude(category_id__in=_non_veg_category_ids()).first()
     if food is None:
         return _error("This food is not currently available.", 404)
 
@@ -759,6 +1206,10 @@ def create_order(request):
         return _error("Pricing could not be loaded. Please try again.", 503)
 
     delivery_address = str(data.get("deliveryAddress", "")).strip()
+    try:
+        delivery_latitude, delivery_longitude = _coordinates_from_data(data)
+    except ValueError as error:
+        return _error(str(error))
     profile = _account_profile(request)
     customer_name = request.user.get_full_name().strip() or request.user.email
     customer_phone = profile.phone
@@ -778,6 +1229,16 @@ def create_order(request):
             customer_email=customer_email,
             customer_phone=customer_phone,
             delivery_address=delivery_address,
+            delivery_latitude=(
+                delivery_latitude
+                if order_type == Order.OrderType.DELIVERY
+                else None
+            ),
+            delivery_longitude=(
+                delivery_longitude
+                if order_type == Order.OrderType.DELIVERY
+                else None
+            ),
             restaurant=restaurant,
             order_type=order_type,
             item_total=quote["itemTotal"],
@@ -787,8 +1248,16 @@ def create_order(request):
             platform_fee=quote["platformFee"],
             customer_total=quote["customerTotal"],
             restaurant_payout=quote["restaurantPayout"],
+            gateway_amount=quote["gatewayAmount"],
             confirmation_code=confirmation_code,
-            status=Order.Status.PLACED,
+            status=(
+                Order.Status.PAYMENT_PENDING
+                if settings.CASHFREE_ENABLED
+                else Order.Status.PLACED
+            ),
+            gateway_payment_status=(
+                "pending" if settings.CASHFREE_ENABLED else "not_required"
+            ),
         )
         OrderItem.objects.bulk_create(
             [
@@ -804,6 +1273,53 @@ def create_order(request):
             ]
         )
 
+    payment_session_id = ""
+    if settings.CASHFREE_ENABLED:
+        # Use the local UUID as Cashfree's order ID so webhook/return lookups
+        # are unambiguous and retries never create a second local order.
+        order.cashfree_order_id = str(order.id)
+        order.save(update_fields=["cashfree_order_id"])
+        return_url = (
+            request.build_absolute_uri("/orderpage.html")
+            + "?id={order_id}&payment=return"
+        )
+        webhook_url = request.build_absolute_uri(reverse("cashfree-webhook"))
+        try:
+            cashfree_order = _cashfree_api(
+                "POST",
+                "/orders",
+                {
+                    "order_id": str(order.id),
+                    "order_amount": float(order.gateway_amount),
+                    "order_currency": "INR",
+                    "customer_details": {
+                        "customer_id": f"ramjicart_{request.user.pk}",
+                        "customer_name": customer_name[:100],
+                        "customer_email": customer_email,
+                        "customer_phone": customer_phone,
+                    },
+                    "order_meta": {
+                        "return_url": return_url,
+                        "notify_url": webhook_url,
+                    },
+                    "order_note": f"Ramjicart order {str(order.id)[:8]}",
+                },
+            )
+        except RuntimeError as error:
+            order.gateway_payment_status = "error"
+            order.status = Order.Status.PAYMENT_FAILED
+            order.save(update_fields=["gateway_payment_status", "status"])
+            return _error(str(error), 502)
+        payment_session_id = str(cashfree_order.get("payment_session_id", ""))
+        if not payment_session_id:
+            logger.error("Cashfree create order response has no payment session ID")
+            order.gateway_payment_status = "error"
+            order.status = Order.Status.PAYMENT_FAILED
+            order.save(update_fields=["gateway_payment_status", "status"])
+            return _error("Cashfree did not return a payment session. Please try again.", 502)
+        order.cashfree_payment_session_id = payment_session_id
+        order.save(update_fields=["cashfree_payment_session_id"])
+
     request.session["current_order_id"] = str(order.id)
     request.session["cart"] = {}
     return JsonResponse(
@@ -812,8 +1328,11 @@ def create_order(request):
             "customerName": customer_name,
             "customerEmail": customer_email,
             "customerPhone": customer_phone,
-            "confirmationCode": confirmation_code,
+            "confirmationCode": "" if settings.CASHFREE_ENABLED else confirmation_code,
             "status": order.status,
+            "paymentRequired": settings.CASHFREE_ENABLED,
+            "paymentSessionId": payment_session_id,
+            "cashfreeMode": settings.CASHFREE_ENVIRONMENT,
             "quote": {key: float(value) if isinstance(value, Decimal) else value
                       for key, value in quote.items()},
         },
@@ -828,7 +1347,7 @@ def order_detail(request, order_id):
         return role_error
     order = get_object_or_404(Order, id=order_id, customer=request.user)
     order = (
-        Order.objects.select_related("restaurant")
+        Order.objects.select_related("restaurant", "delivery_partner")
         .prefetch_related("items")
         .get(id=order.id)
     )
@@ -851,6 +1370,15 @@ def order_detail(request, order_id):
         }[order.status],
         "orderType": order.order_type,
         "deliveryAddress": order.delivery_address,
+        "deliveryCoordinates": (
+            {
+                "latitude": float(order.delivery_latitude),
+                "longitude": float(order.delivery_longitude),
+            }
+            if order.delivery_latitude is not None
+            and order.delivery_longitude is not None
+            else None
+        ),
         "itemTotal": float(order.item_total),
         "commission": float(order.commission_amount),
         "deliveryFee": float(order.delivery_fee),
@@ -858,7 +1386,14 @@ def order_detail(request, order_id):
         "discount": 0,
         "restaurantPayout": float(order.restaurant_payout),
         "total": float(order.customer_total),
-        "confirmationCode": order.confirmation_code,
+        "confirmationCode": (
+            order.confirmation_code
+            if order.status not in {
+                Order.Status.PAYMENT_PENDING,
+                Order.Status.PAYMENT_FAILED,
+            }
+            else ""
+        ),
         "orderTypeText": "Pickup (customer is on the way)" if order.order_type == "pickup" else "Home delivery",
         "paymentMethod": "Pay at restaurant" if order.order_type == "pickup" else "Pay on delivery",
         "estimatedArrival": "Pickup" if order.order_type == "pickup" else "To be confirmed",
@@ -868,7 +1403,26 @@ def order_detail(request, order_id):
             "name": order.restaurant.name,
             "details": order.restaurant.address,
             "image": _restaurant_logo_url(order.restaurant),
+            "location": (
+                {
+                    "latitude": float(order.restaurant.latitude),
+                    "longitude": float(order.restaurant.longitude),
+                }
+                if order.restaurant.latitude is not None
+                and order.restaurant.longitude is not None
+                else None
+            ),
         },
+        "deliveryLocation": (
+            _latest_delivery_location(order.delivery_partner)
+            if order.delivery_partner_id
+            and order.status in {
+                Order.Status.ASSIGNED,
+                Order.Status.PICKED_UP,
+                Order.Status.OUT_FOR_DELIVERY,
+            }
+            else None
+        ),
         "items": [
             {
                 "name": item.food_name,
@@ -880,6 +1434,103 @@ def order_detail(request, order_id):
         ],
     }
     return JsonResponse(data)
+
+
+@require_GET
+def cashfree_payment_status(request, order_id):
+    role_error = _require_role(request, AccountProfile.Role.CUSTOMER)
+    if role_error:
+        return role_error
+    order = get_object_or_404(Order, id=order_id, customer=request.user)
+    if not settings.CASHFREE_ENABLED:
+        return JsonResponse({"enabled": False, "status": order.gateway_payment_status})
+    if order.status in {Order.Status.PLACED, Order.Status.PAID}:
+        return JsonResponse({"enabled": True, "status": "success", "orderStatus": order.status})
+    if not order.cashfree_order_id:
+        return _error("Cashfree order was not initialized.", 409)
+    try:
+        cashfree_order = _cashfree_api(
+            "GET", f"/orders/{order.cashfree_order_id}"
+        )
+        if cashfree_order.get("order_status") == "PAID":
+            payments = _cashfree_api(
+                "GET", f"/orders/{order.cashfree_order_id}/payments"
+            )
+            for payment in payments if isinstance(payments, list) else []:
+                if payment.get("payment_status") != "SUCCESS":
+                    continue
+                if _mark_cashfree_order_paid(
+                    order.cashfree_order_id,
+                    payment.get("cf_payment_id"),
+                    payment.get("payment_amount"),
+                    payment.get("payment_currency", "INR"),
+                ):
+                    return JsonResponse({
+                        "enabled": True,
+                        "status": "success",
+                        "orderStatus": Order.Status.PLACED,
+                    })
+        cashfree_status = str(cashfree_order.get("order_status", "pending")).lower()
+        if cashfree_status in {"expired", "terminated"}:
+            Order.objects.filter(
+                pk=order.pk, status=Order.Status.PAYMENT_PENDING
+            ).update(
+                status=Order.Status.PAYMENT_FAILED,
+                gateway_payment_status=cashfree_status,
+            )
+            return JsonResponse({
+                "enabled": True,
+                "status": "failed",
+                "orderStatus": Order.Status.PAYMENT_FAILED,
+            })
+        return JsonResponse({
+            "enabled": True,
+            "status": cashfree_status,
+            "orderStatus": order.status,
+            "paymentSessionId": (
+                order.cashfree_payment_session_id
+                if cashfree_status == "active"
+                else ""
+            ),
+        })
+    except RuntimeError as error:
+        return _error(str(error), 502)
+
+
+@csrf_exempt
+@require_POST
+def cashfree_webhook(request):
+    if not settings.CASHFREE_ENABLED:
+        return _error("Cashfree payments are not enabled.", 503)
+    timestamp = request.headers.get("x-webhook-timestamp", "")
+    signature = request.headers.get("x-webhook-signature", "")
+    signed_payload = timestamp.encode("utf-8") + request.body
+    expected = base64.b64encode(
+        hmac.new(
+            settings.CASHFREE_SECRET_KEY.encode("utf-8"),
+            signed_payload,
+            hashlib.sha256,
+        ).digest()
+    ).decode("ascii")
+    if not timestamp or not signature or not hmac.compare_digest(expected, signature):
+        return _error("Invalid Cashfree webhook signature.", 401)
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+        data = payload.get("data", {})
+        order_data = data.get("order", {})
+        payment_data = data.get("payment", {})
+    except (json.JSONDecodeError, UnicodeDecodeError, AttributeError):
+        return _error("Invalid Cashfree webhook payload.")
+    if payment_data.get("payment_status") == "SUCCESS":
+        accepted = _mark_cashfree_order_paid(
+            order_data.get("order_id"),
+            payment_data.get("cf_payment_id"),
+            payment_data.get("payment_amount"),
+            payment_data.get("payment_currency", "INR"),
+        )
+        if not accepted:
+            return _error("Cashfree payment could not be matched to an order.", 409)
+    return JsonResponse({"received": True})
 
 
 def _restaurant_logo_url(restaurant):
@@ -924,6 +1575,34 @@ def _restaurant_order_data(order):
         "customerName": order.customer_name,
         "customerPhone": order.customer_phone,
         "address": order.delivery_address or "Customer will collect at restaurant",
+        "restaurantLocation": (
+            {
+                "latitude": float(order.restaurant.latitude),
+                "longitude": float(order.restaurant.longitude),
+            }
+            if order.restaurant.latitude is not None
+            and order.restaurant.longitude is not None
+            else None
+        ),
+        "deliveryCoordinates": (
+            {
+                "latitude": float(order.delivery_latitude),
+                "longitude": float(order.delivery_longitude),
+            }
+            if order.delivery_latitude is not None
+            and order.delivery_longitude is not None
+            else None
+        ),
+        "deliveryLatitude": (
+            float(order.delivery_latitude)
+            if order.delivery_latitude is not None
+            else None
+        ),
+        "deliveryLongitude": (
+            float(order.delivery_longitude)
+            if order.delivery_longitude is not None
+            else None
+        ),
         "paymentMethod": "Pay at restaurant" if order.order_type == "pickup" else "Pay on delivery",
         "total": float(order.customer_total),
         "items": [
@@ -957,6 +1636,11 @@ def restaurant_profile(request):
         market = str(data.get("market", "")).strip()
         city = str(data.get("city", "")).strip()
         pincode = str(data.get("pincode", "")).strip()
+        coordinates_supplied = "latitude" in data or "longitude" in data
+        try:
+            latitude, longitude = _coordinates_from_data(data)
+        except ValueError as coordinate_error:
+            return _error(str(coordinate_error))
         if not name or not owner_name or not phone or not address or not city or not pincode:
             return _error(
                 "Restaurant name, owner, phone, address, city, and PIN code are required."
@@ -985,6 +1669,9 @@ def restaurant_profile(request):
         restaurant.market = market
         restaurant.city = city
         restaurant.pincode = pincode
+        if coordinates_supplied:
+            restaurant.latitude = latitude
+            restaurant.longitude = longitude
         request.user.email = email
         request.user.username = email
         request.user.first_name = owner_name
@@ -1007,6 +1694,16 @@ def restaurant_profile(request):
             "acceptOrders": restaurant.accepting_orders,
             "city": restaurant.city,
             "pincode": restaurant.pincode,
+            "latitude": (
+                float(restaurant.latitude)
+                if restaurant.latitude is not None
+                else None
+            ),
+            "longitude": (
+                float(restaurant.longitude)
+                if restaurant.longitude is not None
+                else None
+            ),
         }
     )
 
@@ -1195,6 +1892,7 @@ def restaurant_orders(request):
         return error
     orders = (
         Order.objects.filter(restaurant=restaurant)
+        .exclude(status__in=[Order.Status.PAYMENT_PENDING, Order.Status.PAYMENT_FAILED])
         .prefetch_related("items")
         .order_by("-created_at")
     )
@@ -1277,6 +1975,49 @@ def delivery_profile(request):
             "email": request.user.email,
             "phone": profile.phone,
             "approved": profile.approved,
+            "location": _latest_delivery_location(profile),
+            "dispatchRadiusKm": settings.DELIVERY_DISPATCH_RADIUS_KM,
+        }
+    )
+
+
+@csrf_protect
+@require_http_methods(["GET", "POST", "DELETE"])
+def delivery_location(request):
+    profile, error = _delivery_partner_profile(request)
+    if error:
+        return error
+    if request.method == "GET":
+        location = _latest_delivery_location(profile)
+        return JsonResponse({"location": location, "sharing": location is not None})
+    if request.method == "DELETE":
+        profile.latitude = None
+        profile.longitude = None
+        profile.location_updated_at = None
+        profile.save(update_fields=["latitude", "longitude", "location_updated_at"])
+        return JsonResponse(
+            {
+                "message": "Location sharing stopped.",
+                "sharing": False,
+                "dispatchRadiusKm": settings.DELIVERY_DISPATCH_RADIUS_KM,
+            }
+        )
+    try:
+        latitude, longitude = _coordinates_from_data(_json_body(request))
+    except ValueError as coordinate_error:
+        return _error(str(coordinate_error))
+    if latitude is None:
+        return _error("Provide your current latitude and longitude.")
+    profile.latitude = latitude
+    profile.longitude = longitude
+    profile.location_updated_at = timezone.now()
+    profile.save(update_fields=["latitude", "longitude", "location_updated_at"])
+    return JsonResponse(
+        {
+            "message": "Location updated.",
+            "location": _latest_delivery_location(profile),
+            "sharing": True,
+            "dispatchRadiusKm": settings.DELIVERY_DISPATCH_RADIUS_KM,
         }
     )
 
@@ -1309,6 +2050,21 @@ def delivery_dashboard(request):
     )
 
 
+def _latest_delivery_location(profile):
+    if (
+        profile.latitude is None
+        or profile.longitude is None
+        or profile.location_updated_at is None
+        or profile.location_updated_at < timezone.now() - LIVE_LOCATION_MAX_AGE
+    ):
+        return None
+    return {
+        "latitude": float(profile.latitude),
+        "longitude": float(profile.longitude),
+        "updatedAt": profile.location_updated_at.isoformat(),
+    }
+
+
 def _delivery_order_data(order):
     return {
         "id": str(order.id),
@@ -1321,11 +2077,31 @@ def _delivery_order_data(order):
         "restaurant": {
             "name": order.restaurant.name,
             "address": order.restaurant.address,
+            "latitude": (
+                float(order.restaurant.latitude)
+                if order.restaurant.latitude is not None
+                else None
+            ),
+            "longitude": (
+                float(order.restaurant.longitude)
+                if order.restaurant.longitude is not None
+                else None
+            ),
         },
         "customer": {
             "name": order.customer_name,
             "phone": order.customer_phone,
             "address": order.delivery_address,
+            "latitude": (
+                float(order.delivery_latitude)
+                if order.delivery_latitude is not None
+                else None
+            ),
+            "longitude": (
+                float(order.delivery_longitude)
+                if order.delivery_longitude is not None
+                else None
+            ),
         },
         "items": [
             {
@@ -1335,12 +2111,17 @@ def _delivery_order_data(order):
             }
             for item in order.items.all()
         ],
+        "location": (
+            _latest_delivery_location(order.delivery_partner)
+            if order.delivery_partner_id
+            else None
+        ),
     }
 
 
 @require_GET
 def delivery_available_orders(request):
-    _profile, error = _delivery_partner_profile(request)
+    profile, error = _delivery_partner_profile(request)
     if error:
         return error
     orders = Order.objects.filter(
@@ -1348,8 +2129,83 @@ def delivery_available_orders(request):
         status=Order.Status.READY_FOR_PICKUP,
         delivery_partner__isnull=True,
     ).select_related("restaurant").prefetch_related("items")
+    driver_location = _latest_delivery_location(profile)
+    fresh_partner_locations = list(
+        AccountProfile.objects.filter(
+            role=AccountProfile.Role.DELIVERY_PARTNER,
+            approved=True,
+            latitude__isnull=False,
+            longitude__isnull=False,
+            location_updated_at__gte=timezone.now() - LIVE_LOCATION_MAX_AGE,
+        ).values_list("latitude", "longitude")
+    )
+    offers = []
+    eligible_count = 0
+    radius_km = settings.DELIVERY_DISPATCH_RADIUS_KM
+    for order in orders:
+        distance = None
+        if (
+            driver_location
+            and order.restaurant.latitude is not None
+            and order.restaurant.longitude is not None
+        ):
+            distance = _distance_km(
+                driver_location["latitude"],
+                driver_location["longitude"],
+                order.restaurant.latitude,
+                order.restaurant.longitude,
+            )
+        eligible = distance is not None and distance <= radius_km
+        eligible_count += int(eligible)
+        nearby_partner_count = 0
+        if order.restaurant.latitude is not None and order.restaurant.longitude is not None:
+            nearby_partner_count = sum(
+                1
+                for partner_latitude, partner_longitude in fresh_partner_locations
+                if _distance_km(
+                    partner_latitude,
+                    partner_longitude,
+                    order.restaurant.latitude,
+                    order.restaurant.longitude,
+                ) <= radius_km
+            )
+        offer = _delivery_order_data(order)
+        if not eligible:
+            offer["customer"] = {
+                "name": "Customer",
+                "phone": "",
+                "address": "Delivery details shown to a partner within range",
+                "latitude": None,
+                "longitude": None,
+            }
+            offer["items"] = []
+        if eligible:
+            eligibility_message = "Within dispatch range"
+        elif not driver_location:
+            eligibility_message = "Share location to see which offers are within dispatch range"
+        elif order.restaurant.latitude is None or order.restaurant.longitude is None:
+            eligibility_message = "Restaurant map location missing; offer remains open"
+        elif nearby_partner_count:
+            eligibility_message = "Open offer; a nearby partner can accept"
+        else:
+            eligibility_message = "Open offer; waiting for a partner within dispatch range"
+        offer.update(
+            {
+                "eligible": eligible,
+                "distanceKm": round(distance, 2) if distance is not None else None,
+                "dispatchRadiusKm": radius_km,
+                "nearbyPartnerCount": nearby_partner_count,
+                "eligibilityMessage": eligibility_message,
+            }
+        )
+        offers.append(offer)
     return JsonResponse(
-        {"orders": [_delivery_order_data(order) for order in orders]}
+        {
+            "orders": offers,
+            "eligibleCount": eligible_count,
+            "dispatchRadiusKm": radius_km,
+            "locationRequired": driver_location is None,
+        }
     )
 
 
@@ -1387,7 +2243,7 @@ def delivery_accept_order(request, order_id):
     if error:
         return error
     with transaction.atomic():
-        AccountProfile.objects.select_for_update().get(pk=profile.pk)
+        profile = AccountProfile.objects.select_for_update().get(pk=profile.pk)
         order = get_object_or_404(Order.objects.select_for_update(), id=order_id)
         if order.order_type != Order.OrderType.DELIVERY:
             return _error("Pickup orders do not need a delivery partner.", 400)
@@ -1396,6 +2252,25 @@ def delivery_accept_order(request, order_id):
             or order.delivery_partner_id is not None
         ):
             return _error("This delivery is no longer available.", 409)
+        driver_location = _latest_delivery_location(profile)
+        if driver_location is None:
+            return _error("Share your current location before accepting deliveries.", 409)
+        if order.restaurant.latitude is None or order.restaurant.longitude is None:
+            return _error(
+                "This restaurant has no saved map location yet. The order remains open.",
+                409,
+            )
+        distance = _distance_km(
+            driver_location["latitude"],
+            driver_location["longitude"],
+            order.restaurant.latitude,
+            order.restaurant.longitude,
+        )
+        if distance > settings.DELIVERY_DISPATCH_RADIUS_KM:
+            return _error(
+                "This order is outside your dispatch range and remains open for a nearby partner.",
+                409,
+            )
         order.delivery_partner = profile
         order.status = Order.Status.ASSIGNED
         order.save(update_fields=["delivery_partner", "status"])
@@ -1423,6 +2298,39 @@ def delivery_update_status(request, order_id):
         return _error("Invalid delivery status transition.", 409)
     order.save(update_fields=["status"])
     return JsonResponse({"message": "Delivery status updated.", "status": order.status})
+
+
+@csrf_protect
+@require_http_methods(["POST", "DELETE"])
+def delivery_update_location(request, order_id):
+    profile, error = _delivery_partner_profile(request)
+    if error:
+        return error
+    order = get_object_or_404(
+        Order,
+        id=order_id,
+        delivery_partner=profile,
+        status__in=[Order.Status.PICKED_UP, Order.Status.OUT_FOR_DELIVERY],
+    )
+    if request.method == "DELETE":
+        profile.latitude = None
+        profile.longitude = None
+        profile.location_updated_at = None
+        profile.save(update_fields=["latitude", "longitude", "location_updated_at"])
+        return JsonResponse({"message": "Location sharing stopped."})
+    try:
+        data = _json_body(request)
+        latitude = Decimal(str(data.get("latitude")))
+        longitude = Decimal(str(data.get("longitude")))
+    except (ValueError, InvalidOperation, TypeError):
+        return _error("Provide valid latitude and longitude coordinates.")
+    if not latitude.is_finite() or not longitude.is_finite() or not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
+        return _error("Coordinates are outside valid ranges.")
+    profile.latitude = latitude.quantize(Decimal("0.000001"))
+    profile.longitude = longitude.quantize(Decimal("0.000001"))
+    profile.location_updated_at = timezone.now()
+    profile.save(update_fields=["latitude", "longitude", "location_updated_at"])
+    return JsonResponse({"message": "Location updated.", "updatedAt": profile.location_updated_at.isoformat()})
 
 
 @csrf_protect
@@ -1464,6 +2372,10 @@ def _confirm_order_with_code(order, code, completion_label, allowed_statuses):
             return _error("Confirmation code is incorrect.", 400)
         locked_order.status = Order.Status.COMPLETED
         locked_order.save(update_fields=["status"])
+        if locked_order.delivery_partner_id:
+            AccountProfile.objects.filter(pk=locked_order.delivery_partner_id).update(
+                latitude=None, longitude=None, location_updated_at=None
+            )
     return JsonResponse(
         {
             "message": f"{completion_label} confirmed.",

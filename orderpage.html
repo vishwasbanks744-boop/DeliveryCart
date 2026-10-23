@@ -345,6 +345,7 @@ h1 {
     }
 }
 </style>
+    <script src="/static/js/maps-client.js"></script>
 </head>
 
 <body>
@@ -417,6 +418,9 @@ h1 {
         <h2>Delivery address</h2>
 
         <p id="deliveryaddress"></p>
+        <a id="deliveryAddressMapLink" target="_blank" rel="noopener noreferrer" hidden>
+            Open delivery address in Google Maps
+        </a>
 
     </div>
 
@@ -484,6 +488,9 @@ h1 {
                 <h3 id="restaurantName"></h3>
 
                 <p id="restaurantDetails"></p>
+                <a id="restaurantMapLink" target="_blank" rel="noopener noreferrer" hidden>
+                    Open restaurant in Google Maps
+                </a>
 
             </div>
 
@@ -493,6 +500,19 @@ h1 {
         <div id="orderFoodItems"></div>
 
         <p id="orderMessage"></p>
+        <button id="retryCashfreePayment" type="button" hidden style="padding:12px 18px;border:0;border-radius:8px;background:#ff4d2d;color:#fff;font-weight:700;cursor:pointer">
+            Retry fee payment
+        </button>
+
+    <section id="liveTracking" hidden aria-live="polite" style="margin:20px 0;padding:16px;border-radius:12px;background:#f2f7ff">
+        <h3>Live delivery location</h3>
+        <p id="trackingMessage">Waiting for your delivery partner to share their location.</p>
+        <div id="deliveryTrackingMap" style="width:100%;height:320px;margin:14px 0;border-radius:12px;overflow:hidden;background:#e7edf3" aria-label="Live delivery map"></div>
+        <a id="trackingMapLink" target="_blank" rel="noopener" hidden>Open location in Google Maps</a>
+        <a id="deliveryRouteMapLink" target="_blank" rel="noopener noreferrer" hidden>
+            Open delivery route in Google Maps
+        </a>
+    </section>
 
     </section>
 
@@ -519,6 +539,23 @@ async function loadOrder() {
 
     try {
 
+        if (urlParams.get("payment") === "return" ||
+                (currentOrder && currentOrder.status === "payment_pending")) {
+            const paymentResponse = await fetch(
+                `/api/customer/orders/${orderId}/payment-status`
+            );
+            const paymentData = await paymentResponse.json();
+            if (paymentData.status === "success") {
+                urlParams.delete("payment");
+                document.getElementById("orderMessage").textContent =
+                    "Payment confirmed. Your order has been sent to the restaurant.";
+            } else if (paymentData.paymentSessionId) {
+                document.getElementById("retryCashfreePayment").hidden = false;
+                document.getElementById("orderMessage").textContent =
+                    "Cashfree has not confirmed payment yet. If money was deducted, please wait while we verify it.";
+            }
+        }
+
         const response = await fetch(
             `/api/customer/orders/${orderId}`
         );
@@ -535,6 +572,9 @@ async function loadOrder() {
         currentOrder = data;
 
         displayOrder(data);
+        if (data.status !== "payment_pending") {
+            document.getElementById("retryCashfreePayment").hidden = true;
+        }
 
     } catch (error) {
 
@@ -545,12 +585,114 @@ async function loadOrder() {
 
 }
 
+document.getElementById("retryCashfreePayment").addEventListener("click", async function() {
+    const button = this;
+    button.disabled = true;
+    try {
+        const response = await fetch(`/api/customer/orders/${orderId}/payment-status`);
+        const data = await response.json();
+        if (!response.ok || !data.paymentSessionId) {
+            throw new Error(data.message || "Payment retry is not available.");
+        }
+        if (!window.Cashfree) {
+            await new Promise(function(resolve, reject) {
+                const script = document.createElement("script");
+                script.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+        const configResponse = await fetch("/api/config/public");
+        const config = await configResponse.json();
+        const cashfree = window.Cashfree({ mode: config.cashfreeMode });
+        await cashfree.checkout({
+            paymentSessionId: data.paymentSessionId,
+            redirectTarget: "_self"
+        });
+    } catch (error) {
+        document.getElementById("orderMessage").textContent = error.message ||
+            "Could not open Cashfree checkout.";
+    } finally {
+        button.disabled = false;
+    }
+});
+
 
 /* Display complete order */
 function displayOrder(order) {
 
     document.getElementById("orderMessage").textContent =
         order.statusText || "";
+    const tracking = document.getElementById("liveTracking");
+    const trackingLink = document.getElementById("trackingMapLink");
+    const routeLink = document.getElementById("deliveryRouteMapLink");
+    const live = order.deliveryLocation;
+    const destination = order.deliveryCoordinates;
+    const destinationQuery =
+        destination && Number.isFinite(Number(destination.latitude))
+            && Number.isFinite(Number(destination.longitude))
+            ? destination.latitude + "," + destination.longitude
+            : order.deliveryAddress || "";
+    const addressMapLink = document.getElementById("deliveryAddressMapLink");
+    addressMapLink.href = RamjicartMaps.searchUrl(destinationQuery);
+    addressMapLink.hidden =
+        order.orderType !== "delivery" || !destinationQuery;
+
+    const restaurantLocation = order.restaurant && order.restaurant.location;
+    const restaurantQuery =
+        restaurantLocation
+        && Number.isFinite(Number(restaurantLocation.latitude))
+        && Number.isFinite(Number(restaurantLocation.longitude))
+            ? restaurantLocation.latitude + "," + restaurantLocation.longitude
+            : order.restaurant && order.restaurant.details || "";
+    const restaurantMapLink = document.getElementById("restaurantMapLink");
+    restaurantMapLink.href = RamjicartMaps.searchUrl(restaurantQuery);
+    restaurantMapLink.hidden = !restaurantQuery;
+    tracking.hidden = order.orderType !== "delivery" || !["assigned", "picked_up", "out_for_delivery"].includes(order.status);
+    if (live && Number.isFinite(Number(live.latitude)) && Number.isFinite(Number(live.longitude))) {
+        document.getElementById("deliveryTrackingMap").hidden = false;
+        trackingLink.href = RamjicartMaps.searchUrl(
+            live.latitude + "," + live.longitude
+        );
+        trackingLink.hidden = false;
+        document.getElementById("trackingMessage").textContent = live.updatedAt
+            ? `Last updated ${new Date(live.updatedAt).toLocaleTimeString()}.`
+            : "Delivery partner location received.";
+        if (destinationQuery) {
+            routeLink.href = RamjicartMaps.directionsUrl(
+                live.latitude + "," + live.longitude,
+                destinationQuery
+            );
+            routeLink.hidden = false;
+        } else {
+            routeLink.hidden = true;
+        }
+        const mapPoints = [{
+            latitude: live.latitude,
+            longitude: live.longitude,
+            title: "Delivery partner"
+        }];
+        if (destination && Number.isFinite(Number(destination.latitude))
+                && Number.isFinite(Number(destination.longitude))) {
+            mapPoints.push({
+                latitude: destination.latitude,
+                longitude: destination.longitude,
+                title: "Delivery address"
+            });
+        }
+        RamjicartMaps.renderMap(
+            document.getElementById("deliveryTrackingMap"),
+            mapPoints
+        ).catch(function() {
+            document.getElementById("deliveryTrackingMap").hidden = true;
+        });
+    } else {
+        trackingLink.hidden = true;
+        routeLink.hidden = true;
+        document.getElementById("deliveryTrackingMap").hidden = true;
+        document.getElementById("trackingMessage").textContent = "Waiting for your delivery partner to share their location.";
+    }
 
     /* Order ID */
 

@@ -110,6 +110,18 @@
             background: #e94e0c;
         }
 
+        #captureRestaurantLocationButton {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ff5a16;
+            border-radius: 8px;
+            background: white;
+            color: #ff5a16;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
         #registerMessage {
             min-height: 20px;
             margin-top: 15px;
@@ -152,6 +164,8 @@
 
     </style>
 
+    <script src="/static/js/auth-client.js"></script>
+    <script src="/static/js/maps-client.js"></script>
 </head>
 
 
@@ -176,6 +190,10 @@
 
             <form id="registrationForm">
 
+                <button type="button" id="googleRegisterButton" style="width:100%;padding:12px;margin-bottom:18px;background:#fff;color:#222;border:1px solid #bbb;border-radius:8px;cursor:pointer">
+                    Continue with Google
+                </button>
+
 
                 <div class="form-group">
 
@@ -191,6 +209,37 @@
                         required
                     >
 
+                </div>
+
+                <div class="form-group">
+                    <label for="restaurantLatitude">Latitude (optional)</label>
+                    <input
+                        type="number"
+                        id="restaurantLatitude"
+                        min="-90"
+                        max="90"
+                        step="0.000001"
+                        placeholder="Use current location or enter coordinates"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="restaurantLongitude">Longitude (optional)</label>
+                    <input
+                        type="number"
+                        id="restaurantLongitude"
+                        min="-180"
+                        max="180"
+                        step="0.000001"
+                        placeholder="Use current location or enter coordinates"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <button type="button" id="captureRestaurantLocationButton">
+                        Use this device's current location
+                    </button>
+                    <p id="restaurantLocationMessage" role="status" aria-live="polite"></p>
                 </div>
 
 
@@ -370,12 +419,60 @@
 
         const registrationForm =
             document.getElementById("registrationForm");
+        let googleRegistrationIdentity = null;
+
+        document.getElementById("googleRegisterButton").addEventListener("click", async function() {
+            const button = this;
+            registerMessage.textContent = "Connecting your Google account...";
+            button.disabled = true;
+            try {
+                googleRegistrationIdentity = await RamjicartAuth.startGoogleSignIn();
+                document.getElementById("restaurantEmail").value = googleRegistrationIdentity.email;
+                const ownerName = document.getElementById("ownerName");
+                if (!ownerName.value.trim()) ownerName.value = googleRegistrationIdentity.displayName;
+                ["restaurantPassword", "confirmPassword"].forEach(function(id) {
+                    const input = document.getElementById(id);
+                    input.required = false;
+                    input.closest(".form-group").hidden = true;
+                });
+                registerMessage.textContent = "Google connected. Complete the restaurant details to submit registration.";
+            } catch (error) {
+                registerMessage.textContent = error.message || "Could not connect Google account.";
+            } finally {
+                button.disabled = false;
+            }
+        });
 
         const registerButton =
             document.getElementById("registerButton");
 
         const registerMessage =
             document.getElementById("registerMessage");
+
+        document.getElementById("captureRestaurantLocationButton")
+            .addEventListener("click", function() {
+                const locationMessage =
+                    document.getElementById("restaurantLocationMessage");
+                if (!navigator.geolocation) {
+                    locationMessage.textContent =
+                        "This browser does not support device location.";
+                    return;
+                }
+                locationMessage.textContent = "Requesting location permission...";
+                RamjicartMaps.getCurrentPosition(
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+                ).then(function(position) {
+                        document.getElementById("restaurantLatitude").value =
+                            position.coords.latitude.toFixed(6);
+                        document.getElementById("restaurantLongitude").value =
+                            position.coords.longitude.toFixed(6);
+                        locationMessage.textContent =
+                            "Location captured. It will be saved with your restaurant profile.";
+                    }).catch(function(error) {
+                        locationMessage.textContent =
+                            error.message || "Could not read device location.";
+                    });
+            });
 
 
         registrationForm.addEventListener(
@@ -412,6 +509,12 @@
                 const city =
                     document.getElementById("restaurantCity").value.trim();
 
+                const latitude =
+                    document.getElementById("restaurantLatitude").value;
+
+                const longitude =
+                    document.getElementById("restaurantLongitude").value;
+
                 const password =
                     document.getElementById("restaurantPassword").value;
 
@@ -419,7 +522,7 @@
                     document.getElementById("confirmPassword").value;
 
 
-                if (password !== confirmPassword) {
+                if (!googleRegistrationIdentity && password !== confirmPassword) {
 
                     registerMessage.textContent =
                         "Passwords do not match.";
@@ -438,36 +541,20 @@
 
                 try {
 
-                    const response = await fetch(
-                        "/api/restaurant/register",
-                        {
-                            method: "POST",
-
-                            headers: {
-                                "Content-Type": "application/json",
-                                "X-CSRFToken": (document.cookie
-                                    .split("; ")
-                                    .find(function(cookie) {
-                                        return cookie.startsWith("csrftoken=");
-                                    }) || "csrftoken=").split("=").slice(1).join("=")
-                            },
-
-                            body: JSON.stringify({
-
-                                restaurantName: restaurantName,
-                                ownerName: ownerName,
-                                email: email,
-                                phone: phone,
-                                address: address,
-                                nearbyLandmark: nearbyLandmark,
-                                market: market,
-                                pincode: pincode,
-                                city: city,
-                                password: password
-
-                            })
-                        }
-                    );
+                    const response = await RamjicartAuth.registerRestaurant({
+                        restaurantName: restaurantName,
+                        ownerName: ownerName,
+                        email: email,
+                        phone: phone,
+                        address: address,
+                        nearbyLandmark: nearbyLandmark,
+                        market: market,
+                        pincode: pincode,
+                        city: city,
+                        latitude: latitude,
+                        longitude: longitude,
+                        password: password
+                    }, googleRegistrationIdentity);
 
 
                     const data = await response.json();

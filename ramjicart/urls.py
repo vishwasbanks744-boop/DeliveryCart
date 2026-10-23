@@ -11,6 +11,7 @@ from orders import views
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include("orders.urls")),
+    path("api/config/public", views.public_client_config, name="public-client-config"),
     path("login/", RedirectView.as_view(url="/login.html", permanent=False)),
     path("", views.homepage, name="homepage"),
     path("<str:page>.html", views.frontend_page, name="frontend-page"),

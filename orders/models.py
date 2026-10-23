@@ -22,8 +22,15 @@ class AccountProfile(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="account_profile"
     )
+    firebase_uid = models.CharField(
+        max_length=128, unique=True, null=True, blank=True, editable=False
+    )
     role = models.CharField(max_length=20, choices=Role.choices)
     phone = models.CharField(max_length=30, blank=True)
+    # Latest GPS fix from the delivery partner's device; never set by a customer.
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    location_updated_at = models.DateTimeField(null=True, blank=True)
     approved = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -71,6 +78,26 @@ class Restaurant(models.Model):
     market = models.CharField(max_length=160, blank=True)
     city = models.CharField(max_length=100, blank=True)
     pincode = models.CharField(max_length=12, blank=True)
+    latitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(Decimal("-90")),
+            MaxValueValidator(Decimal("90")),
+        ],
+    )
+    longitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(Decimal("-180")),
+            MaxValueValidator(Decimal("180")),
+        ],
+    )
     approved = models.BooleanField(default=False)
     accepting_orders = models.BooleanField(default=True)
     order_notifications = models.BooleanField(default=True)
@@ -108,10 +135,15 @@ class Restaurant(models.Model):
         super().save(*args, **kwargs)
 
     def clean(self):
+        errors = {}
         if self.commission_percentage > self.max_commission_percentage:
-            raise ValidationError(
-                {"commission_percentage": "Commission cannot exceed the approved maximum."}
+            errors["commission_percentage"] = (
+                "Commission cannot exceed the approved maximum."
             )
+        if (self.latitude is None) != (self.longitude is None):
+            errors["longitude"] = "Latitude and longitude must both be provided."
+        if errors:
+            raise ValidationError(errors)
 
     def __str__(self):
         return self.name
@@ -220,6 +252,26 @@ class Order(models.Model):
     customer_email = models.EmailField(blank=True)
     customer_phone = models.CharField(max_length=30)
     delivery_address = models.TextField(blank=True)
+    delivery_latitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(Decimal("-90")),
+            MaxValueValidator(Decimal("90")),
+        ],
+    )
+    delivery_longitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(Decimal("-180")),
+            MaxValueValidator(Decimal("180")),
+        ],
+    )
     restaurant = models.ForeignKey(
         Restaurant, on_delete=models.PROTECT, related_name="orders"
     )
@@ -242,6 +294,11 @@ class Order(models.Model):
     platform_fee = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal("0"))
     customer_total = models.DecimalField(max_digits=10, decimal_places=2)
     restaurant_payout = models.DecimalField(max_digits=10, decimal_places=2)
+    gateway_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
+    gateway_payment_status = models.CharField(max_length=24, default="not_required")
+    cashfree_order_id = models.CharField(max_length=45, blank=True, null=True, unique=True)
+    cashfree_payment_session_id = models.TextField(blank=True)
+    cashfree_payment_id = models.CharField(max_length=80, blank=True)
     confirmation_code = models.CharField(max_length=4, null=True, blank=True)
     confirmation_attempts = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -249,6 +306,18 @@ class Order(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+    def clean(self):
+        if (self.delivery_latitude is None) != (
+            self.delivery_longitude is None
+        ):
+            raise ValidationError(
+                {
+                    "delivery_longitude": (
+                        "Delivery latitude and longitude must both be provided."
+                    )
+                }
+            )
 
     def __str__(self):
         return f"{self.id} ({self.get_status_display()})"

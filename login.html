@@ -180,6 +180,7 @@
             }
         }
     </style>
+    <script src="/static/js/auth-client.js"></script>
 </head>
 
 <body>
@@ -228,6 +229,12 @@
             </button>
         </div>
 
+        <div>
+            <button type="button" id="googleLoginButton" style="width:100%;margin-top:12px;padding:11px;background:#fff;color:#222;border:1px solid #bbb;border-radius:6px;cursor:pointer">
+                Continue with Google
+            </button>
+        </div>
+
         <div id="loginMessage"></div>
 
         <br>
@@ -246,6 +253,42 @@
         const loginForm = document.getElementById("loginForm");
         const loginButton = document.getElementById("loginButton");
         const loginMessage = document.getElementById("loginMessage");
+        const googleLoginButton = document.getElementById("googleLoginButton");
+        document.querySelector(".forgot-password").addEventListener("click", async function(event) {
+            event.preventDefault();
+            const email = document.getElementById("loginemail").value.trim();
+            if (!email) {
+                loginMessage.textContent = "Enter your Gmail address first.";
+                loginMessage.className = "error-message";
+                return;
+            }
+            try {
+                await RamjicartAuth.sendPasswordResetEmail(email);
+                loginMessage.textContent = "Password reset email sent. Check your inbox.";
+                loginMessage.className = "success-message";
+            } catch (error) {
+                loginMessage.textContent = error.message || "Could not send a reset email.";
+                loginMessage.className = "error-message";
+            }
+        });
+
+        googleLoginButton.addEventListener("click", async function() {
+            googleLoginButton.disabled = true;
+            loginMessage.textContent = "Signing in with Google...";
+            try {
+                const response = await RamjicartAuth.loginWithGoogle("customer");
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || "Google sign-in failed.");
+                loginMessage.textContent = data.message || "Login successful.";
+                window.setTimeout(function() {
+                    window.location.href = data.redirect || "/";
+                }, 400);
+            } catch (error) {
+                loginMessage.textContent = error.message || "Google sign-in failed.";
+            } finally {
+                googleLoginButton.disabled = false;
+            }
+        });
 
         loginForm.addEventListener("submit", async function(event) {
 
@@ -262,36 +305,16 @@
 
             try {
 
-                const response = await fetch("/api/auth/login", {
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-CSRFToken": (document.cookie
-                            .split("; ")
-                            .find(function(cookie) {
-                                return cookie.startsWith("csrftoken=");
-                            }) || "csrftoken=").split("=").slice(1).join("=")
-                    },
-
-                    body: JSON.stringify({
-                        email: email,
-                        password: password
-                    })
+                const response = await RamjicartAuth.login({
+                    email: email,
+                    password: password,
+                    expectedRole: "customer"
                 });
 
                 const data = await response.json();
 
                 if (!response.ok) {
                     throw new Error(data.message || "Login failed");
-                }
-
-                /*
-                 * Backend login successful
-                 * Backend se token aayega to save hoga
-                 */
-                if (data.token) {
-                    localStorage.setItem("authToken", data.token);
                 }
 
                 loginMessage.textContent =

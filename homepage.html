@@ -217,26 +217,118 @@
 
         #categoryList {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 20px;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
         }
 
-        .category-card {
+        .craving-food-card {
             background: white;
-            padding: 30px 20px;
-            text-align: center;
-            border-radius: 15px;
-            font-size: 20px;
-            font-weight: bold;
-            cursor: pointer;
+            padding: 14px;
+            border-radius: 14px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.07);
             transition: 0.3s;
+            min-width: 0;
         }
 
-        .category-card:hover {
-            transform: translateY(-7px);
-            box-shadow: 0 10px 25px rgba(255,77,45,0.18);
-            color: #ff4d2d;
+        .craving-food-card img {
+            display: block;
+            width: 100%;
+            height: 118px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .craving-food-card h3 {
+            font-size: 17px;
+            margin-bottom: 5px;
+        }
+
+        .craving-food-card p {
+            margin-bottom: 6px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .craving-food-card .food-price {
+            margin: 8px 0;
+        }
+
+        .craving-food-card button {
+            display: block;
+            width: 100%;
+            margin-top: 10px;
+            padding: 11px 14px;
+            border: 0;
+            border-radius: 9px;
+            background: linear-gradient(135deg, #ff6542, #f0442b);
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(240, 68, 43, .2);
+            transition: background .2s ease, box-shadow .2s ease, transform .2s ease;
+        }
+
+        .craving-food-card button:hover {
+            background: linear-gradient(135deg, #f4512e, #db351f);
+            box-shadow: 0 6px 14px rgba(240, 68, 43, .28);
+            transform: translateY(-1px);
+        }
+
+        .craving-food-card button:focus-visible {
+            outline: 3px solid rgba(240, 68, 43, .35);
+            outline-offset: 3px;
+        }
+
+        #orderHistoryList {
+            display: grid;
+            gap: 10px;
+        }
+
+        .order-history-card {
+            overflow: hidden;
+            border: 1px solid #e8edf2;
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .order-history-card summary {
+            display: grid;
+            grid-template-columns: minmax(150px, 1.2fr) minmax(110px, 1fr) minmax(120px, 1fr) auto auto;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 18px;
+            cursor: pointer;
+            list-style: none;
+        }
+
+        .order-history-card summary::-webkit-details-marker { display: none; }
+        .order-history-card summary:hover { background: #fff8f5; }
+        .order-history-title { margin: 0; font-size: 15px; font-weight: 700; }
+        .order-history-meta { margin: 0; color: #687386; font-size: 13px; }
+        .order-history-total { color: #ff4d2d; font-weight: 700; white-space: nowrap; }
+        .order-history-status { margin: 0; color: #168a45; font-size: 13px; font-weight: 600; }
+        .order-history-details {
+            padding: 0 18px 15px;
+            border-top: 1px solid #eef1f4;
+        }
+        .order-history-details p { margin-top: 10px; color: #555; }
+        .order-history-details a { display: inline-block; margin-top: 10px; color: #e94e0c; font-weight: 600; }
+
+        @media (max-width: 650px) {
+            .order-history-card summary {
+                grid-template-columns: 1fr auto;
+                gap: 5px 12px;
+                padding: 12px;
+            }
+            .order-history-meta { grid-column: 1; }
+            .order-history-restaurant { grid-column: 1; grid-row: 2; }
+            .order-history-date { grid-column: 1; grid-row: 3; }
+            .order-history-total { grid-column: 2; grid-row: 1; }
+            .order-history-status { grid-column: 2; grid-row: 2; text-align: right; }
         }
 
         /* FOOD CARDS */
@@ -245,19 +337,20 @@
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 25px;
+            scroll-margin-top: 92px;
         }
 
         .food-card {
             background: white;
-            padding: 25px;
-            border-radius: 16px;
+            padding: 16px;
+            border-radius: 14px;
             box-shadow: 0 5px 18px rgba(0,0,0,0.08);
             transition: 0.3s;
         }
 
         .food-card img {
             width: 100%;
-            aspect-ratio: 16 / 10;
+            height: 150px;
             object-fit: cover;
             border-radius: 10px;
             margin-bottom: 14px;
@@ -275,14 +368,21 @@
         }
 
         .food-card h3 {
-            font-size: 22px;
-            margin-bottom: 12px;
+            font-size: 19px;
+            margin-bottom: 8px;
         }
 
         .food-card p {
             color: #777;
-            margin-bottom: 12px;
-            line-height: 1.5;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .food-card p:not(.food-price):not(.food-restaurant) {
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+            overflow: hidden;
         }
 
         .food-price {
@@ -363,7 +463,7 @@
             }
 
             #categoryList {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
             #foodList {
@@ -420,11 +520,16 @@
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
+            .craving-food-card img { height: 100px; }
+            .craving-food-card { padding: 10px; }
+
             main > section h2 {
                 font-size: 25px;
             }
         }
     </style>
+    <script src="/static/js/auth-client.js"></script>
+    <script src="/static/js/maps-client.js"></script>
 </head>
 
 <body>
@@ -440,7 +545,7 @@
 
                 <a href="resturentpage.html">Restaurants</a>
 
-                <a href="#orderHistory">Order History</a>
+                <a href="#orderHistory">Order history</a>
 
                 <a href="cartpage.html" id="cartLink">
                     🛒 Cart
@@ -615,6 +720,7 @@
 
         const foodApi = "/api/customer/foods";
         const categoryApi = "/api/customer/categories";
+        const popularFoodsApi = "/api/customer/foods/popular";
         const orderApi = "/api/customer/orders/current";
         const orderHistoryApi = "/api/customer/orders/history";
 
@@ -662,16 +768,7 @@
         const customerProfile = document.getElementById("customerProfile");
 
         async function signOut() {
-            const cookie = document.cookie.split("; ")
-                .find(function(value) { return value.startsWith("csrftoken="); });
-            const response = await fetch("/api/auth/logout", {
-                method: "POST",
-                headers: {
-                    "X-CSRFToken": cookie
-                        ? decodeURIComponent(cookie.split("=")[1])
-                        : ""
-                }
-            });
+            const response = await RamjicartAuth.logout();
             if (response.ok) window.location.href = "login.html";
         }
 
@@ -697,7 +794,7 @@
 
         async function loadAccountAction() {
             try {
-                const response = await fetch("/api/auth/me");
+                const response = await RamjicartAuth.currentUser();
                 if (!response.ok) {
                     accountLink.textContent = "Sign in";
                     accountLink.href = "login.html";
@@ -744,6 +841,58 @@
         ==========================================
         */
 
+        async function loadPopularFoods() {
+            categoryList.innerHTML = "";
+            categoryMessage.textContent = "Loading customer favourites...";
+            try {
+                const response = await fetch(popularFoodsApi);
+                const foods = await response.json();
+                if (!response.ok) {
+                    throw new Error(foods.message || "Popular food could not be loaded.");
+                }
+                const orderedItems = foods.filter(function(food) {
+                    return Number(food.orderCount || 0) > 0;
+                }).length;
+                categoryMessage.textContent = !foods.length
+                    ? "No menu items are available yet."
+                    : orderedItems === foods.length
+                        ? "Most ordered by customers"
+                        : orderedItems
+                            ? "Top ordered and recommended picks"
+                            : "Recommended dishes to try";
+                foods.slice(0, 4).forEach(function(food) {
+                    const card = document.createElement("article");
+                    card.className = "craving-food-card";
+                    const image = document.createElement("img");
+                    image.src = food.image || "/static/food-placeholder.svg";
+                    image.alt = food.name || "Food item";
+                    image.loading = "lazy";
+                    image.onerror = function() {
+                        this.onerror = null;
+                        this.src = "/static/food-placeholder.svg";
+                    };
+                    const title = document.createElement("h3");
+                    title.textContent = food.name;
+                    const restaurant = document.createElement("p");
+                    restaurant.className = "food-restaurant";
+                    restaurant.textContent = food.restaurantName || "";
+                    const price = document.createElement("p");
+                    price.className = "food-price";
+                    price.textContent = "₹" + Number(food.price).toFixed(2);
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.textContent = "Order Now";
+                    button.addEventListener("click", function() {
+                        addToCart(food);
+                    });
+                    card.append(image, title, restaurant, price, button);
+                    categoryList.appendChild(card);
+                });
+            } catch (error) {
+                categoryMessage.textContent = error.message || "Popular food could not be loaded.";
+            }
+        }
+
         async function loadCategories() {
 
             try {
@@ -779,6 +928,17 @@
 
                     categoryCard.className =
                         "category-card";
+
+                    const categoryIcons = {
+                        pizza: "🍕", burger: "🍔", chicken: "🍗",
+                        noodles: "🍜", biryani: "🍛", healthy: "🥗",
+                        dessert: "🍰", beverage: "🥤", drinks: "🥤"
+                    };
+                    const categoryKey = (category.name || "").toLowerCase();
+                    categoryCard.dataset.icon = Object.keys(categoryIcons)
+                        .find(key => categoryKey.includes(key))
+                        ? categoryIcons[Object.keys(categoryIcons).find(key => categoryKey.includes(key))]
+                        : "🍽️";
 
                     categoryCard.textContent =
                         category.name;
@@ -826,6 +986,17 @@
                     .get("restaurantId");
                 if (categoryId) params.set("categoryId", categoryId);
                 if (restaurantId) params.set("restaurantId", restaurantId);
+                try {
+                    const savedLocation = JSON.parse(
+                        sessionStorage.getItem("restaurantSearchLocation") || "null"
+                    );
+                    if (savedLocation && savedLocation.latitude && savedLocation.longitude) {
+                        params.set("latitude", savedLocation.latitude);
+                        params.set("longitude", savedLocation.longitude);
+                    }
+                } catch (error) {
+                    console.error("Saved restaurant location could not be read:", error);
+                }
                 const url = params.size ? foodApi + "?" + params.toString() : foodApi;
 
                 const response =
@@ -868,20 +1039,27 @@
                 const card = document.createElement("article");
                 card.className = "food-card";
 
-                if (food.image) {
-                    const image = document.createElement("img");
-                    image.src = food.image;
-                    image.alt = food.name;
-                    image.loading = "lazy";
-                    card.appendChild(image);
-                }
+                const image = document.createElement("img");
+                image.src = food.image || "/static/food-placeholder.svg";
+                image.alt = food.name || "Food item";
+                image.loading = "lazy";
+                image.onerror = function() {
+                    this.onerror = null;
+                    this.src = "/static/food-placeholder.svg";
+                };
+                card.appendChild(image);
 
                 const title = document.createElement("h3");
                 title.textContent = food.name;
 
                 const restaurant = document.createElement("p");
                 restaurant.className = "food-restaurant";
-                restaurant.textContent = food.restaurantName || "";
+                const locationDistance = Number(food.restaurantDistanceKm);
+                restaurant.textContent = food.restaurantDistanceKm !== null
+                    && food.restaurantDistanceKm !== undefined
+                    && Number.isFinite(locationDistance)
+                    ? `${food.restaurantName || ""} · ${locationDistance.toFixed(1)} km away`
+                    : food.restaurantName || "";
 
                 const description = document.createElement("p");
                 description.textContent = food.description || "";
@@ -900,6 +1078,21 @@
                 card.appendChild(restaurant);
                 card.appendChild(description);
                 card.appendChild(price);
+                if (
+                    food.restaurantLatitude !== null
+                    && food.restaurantLatitude !== undefined
+                    && food.restaurantLongitude !== null
+                    && food.restaurantLongitude !== undefined
+                ) {
+                    const mapLink = document.createElement("a");
+                    mapLink.href = RamjicartMaps.searchUrl(
+                        food.restaurantLatitude + "," + food.restaurantLongitude
+                    );
+                    mapLink.target = "_blank";
+                    mapLink.rel = "noopener noreferrer";
+                    mapLink.textContent = "View restaurant location";
+                    card.appendChild(mapLink);
+                }
                 card.appendChild(button);
                 foodList.appendChild(card);
             });
@@ -957,7 +1150,8 @@
 
             if (!searchText) {
 
-                loadFoods();
+                await loadFoods();
+                foodList.scrollIntoView({ behavior: "smooth", block: "start" });
 
                 return;
             }
@@ -986,6 +1180,7 @@
 
                 const foods = await response.json();
                 renderFoodCards(foods);
+                foodList.scrollIntoView({ behavior: "smooth", block: "start" });
 
 
             } catch (error) {
@@ -1123,20 +1318,33 @@
                     : "You have not placed any orders yet.";
 
                 orders.forEach(function(order) {
-                    const card = document.createElement("article");
-                    card.className = "food-card order-history-card";
+                    const card = document.createElement("details");
+                    card.className = "order-history-card";
 
-                    const heading = document.createElement("h3");
+                    const heading = document.createElement("span");
                     heading.textContent = "Order #" + order.orderNumber;
 
-                    const restaurant = document.createElement("p");
+                    const restaurant = document.createElement("span");
                     restaurant.textContent = order.restaurantName;
 
-                    const date = document.createElement("p");
+                    const date = document.createElement("span");
                     date.textContent = order.createdAt;
 
-                    const status = document.createElement("p");
+                    const status = document.createElement("span");
                     status.textContent = "Status: " + order.status;
+
+                    const summary = document.createElement("summary");
+                    heading.className = "order-history-title";
+                    restaurant.className = "order-history-meta order-history-restaurant";
+                    date.className = "order-history-meta order-history-date";
+                    status.className = "order-history-status";
+                    const collapsedTotal = document.createElement("span");
+                    collapsedTotal.className = "order-history-total";
+                    collapsedTotal.textContent = "₹" + Number(order.total).toFixed(2);
+                    summary.append(heading, restaurant, date, collapsedTotal, status);
+                    card.appendChild(summary);
+                    const details = document.createElement("div");
+                    details.className = "order-history-details";
 
                     const itemSummary = document.createElement("p");
                     itemSummary.textContent = (order.items || []).map(function(item) {
@@ -1144,20 +1352,15 @@
                     }).join(", ");
 
                     const total = document.createElement("p");
-                    total.className = "food-price";
+                    total.className = "order-history-total";
                     total.textContent = "Total: ₹" + order.total;
 
                     const detailsLink = document.createElement("a");
                     detailsLink.href = "orderpage.html?id=" + encodeURIComponent(order.id);
                     detailsLink.textContent = "View details";
 
-                    card.appendChild(heading);
-                    card.appendChild(restaurant);
-                    card.appendChild(date);
-                    card.appendChild(status);
-                    card.appendChild(itemSummary);
-                    card.appendChild(total);
-                    card.appendChild(detailsLink);
+                    details.append(itemSummary, total, detailsLink);
+                    card.appendChild(details);
                     orderHistoryList.appendChild(card);
                 });
             } catch (error) {
@@ -1213,7 +1416,7 @@
         ==========================================
         */
 
-        loadCategories();
+        loadPopularFoods();
 
         loadFoods();
 

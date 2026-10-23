@@ -58,6 +58,8 @@ class RestaurantAdmin(admin.ModelAdmin):
                     "market",
                     "city",
                     "pincode",
+                    "latitude",
+                    "longitude",
                     "logo",
                 )
             },
@@ -131,6 +133,8 @@ class OrderAdmin(admin.ModelAdmin):
         "customer_email",
         "customer_phone",
         "delivery_address",
+        "delivery_latitude",
+        "delivery_longitude",
         "restaurant",
         "order_type",
         "status",

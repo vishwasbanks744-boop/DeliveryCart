@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.staticfiles import finders
 from django.core.exceptions import ValidationError
 from django.test import Client, TestCase
+from django.utils import timezone
 
 from .models import AccountProfile, Category, Food, Order, PricingSettings, Restaurant
 
@@ -41,6 +42,8 @@ class OrderWorkflowTests(TestCase):
             owner_name="Restaurant Owner",
             email="restaurant@example.test",
             approved=True,
+            latitude=Decimal("0.000000"),
+            longitude=Decimal("0.000000"),
             commission_percentage=Decimal("5.00"),
             max_commission_percentage=Decimal("10.00"),
         )
@@ -55,6 +58,9 @@ class OrderWorkflowTests(TestCase):
             role=AccountProfile.Role.DELIVERY_PARTNER,
             phone="9222222222",
             approved=True,
+            latitude=Decimal("0.000000"),
+            longitude=Decimal("0.000000"),
+            location_updated_at=timezone.now(),
         )
         self.category = Category.objects.create(name="Meals")
         self.food = Food.objects.create(
@@ -139,6 +145,19 @@ class OrderWorkflowTests(TestCase):
             fetch_redirect_response=False,
         )
 
+    def test_auth_pages_set_csrf_cookie_for_session_api_posts(self):
+        for page in (
+            "/login.html",
+            "/register.html",
+            "/resturentloginpage.html",
+            "/resturentregisterpage.html",
+            "/deliveryregister.html",
+        ):
+            with self.subTest(page=page):
+                response = Client().get(page)
+                self.assertEqual(response.status_code, 200)
+                self.assertIn("csrftoken", response.cookies)
+
     def test_food_search_matches_restaurant_name(self):
         response = Client().get("/api/customer/foods?search=Test%20Kitchen")
 
@@ -176,6 +195,54 @@ class OrderWorkflowTests(TestCase):
         )
         self.assertEqual(restaurants[0]["proximityMatch"], "Same PIN code")
         self.assertEqual(restaurants[1]["proximityMatch"], "Same city")
+
+    def test_nearby_restaurants_are_ranked_by_gps_distance(self):
+        self.restaurant.latitude = Decimal("0.000000")
+        self.restaurant.longitude = Decimal("0.020000")
+        self.restaurant.save(update_fields=["latitude", "longitude"])
+        closest_restaurant = Restaurant.objects.create(
+            name="Closest Kitchen",
+            email="closest@example.test",
+            latitude=Decimal("0.000000"),
+            longitude=Decimal("0.010000"),
+            approved=True,
+        )
+        Food.objects.create(
+            restaurant=closest_restaurant,
+            category=self.category,
+            name="Closest meal",
+            price=Decimal("120.00"),
+        )
+
+        response = Client().get(
+            "/api/customer/restaurants?latitude=0&longitude=0"
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        restaurants = response.json()["restaurants"]
+        self.assertEqual(
+            [restaurant["name"] for restaurant in restaurants],
+            ["Closest Kitchen", "Test Kitchen"],
+        )
+        self.assertEqual(restaurants[0]["proximityMatch"], "1.1 km away")
+        self.assertEqual(restaurants[0]["latitude"], 0)
+        self.assertAlmostEqual(restaurants[0]["distanceKm"], 1.11, places=2)
+
+        foods = Client().get(
+            "/api/customer/foods?latitude=0&longitude=0"
+        ).json()
+        self.assertEqual(foods[0]["name"], "Closest meal")
+        self.assertAlmostEqual(foods[0]["restaurantDistanceKm"], 1.11, places=2)
+
+    def test_gps_restaurant_search_requires_a_valid_coordinate_pair(self):
+        incomplete = Client().get(
+            "/api/customer/restaurants?latitude=12.5"
+        )
+        self.assertEqual(incomplete.status_code, 400)
+        invalid = Client().get(
+            "/api/customer/restaurants?latitude=91&longitude=0"
+        )
+        self.assertEqual(invalid.status_code, 400)
 
     def test_restaurant_results_rank_landmark_market_pincode_then_city(self):
         self.restaurant.city = "Lucknow"
@@ -256,6 +323,8 @@ class OrderWorkflowTests(TestCase):
             "market": "Central Market",
             "city": "Lucknow",
             "pincode": "226001",
+            "latitude": "26.8467",
+            "longitude": "80.9462",
         }
 
         invalid = dict(payload, pincode="2260")
@@ -274,11 +343,19 @@ class OrderWorkflowTests(TestCase):
         self.assertEqual(saved.status_code, 200, saved.content)
         self.assertEqual(saved.json()["nearbyLandmark"], "City Hospital")
         self.assertEqual(saved.json()["market"], "Central Market")
+        self.assertAlmostEqual(saved.json()["latitude"], 26.8467)
+        self.assertAlmostEqual(saved.json()["longitude"], 80.9462)
         self.restaurant.refresh_from_db()
         self.assertEqual(self.restaurant.city, "Lucknow")
         self.assertEqual(self.restaurant.pincode, "226001")
         self.assertEqual(self.restaurant.nearby_landmark, "City Hospital")
         self.assertEqual(self.restaurant.market, "Central Market")
+        self.assertEqual(self.restaurant.latitude, Decimal("26.846700"))
+        self.assertEqual(self.restaurant.longitude, Decimal("80.946200"))
+
+        self.restaurant.longitude = None
+        with self.assertRaises(ValidationError):
+            self.restaurant.full_clean()
 
     def test_nearby_restaurants_reject_invalid_pincode(self):
         response = Client().get(
@@ -301,8 +378,22 @@ class OrderWorkflowTests(TestCase):
         self.assertContains(response, 'id="market"')
         self.assertContains(response, 'id="address"')
         self.assertContains(response, 'id="city"')
+        self.assertContains(response, 'id="useCurrentLocationButton"')
         self.assertContains(response, 'id="restaurant-list"')
         self.assertNotContains(response, 'id="restaurant-1"')
+
+    def test_restaurant_registration_and_profile_capture_optional_coordinates(self):
+        registration_page = Client().get("/resturentregisterpage.html")
+        self.assertEqual(registration_page.status_code, 200)
+        self.assertContains(registration_page, 'id="captureRestaurantLocationButton"')
+
+        restaurant_client = Client()
+        restaurant_client.force_login(self.restaurant_user)
+        profile_page = restaurant_client.get("/resturentprofilepage.html")
+        self.assertEqual(profile_page.status_code, 200)
+        self.assertContains(profile_page, 'id="restaurantLatitude"')
+        self.assertContains(profile_page, 'id="restaurantLongitude"')
+        self.assertContains(profile_page, "Use this device's current location")
 
     def test_customer_homepage_has_an_ad_slot_after_the_hero(self):
         response = Client().get("/homepage.html")
@@ -715,6 +806,64 @@ class OrderWorkflowTests(TestCase):
         )
         self.assertEqual(listed_order["status"], "confirmed")
 
+    def test_dispatch_offers_stay_open_and_are_broadcast_to_nearby_partners(self):
+        order, _code = self._create_order(Order.OrderType.DELIVERY)
+        restaurant_client = Client()
+        restaurant_client.force_login(self.restaurant_user)
+        for status in ("confirmed", "preparing", "ready"):
+            restaurant_client.put(
+                f"/api/restaurant/orders/{order.id}",
+                data=json.dumps({"status": status}),
+                content_type="application/json",
+            )
+
+        driver_client = Client()
+        driver_client.force_login(self.delivery_user)
+        self.delivery_profile.latitude = Decimal("0.200000")
+        self.delivery_profile.save(update_fields=["latitude"])
+        out_of_range = driver_client.get("/api/delivery/orders/available").json()
+        self.assertEqual(out_of_range["orders"][0]["id"], str(order.id))
+        self.assertFalse(out_of_range["orders"][0]["eligible"])
+        self.assertEqual(out_of_range["eligibleCount"], 0)
+        self.assertEqual(out_of_range["orders"][0]["customer"]["phone"], "")
+        rejected = driver_client.put(f"/api/delivery/orders/{order.id}/accept")
+        self.assertEqual(rejected.status_code, 409)
+        order.refresh_from_db()
+        self.assertEqual(order.status, Order.Status.READY_FOR_PICKUP)
+        self.assertIsNone(order.delivery_partner_id)
+
+        online = self._json_post(
+            driver_client,
+            "/api/delivery/location",
+            {"latitude": "0.000000", "longitude": "0.000000"},
+        )
+        self.assertEqual(online.status_code, 200, online.content)
+        second_user = get_user_model().objects.create_user(
+            username="nearby-driver@example.test",
+            email="nearby-driver@example.test",
+            password="StrongPass!2026",
+        )
+        AccountProfile.objects.create(
+            user=second_user,
+            role=AccountProfile.Role.DELIVERY_PARTNER,
+            approved=True,
+            latitude=Decimal("0.010000"),
+            longitude=Decimal("0.000000"),
+            location_updated_at=timezone.now(),
+        )
+        for user in (self.delivery_user, second_user):
+            client = Client()
+            client.force_login(user)
+            offer = client.get("/api/delivery/orders/available").json()
+            self.assertEqual(offer["eligibleCount"], 1)
+            self.assertEqual(offer["orders"][0]["id"], str(order.id))
+            self.assertTrue(offer["orders"][0]["eligible"])
+
+        accepted = driver_client.put(f"/api/delivery/orders/{order.id}/accept")
+        self.assertEqual(accepted.status_code, 200, accepted.content)
+        order.refresh_from_db()
+        self.assertEqual(order.status, Order.Status.ASSIGNED)
+
     def test_delivery_workflow_requires_assigned_driver_and_customer_code(self):
         order, code = self._create_order(Order.OrderType.DELIVERY)
         restaurant_client = Client()
@@ -790,6 +939,58 @@ class OrderWorkflowTests(TestCase):
         self.assertEqual(
             dashboard.json()["recentCompleted"][0]["id"],
             str(order.id),
+        )
+
+    def test_delivery_partner_can_share_and_stop_location(self):
+        order, _code = self._create_order(Order.OrderType.DELIVERY)
+        restaurant_client = Client()
+        restaurant_client.force_login(self.restaurant_user)
+        for status in ("confirmed", "preparing", "ready"):
+            restaurant_client.put(
+                f"/api/restaurant/orders/{order.id}",
+                data=json.dumps({"status": status}),
+                content_type="application/json",
+            )
+
+        driver_client = Client()
+        driver_client.force_login(self.delivery_user)
+        accepted = driver_client.put(
+            f"/api/delivery/orders/{order.id}/accept"
+        )
+        self.assertEqual(accepted.status_code, 200, accepted.content)
+        for status in ("PICKED_UP", "ON_THE_WAY"):
+            response = driver_client.put(
+                f"/api/delivery/orders/{order.id}/status",
+                data=json.dumps({"status": status}),
+                content_type="application/json",
+            )
+            self.assertEqual(response.status_code, 200, response.content)
+
+        location_response = self._json_post(
+            driver_client,
+            f"/api/delivery/orders/{order.id}/location",
+            {"latitude": "28.6139", "longitude": "77.2090"},
+        )
+        self.assertEqual(location_response.status_code, 200)
+        live_location = self.customer_client.get(
+            f"/api/customer/orders/{order.id}"
+        ).json()["deliveryLocation"]
+        self.assertEqual(
+            {key: live_location[key] for key in ("latitude", "longitude")},
+            {"latitude": 28.6139, "longitude": 77.209},
+        )
+
+        stopped = driver_client.delete(
+            f"/api/delivery/orders/{order.id}/location"
+        )
+        self.assertEqual(stopped.status_code, 200, stopped.content)
+        self.delivery_profile.refresh_from_db()
+        self.assertIsNone(self.delivery_profile.latitude)
+        self.assertIsNone(self.delivery_profile.longitude)
+        self.assertIsNone(
+            self.customer_client.get(
+                f"/api/customer/orders/{order.id}"
+            ).json()["deliveryLocation"]
         )
 
     def test_delivery_end_to_end_rejects_invalid_steps_and_tracks_every_stage(self):
@@ -1356,6 +1557,38 @@ class OrderWorkflowTests(TestCase):
         response = self.customer_client.get("/checkout.html")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Place order")
+
+    def test_delivery_order_keeps_destination_coordinates_for_map_links(self):
+        self.restaurant.latitude = Decimal("26.846700")
+        self.restaurant.longitude = Decimal("80.946200")
+        self.restaurant.save(update_fields=["latitude", "longitude"])
+
+        response = self._json_post(
+            self.customer_client,
+            "/api/customer/orders",
+            {
+                "orderType": "delivery",
+                "deliveryAddress": "12 Main Road, Delhi",
+                "latitude": "28.613900",
+                "longitude": "77.209000",
+            },
+        )
+
+        self.assertEqual(response.status_code, 201, response.content)
+        order = Order.objects.get(id=response.json()["orderId"])
+        self.assertEqual(order.delivery_latitude, Decimal("28.613900"))
+        self.assertEqual(order.delivery_longitude, Decimal("77.209000"))
+        detail = self.customer_client.get(
+            f"/api/customer/orders/{order.id}"
+        ).json()
+        self.assertEqual(
+            detail["deliveryCoordinates"],
+            {"latitude": 28.6139, "longitude": 77.209},
+        )
+        self.assertEqual(
+            detail["restaurant"]["location"],
+            {"latitude": 26.8467, "longitude": 80.9462},
+        )
 
     def test_restaurant_can_add_menu_item_and_update_order_settings(self):
         restaurant_client = Client()

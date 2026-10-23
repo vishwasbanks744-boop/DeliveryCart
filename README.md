@@ -2,9 +2,9 @@
 
 Django serves the existing HTML pages and handles customer, restaurant, and
 delivery-partner accounts, cart/checkout, order hand-off, and 4-digit
-confirmation codes. Payment gateway integration is intentionally disabled for
-now. The order pages show the payable amount and whether payment is due at the
-restaurant or on delivery.
+confirmation codes. Cashfree hosted checkout is implemented and stays disabled
+until Cashfree credentials are configured. The order pages show the fee amount
+collected online and the remaining amount due at handover.
 
 ## Run locally (Windows PowerShell)
 
@@ -33,11 +33,61 @@ number, approval issue date, CEO details, and a QR code that opens a public
 verification page. Certificates are not issued while an account is awaiting
 admin approval; revoked or unapproved certificates show as not verified.
 
-Restaurant discovery asks customers for their city and six-digit PIN code,
-with optional nearby landmark and market. Results are limited to restaurants
-matching the supplied city or PIN code, then ranked by exact landmark, market,
-PIN code, and city matches in that order. This is text-based matching, not a
-GPS distance or delivery-radius calculation.
+Restaurant discovery supports either browser GPS or the existing city and
+six-digit PIN-code search, with optional nearby landmark and market. GPS
+results with saved restaurant coordinates are ranked by straight-line distance;
+restaurants without coordinates remain available after geocoded results. The
+city/PIN fallback keeps its landmark, market, PIN-code, and city ranking.
+Straight-line distance is not a driving route or a delivery-radius guarantee.
+
+## Authentication and live delivery location
+
+Customer, restaurant, and delivery registration and login are exposed through
+the role-specific `/api/auth/*`, `/api/restaurant/register`, and
+`/api/delivery/register` endpoints. By default, the UI uses Django passwords
+and sessions through `static/js/auth-client.js`. To enable Firebase Email and
+Password or Google sign-in, configure the Firebase web settings and server
+service account in environment variables from `.env.example`, install
+requirements, then set `FIREBASE_AUTH_ENABLED=True`. Enable Email/Password and
+Google providers in Firebase Authentication. Google sign-in is available on
+customer, restaurant, and delivery login and registration pages. Registration
+still collects each role's required profile details; Google provides the email
+and account identity. Login sends a Firebase ID token to Django, which verifies
+it and creates the usual Django session. Cart, orders, restaurant, and delivery
+APIs remain session-based. Firebase verification follows the client SDK
+sign-in and server Admin SDK ID-token verification pattern in the [Firebase web guide](https://firebase.google.com/docs/auth/web/start)
+and [Firebase Admin guide](https://firebase.google.com/docs/auth/admin/verify-id-tokens).
+Never commit the service account credential.
+
+Restaurants can save their location from registration or their profile, and a
+customer can optionally share a delivery destination at checkout. Coordinates
+are validated and stored with the restaurant/order; the browser GPS permission
+is requested only after the user presses the location button. Customer
+discovery and the homepage can rank geocoded restaurants by straight-line
+distance. Existing city/PIN search and text-only delivery addresses remain
+supported. Browser location, Google Maps URLs, the optional interactive map
+loader, and marker rendering are kept behind `static/js/maps-client.js`.
+
+When a delivery partner is on the way, they can start or stop location sharing
+from their delivery dashboard. Sharing also makes them eligible to see and
+accept available offers. Each ready delivery order is shown to all approved
+delivery partners; accepting requires a recent GPS fix and a restaurant
+location within `DELIVERY_DISPATCH_RADIUS_KM` (10 km by default). If no nearby
+partner is sharing location, the order remains ready and open on the
+restaurant and delivery dashboards. Offers outside the viewing partner's
+radius hide the customer's contact and delivery details. Customers can open a
+live location and route in Google Maps; an interactive tracking map loads when
+`GOOGLE_MAPS_API_KEY` is configured. The Maps key is sent to browsers, so
+restrict it by website referrer in Google Cloud. The Maps loader uses Google's
+[dynamic library import](https://developers.google.com/maps/documentation/javascript/load-maps-js-api).
+Browser location sharing requires HTTPS (localhost is allowed) and explicit
+location permission. Straight-line distance is not used as a delivery-fee
+quote.
+
+Food and restaurant photos are supplied by restaurant data. Missing or failed
+food images use the local `/static/food-placeholder.svg` illustration. Food
+categories use built-in emoji tiles, so they do not rely on brittle remote
+image URLs.
 
 Public legal information is available at `/terms.html` and `/privacy.html`;
 both pages are linked from the customer registration form and homepage.
@@ -59,9 +109,22 @@ both pages are linked from the customer registration form and homepage.
 Commission is calculated from food subtotal with a ₹1 minimum and is deducted
 from the restaurant's share. Orders keep a snapshot of all prices and fees.
 The checkout quote exposes `gatewayAmount` as restaurant commission plus
-applicable delivery and platform fees only; it deliberately excludes the
-restaurant's payout. The payment gateway is not connected, so no online
-payment is collected yet.
+applicable delivery and platform fees only. The rest of the food subtotal is
+paid at handover (to the delivery partner for delivery orders, or the
+restaurant for pickup). Cashfree hosted checkout, server-side payment checks,
+and signed webhooks are implemented. They remain disabled until Cashfree
+credentials and a public HTTPS webhook URL are configured.
+
+To enable Cashfree sandbox payments, set `CASHFREE_ENABLED=True`,
+`CASHFREE_ENVIRONMENT=sandbox`, and the sandbox `CASHFREE_APP_ID` and
+`CASHFREE_SECRET_KEY` in the deployment environment. Configure the webhook URL
+`https://<your-domain>/api/payments/cashfree/webhook` in Cashfree for payment
+success events. Use the same Cashfree account/environment for the API keys and
+webhook. After sandbox checkout and webhook verification, switch to production
+credentials and `CASHFREE_ENVIRONMENT=production`. Never put the secret key in
+browser code or commit it to the repository. Cashfree collects the fee-only
+amount; this integration does not automatically transfer the remaining amount
+to a restaurant or delivery partner.
 
 ## Order process
 

@@ -21,6 +21,7 @@
             h1 { font-size: 28px; }
         }
     </style>
+    <script src="/static/js/auth-client.js"></script>
 </head>
 <body>
 <main>
@@ -28,6 +29,9 @@
     <h1>Delivery partner registration</h1>
     <p>Admin approval is required before you can accept deliveries.</p>
     <form id="deliveryRegistrationForm">
+        <button type="button" id="googleRegisterButton" style="margin:0 0 14px;background:#fff;color:#222;border:1px solid #bbb">
+            Continue with Google
+        </button>
         <label for="name">Full name</label>
         <input id="name" name="name" autocomplete="name" required maxlength="150">
         <label for="email">Email</label>
@@ -44,33 +48,48 @@
     <a href="resturentloginpage.html">Already registered? Log in</a>
 </main>
 <script>
+    let googleRegistrationIdentity = null;
+    document.getElementById("googleRegisterButton").addEventListener("click", async function() {
+        const button = this;
+        const message = document.getElementById("message");
+        button.disabled = true;
+        message.textContent = "Connecting your Google account...";
+        try {
+            googleRegistrationIdentity = await RamjicartAuth.startGoogleSignIn();
+            document.getElementById("email").value = googleRegistrationIdentity.email;
+            const name = document.getElementById("name");
+            if (!name.value.trim()) name.value = googleRegistrationIdentity.displayName;
+            ["password", "confirmPassword"].forEach(function(id) {
+                const input = document.getElementById(id);
+                input.required = false;
+                input.hidden = true;
+                input.previousElementSibling.hidden = true;
+            });
+            message.textContent = "Google connected. Add your phone number, then create the account.";
+        } catch (error) {
+            message.textContent = error.message || "Could not connect Google account.";
+        } finally {
+            button.disabled = false;
+        }
+    });
+
     document.getElementById("deliveryRegistrationForm").addEventListener("submit", async function(event) {
         event.preventDefault();
         const message = document.getElementById("message");
         const button = document.getElementById("submitButton");
         const password = document.getElementById("password").value;
-        if (password !== document.getElementById("confirmPassword").value) {
+        if (!googleRegistrationIdentity && password !== document.getElementById("confirmPassword").value) {
             message.textContent = "Passwords do not match.";
             return;
         }
-        const cookie = document.cookie.split("; ").find(function(value) {
-            return value.startsWith("csrftoken=");
-        });
         button.disabled = true;
         try {
-            const response = await fetch("/api/delivery/register", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": cookie ? decodeURIComponent(cookie.split("=")[1]) : ""
-                },
-                body: JSON.stringify({
-                    name: document.getElementById("name").value.trim(),
-                    email: document.getElementById("email").value.trim(),
-                    phone: document.getElementById("phone").value.trim(),
-                    password: password
-                })
-            });
+            const response = await RamjicartAuth.registerDeliveryPartner({
+                name: document.getElementById("name").value.trim(),
+                email: document.getElementById("email").value.trim(),
+                phone: document.getElementById("phone").value.trim(),
+                password: password
+            }, googleRegistrationIdentity);
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || "Registration failed.");
             message.textContent = data.message;

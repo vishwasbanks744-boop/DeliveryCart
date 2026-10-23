@@ -241,6 +241,7 @@
             }
         }
     </style>
+    <script src="/static/js/auth-client.js"></script>
 </head>
 
 <body>
@@ -672,16 +673,7 @@
         document.getElementById("restaurantLogoutButton").addEventListener("click", async function() {
             this.disabled = true;
             try {
-                const csrfToken = document.cookie.split("; ")
-                    .find(function(cookie) { return cookie.startsWith("csrftoken="); });
-                const response = await fetch("/api/auth/logout", {
-                    method: "POST",
-                    headers: {
-                        "X-CSRFToken": csrfToken
-                            ? decodeURIComponent(csrfToken.split("=").slice(1).join("="))
-                            : ""
-                    }
-                });
+                const response = await RamjicartAuth.logout();
                 if (!response.ok) {
                     throw new Error("Sign out nahi ho saka. Dobara try karo.");
                 }
