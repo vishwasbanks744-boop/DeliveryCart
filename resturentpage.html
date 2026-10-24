@@ -713,6 +713,29 @@ form > .message {
     #category-product-list { grid-template-columns: 1fr; }
     #categories { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+@media (max-width: 600px) {
+    body { font-size: 16px; }
+    #categories { gap: 10px; }
+    .category { min-height: 104px; padding: 10px 8px; }
+    .category p { font-size: 14px; line-height: 1.25; }
+    .search-box input,
+    .form-group input,
+    .form-group select { min-height: 46px; font-size: 16px; }
+    .search-btn,
+    .restaurant-menu-button { min-height: 44px; padding: 10px 14px; }
+    .restaurant-list { gap: 14px; }
+    .restaurant-card { min-width: 0; padding: 12px; gap: 10px; }
+    .restaurant-image { width: 86px; min-width: 86px; height: 92px; }
+    .restaurant-bottom { gap: 8px; }
+    #category-product-list { gap: 12px; }
+}
+
+@media (max-width: 360px) {
+    header { padding-left: 14px; padding-right: 14px; }
+    main { padding-left: 10px; padding-right: 10px; }
+    .category { padding: 9px 6px; }
+}
 </style>
     <script src="/static/js/auth-client.js"></script>
     <script src="/static/js/maps-client.js"></script>

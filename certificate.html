@@ -118,9 +118,9 @@
             min-width: 0;
         }
         .ceo-photo {
-            width: 88px;
-            height: 88px;
-            flex: 0 0 88px;
+            width: 72px;
+            height: 72px;
+            flex: 0 0 72px;
             border: 3px solid #ff7417;
             border-radius: 50%;
             object-fit: cover;
@@ -204,7 +204,7 @@
             .ceo { grid-column: 1 / -1; }
             .verified-badge { justify-self: start; }
             .qr-panel { justify-self: end; }
-            .ceo-photo { width: 72px; height: 72px; flex-basis: 72px; }
+            .ceo-photo { width: 62px; height: 62px; flex-basis: 62px; }
             .signature-mark, .signature-rule { width: 140px; }
             .signature-mark { height: 64px; }
             .signature-mark img { width: 64px; height: 114px; }
@@ -227,7 +227,7 @@
             .issued-copy { margin-top: 20px; }
             .details { margin: 22px auto 18px; }
             .signoff { margin-top: 8px; }
-            .ceo-photo { width: 72px; height: 72px; flex-basis: 72px; }
+            .ceo-photo { width: 62px; height: 62px; flex-basis: 62px; }
             .footer { margin-top: 14px; }
             .actions { display: none; }
         }
@@ -306,7 +306,7 @@
 
     <nav class="actions" aria-label="Certificate actions">
         <a href="/resturenthomepage.html">Back to dashboard</a>
-        <button type="button" onclick="window.print()">Print certificate</button>
+        <a href="/api/restaurant/certificate/download" download>Download certificate</a>
     </nav>
 </body>
 </html>

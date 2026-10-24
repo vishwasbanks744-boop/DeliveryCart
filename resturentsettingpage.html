@@ -240,6 +240,16 @@
                 display: none;
             }
         }
+
+        @media (max-width: 600px) {
+            body { padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+            header { min-height: 64px; }
+            main { padding: 20px 14px; }
+            .setting-row { gap: 12px; }
+            input:not([type="checkbox"]):not([type="radio"]), select, textarea { min-height: 46px; font-size: 16px; }
+            button, .logout-button { min-height: 44px; }
+            .toggle { min-width: 44px; min-height: 44px; }
+        }
     </style>
     <script src="/static/js/auth-client.js"></script>
 </head>
@@ -311,6 +321,18 @@
 
                     </label>
 
+                </div>
+
+                <div class="setting-row">
+                    <div class="setting-text">
+                        <h3>Scheduled opening hours</h3>
+                        <p>Orders pause outside these local daily hours. You can still close the store with Accept Orders.</p>
+                    </div>
+                    <label class="toggle"><input type="checkbox" id="openingHoursEnabled"><span class="slider"></span></label>
+                </div>
+                <div class="setting-row" id="openingHoursFields" hidden>
+                    <label>Opens at <input type="time" id="opensAt"></label>
+                    <label>Closes at <input type="time" id="closesAt"></label>
                 </div>
 
             </div>
@@ -501,6 +523,10 @@
 
                 document.getElementById("acceptOrders").checked =
                     data.acceptOrders ?? true;
+                document.getElementById("openingHoursEnabled").checked = data.openingHoursEnabled ?? false;
+                document.getElementById("opensAt").value = data.opensAt || "";
+                document.getElementById("closesAt").value = data.closesAt || "";
+                document.getElementById("openingHoursFields").hidden = !data.openingHoursEnabled;
 
                 document.getElementById("orderNotifications").checked =
                     data.orderNotifications ?? true;
@@ -519,6 +545,10 @@
             }
 
         }
+
+        document.getElementById("openingHoursEnabled").addEventListener("change", function() {
+            document.getElementById("openingHoursFields").hidden = !this.checked;
+        });
 
 
         // Settings save
@@ -549,6 +579,9 @@
 
                 acceptOrders:
                     document.getElementById("acceptOrders").checked,
+                openingHoursEnabled: document.getElementById("openingHoursEnabled").checked,
+                opensAt: document.getElementById("opensAt").value,
+                closesAt: document.getElementById("closesAt").value,
 
                 orderNotifications:
                     document.getElementById("orderNotifications").checked,

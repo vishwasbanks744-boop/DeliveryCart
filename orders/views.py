@@ -1,11 +1,12 @@
 import base64
+import csv
 import hashlib
 import hmac
 import json
 import logging
 import math
 import secrets
-from datetime import timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
 from urllib.error import HTTPError, URLError
@@ -19,7 +20,7 @@ from django.core.validators import validate_email
 from django.core.validators import URLValidator
 from django.db import transaction
 from django.db.models import F, Q, Sum
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -64,8 +65,10 @@ def homepage(request):
 
 
 @ensure_csrf_cookie
-@ensure_csrf_cookie
-def frontend_page(request, page):
+def frontend_page(request, page, slug=None):
+    if page == "category":
+        category = get_object_or_404(Category, slug=slug, is_active=True)
+        return render(request, "category.html", {"category": category})
     if page not in FRONTEND_PAGES:
         return JsonResponse({"message": "Page not found."}, status=404)
     if page in {"resturenthomepage", "resturentorderpage", "resturentprofilepage", "resturentsettingpage"}:
@@ -150,6 +153,12 @@ def _error(message, status=400):
     return JsonResponse({"message": message}, status=status)
 
 
+class CashfreeAPIError(RuntimeError):
+    def __init__(self, message, status_code):
+        super().__init__(message)
+        self.status_code = status_code
+
+
 @require_GET
 def public_client_config(_request):
     return JsonResponse(
@@ -197,7 +206,7 @@ def _cashfree_api(method, path, payload=None):
     except HTTPError as error:
         detail = error.read().decode("utf-8", errors="replace")
         logger.warning("Cashfree API returned HTTP %s: %s", error.code, detail[:1000])
-        raise RuntimeError("Cashfree could not start or verify this payment.") from error
+        raise CashfreeAPIError("Cashfree could not start or verify this payment.", error.code) from error
     except (URLError, TimeoutError, json.JSONDecodeError) as error:
         logger.exception("Cashfree API request failed")
         raise RuntimeError("Cashfree is temporarily unavailable. Please try again.") from error
@@ -386,8 +395,8 @@ def _cart_items(request):
         id__in=food_ids,
         available=True,
         restaurant__approved=True,
-        restaurant__accepting_orders=True,
-    ).exclude(category_id__in=_non_veg_category_ids()).select_related(
+        restaurant_id__in=_accepting_restaurant_ids(),
+    ).filter(Q(stock_quantity__isnull=True) | Q(stock_quantity__gt=0)).exclude(category_id__in=_non_veg_category_ids()).select_related(
         "restaurant", "category"
     )
     food_by_id = {food.id: food for food in foods}
@@ -399,7 +408,9 @@ def _cart_items(request):
         except (TypeError, ValueError):
             continue
         food = food_by_id.get(food_id)
-        if food and 1 <= quantity <= MAX_CART_QUANTITY:
+        if food and 1 <= quantity <= MAX_CART_QUANTITY and (
+            food.stock_quantity is None or quantity <= food.stock_quantity
+        ):
             items.append((food, quantity))
     return items
 
@@ -686,6 +697,181 @@ def restaurant_certificate(request):
 
 
 @require_GET
+def restaurant_certificate_download(request):
+    restaurant, error = _restaurant_for_request(request)
+    if error:
+        return error
+    if restaurant.certificate_issued_at is None:
+        return _error("Your certificate will be available after admin approval.", 403)
+
+    try:
+        from reportlab.lib.colors import HexColor
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.lib.utils import ImageReader
+        from reportlab.pdfbase.pdfmetrics import stringWidth
+        from reportlab.pdfgen import canvas
+    except ImportError:
+        return _error("Certificate PDF download is temporarily unavailable.", 503)
+
+    pdf_buffer = BytesIO()
+    page_width, page_height = landscape(A4)
+    pdf = canvas.Canvas(pdf_buffer, pagesize=(page_width, page_height), pageCompression=1)
+    pdf.setTitle(f"Ramjicart Partnership Certificate - {restaurant.name}")
+    pdf.setAuthor("Ramjicart")
+
+    navy = HexColor("#10233f")
+    orange = HexColor("#f36b21")
+    cyan = HexColor("#42b9ed")
+    muted = HexColor("#718096")
+    left, bottom = 22, 22
+    frame_width, frame_height = page_width - 44, page_height - 44
+    pdf.setFillColor(HexColor("#fffdf9"))
+    pdf.rect(left, bottom, frame_width, frame_height, stroke=0, fill=1)
+    pdf.setStrokeColor(navy)
+    pdf.setLineWidth(6)
+    pdf.rect(left, bottom, frame_width, frame_height, stroke=1, fill=0)
+    pdf.setStrokeColor(orange)
+    pdf.setLineWidth(0.8)
+    pdf.rect(left + 9, bottom + 9, frame_width - 18, frame_height - 18, stroke=1, fill=0)
+
+    static_dir = settings.BASE_DIR / "static"
+    logo_path = static_dir / "logo (2).png"
+    photo_path = static_dir / "headshot_with_R_logo_icon.png"
+    signature_path = static_dir / "WhatsApp_Image_2026-10-21_at_9.07.20_PM-removebg-preview.png"
+
+    brand_x = page_width / 2 - 91
+    pdf.drawImage(ImageReader(str(logo_path)), brand_x, page_height - 76, 46, 46, preserveAspectRatio=True, anchor="c", mask="auto")
+    pdf.setFillColor(navy)
+    pdf.setFont("Helvetica-Bold", 20)
+    pdf.drawString(brand_x + 56, page_height - 52, "RAMJICART")
+    pdf.setFillColor(orange)
+    pdf.setFont("Helvetica-Bold", 8)
+    pdf.drawString(brand_x + 56, page_height - 66, "RAMJICART")
+
+    pdf.setFillColor(navy)
+    pdf.setFont("Times-Bold", 28)
+    pdf.drawCentredString(page_width / 2, page_height - 112, "Certificate of Authorized Partnership")
+    pdf.setFillColor(orange)
+    pdf.setFont("Helvetica-Bold", 9)
+    pdf.drawCentredString(page_width / 2, page_height - 130, "R E S T A U R A N T   P A R T N E R   C E R T I F I C A T E")
+
+    pdf.setFillColor(muted)
+    pdf.setFont("Helvetica", 11)
+    pdf.drawCentredString(page_width / 2, page_height - 164, "This is to certify that")
+    name = str(restaurant.name).encode("cp1252", "replace").decode("cp1252")
+    name_size = 27
+    while name_size > 16 and stringWidth(name, "Times-Bold", name_size) > page_width - 160:
+        name_size -= 1
+    pdf.setFillColor(orange)
+    pdf.setFont("Times-Bold", name_size)
+    pdf.drawCentredString(page_width / 2, page_height - 196, name)
+
+    paragraph = (
+        "is an approved restaurant partner of Ramjicart, the food delivery platform operated by Ramjicart. "
+        "This certificate is issued by Vishal Shukla, Chief Executive Officer of Ramjicart."
+    )
+    words, line, lines = paragraph.split(), "", []
+    for word in words:
+        candidate = f"{line} {word}".strip()
+        if stringWidth(candidate, "Helvetica", 11) > page_width - 190 and line:
+            lines.append(line)
+            line = word
+        else:
+            line = candidate
+    if line:
+        lines.append(line)
+    pdf.setFillColor(navy)
+    pdf.setFont("Helvetica", 11)
+    for index, paragraph_line in enumerate(lines[:3]):
+        pdf.drawCentredString(page_width / 2, page_height - 220 - index * 16, paragraph_line)
+
+    issued_on = timezone.localtime(restaurant.certificate_issued_at).date()
+    detail_y, detail_h, detail_w = page_height - 326, 52, 310
+    for x, label, value, accent in (
+        (88, "REGISTRATION NO.", restaurant.registration_number, orange),
+        (page_width - 88 - detail_w, "DATE OF ISSUE", f"{issued_on.day} {issued_on:%B %Y}", cyan),
+    ):
+        pdf.setFillColor(HexColor("#ffffff"))
+        pdf.setStrokeColor(HexColor("#d8e0e9"))
+        pdf.roundRect(x, detail_y, detail_w, detail_h, 4, stroke=1, fill=1)
+        pdf.setFillColor(accent)
+        pdf.rect(x, detail_y, 5, detail_h, stroke=0, fill=1)
+        pdf.setFillColor(muted)
+        pdf.setFont("Helvetica-Bold", 8)
+        pdf.drawString(x + 16, detail_y + 33, label)
+        pdf.setFillColor(navy)
+        pdf.setFont("Helvetica-Bold", 13)
+        display_value = str(value).encode("cp1252", "replace").decode("cp1252")
+        pdf.drawString(x + 16, detail_y + 14, display_value)
+
+    photo_x, photo_y, photo_size = 78, 82, 70
+    pdf.saveState()
+    photo_clip = pdf.beginPath()
+    photo_clip.ellipse(photo_x, photo_y, photo_x + photo_size, photo_y + photo_size)
+    pdf.clipPath(photo_clip, stroke=0, fill=0)
+    pdf.drawImage(ImageReader(str(photo_path)), photo_x, photo_y, photo_size, photo_size, preserveAspectRatio=True, anchor="c", mask="auto")
+    pdf.restoreState()
+    pdf.setStrokeColor(orange)
+    pdf.setLineWidth(2)
+    pdf.circle(photo_x + photo_size / 2, photo_y + photo_size / 2, photo_size / 2, stroke=1, fill=0)
+
+    signature_x = 160
+    pdf.drawImage(ImageReader(str(signature_path)), signature_x, 106, 142, 48, preserveAspectRatio=True, anchor="c", mask="auto")
+    pdf.setStrokeColor(navy)
+    pdf.setLineWidth(0.8)
+    pdf.line(signature_x, 102, signature_x + 142, 102)
+    pdf.setFillColor(navy)
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(signature_x, 85, "Vishal Shukla")
+    pdf.setFillColor(muted)
+    pdf.setFont("Helvetica-Bold", 7)
+    pdf.drawString(signature_x, 73, "CHIEF EXECUTIVE OFFICER - RAMJICART")
+
+    badge_x, badge_y = page_width / 2, 116
+    pdf.setFillColor(navy)
+    pdf.setStrokeColor(orange)
+    pdf.setLineWidth(5)
+    pdf.circle(badge_x, badge_y, 37, stroke=1, fill=1)
+    pdf.setStrokeColor(HexColor("#42c4f5"))
+    pdf.setLineWidth(4)
+    pdf.line(badge_x - 17, badge_y - 1, badge_x - 5, badge_y - 13)
+    pdf.line(badge_x - 5, badge_y - 13, badge_x + 19, badge_y + 15)
+    pdf.setFillColor(orange)
+    pdf.setFont("Helvetica-Bold", 8)
+    pdf.drawCentredString(badge_x, badge_y - 53, "VERIFIED")
+
+    verification_url = request.build_absolute_uri(
+        reverse("verify-certificate", kwargs={"registration_number": restaurant.registration_number})
+    )
+    qr = qrcode.QRCode(box_size=8, border=2)
+    qr.add_data(verification_url)
+    qr.make(fit=True)
+    qr_buffer = BytesIO()
+    qr.make_image(fill_color="black", back_color="white").save(qr_buffer, format="PNG")
+    qr_buffer.seek(0)
+    qr_size, qr_x, qr_y = 90, page_width - 178, 91
+    pdf.drawImage(ImageReader(qr_buffer), qr_x, qr_y, qr_size, qr_size, preserveAspectRatio=True, anchor="c")
+    pdf.setFillColor(navy)
+    pdf.setFont("Helvetica-Bold", 8)
+    pdf.drawCentredString(qr_x + qr_size / 2, qr_y - 12, "SCAN TO VERIFY")
+    pdf.setFillColor(muted)
+    pdf.setFont("Helvetica", 7)
+    pdf.drawCentredString(qr_x + qr_size / 2, qr_y - 23, "Live certificate verification")
+
+    pdf.setFillColor(muted)
+    pdf.setFont("Helvetica", 8)
+    pdf.drawCentredString(page_width / 2, 43, "Scan the QR code to confirm this certificate's authenticity and registration status.")
+    pdf.showPage()
+    pdf.save()
+
+    response = HttpResponse(pdf_buffer.getvalue(), content_type="application/pdf")
+    safe_registration = "".join(character for character in restaurant.registration_number if character.isalnum() or character in "-_")
+    response["Content-Disposition"] = f'attachment; filename="ramjicart-certificate-{safe_registration}.pdf"'
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
+@require_GET
 def verify_certificate(request, registration_number):
     restaurant = get_object_or_404(
         Restaurant, registration_number=registration_number
@@ -785,13 +971,43 @@ def auth_me(request):
 
 @require_GET
 def categories(_request):
-    categories = Category.objects.order_by("name").values("id", "name")
+    categories = Category.objects.filter(is_active=True).order_by("sort_order", "name").values("id", "name", "slug", "icon", "color", "is_active", "sort_order")
     data = [
         category
         for category in categories
         if not _is_non_veg_category(category["name"])
     ]
     return JsonResponse(data, safe=False)
+
+
+@require_GET
+def category_detail(_request, slug):
+    category = get_object_or_404(Category, slug=slug, is_active=True)
+    foods = Food.objects.filter(
+        category=category, available=True, restaurant__approved=True,
+    ).select_related("restaurant", "category").order_by("restaurant__name", "name")
+    restaurants = {}
+    for food in foods:
+        restaurant = food.restaurant
+        entry = restaurants.setdefault(restaurant.id, {
+            "id": restaurant.id, "name": restaurant.name,
+            "photo": _restaurant_logo_url(restaurant),
+            "open": restaurant.accepts_orders_now(),
+            "deliveryTime": restaurant.delivery_time,
+            "rating": float(restaurant.rating) if restaurant.rating is not None else None,
+            "items": [],
+        })
+        entry["items"].append({
+            "id": food.id, "name": food.name, "description": food.description,
+            "photo": food.image, "price": float(food.price),
+            "veg": not _is_non_veg_category(category.name),
+        })
+    return JsonResponse({
+        "category": {"id": category.id, "name": category.name, "slug": category.slug,
+                      "icon": category.icon, "color": category.color,
+                      "isActive": category.is_active, "sortOrder": category.sort_order},
+        "shops": list(restaurants.values()),
+    })
 
 
 def _non_veg_category_ids():
@@ -805,6 +1021,14 @@ def _non_veg_category_ids():
 def _is_non_veg_category(name):
     normalized = "".join(character for character in str(name).lower() if character.isalpha())
     return normalized.startswith("nonveg") or normalized.startswith("nonvegetarian")
+
+
+def _accepting_restaurant_ids():
+    return [
+        restaurant.id
+        for restaurant in Restaurant.objects.filter(approved=True, accepting_orders=True)
+        if restaurant.accepts_orders_now()
+    ]
 
 
 @require_GET
@@ -823,8 +1047,8 @@ def popular_foods(_request):
     base_query = Food.objects.filter(
         available=True,
         restaurant__approved=True,
-        restaurant__accepting_orders=True,
-    ).exclude(category_id__in=_non_veg_category_ids()).select_related(
+        restaurant_id__in=_accepting_restaurant_ids(),
+    ).filter(Q(stock_quantity__isnull=True) | Q(stock_quantity__gt=0)).exclude(category_id__in=_non_veg_category_ids()).select_related(
         "restaurant", "category"
     )
     ranked_foods = list(
@@ -886,9 +1110,9 @@ def customer_restaurants(request):
 
     restaurants = Restaurant.objects.filter(
         approved=True,
-        accepting_orders=True,
+        id__in=_accepting_restaurant_ids(),
         foods__available=True,
-    ).distinct().prefetch_related("foods__category")
+    ).filter(Q(foods__stock_quantity__isnull=True) | Q(foods__stock_quantity__gt=0)).distinct().prefetch_related("foods__category")
     if not has_coordinates:
         restaurants = restaurants.filter(
             Q(city__iexact=city) | Q(pincode=pincode)
@@ -999,8 +1223,8 @@ def foods(request):
     queryset = Food.objects.filter(
         available=True,
         restaurant__approved=True,
-        restaurant__accepting_orders=True,
-    ).exclude(category_id__in=_non_veg_category_ids()).select_related(
+        restaurant_id__in=_accepting_restaurant_ids(),
+    ).filter(Q(stock_quantity__isnull=True) | Q(stock_quantity__gt=0)).exclude(category_id__in=_non_veg_category_ids()).select_related(
         "restaurant", "category"
     )
     try:
@@ -1110,8 +1334,8 @@ def cart(request):
         id=food_id,
         available=True,
         restaurant__approved=True,
-        restaurant__accepting_orders=True,
-    ).exclude(category_id__in=_non_veg_category_ids()).first()
+        restaurant_id__in=_accepting_restaurant_ids(),
+    ).filter(Q(stock_quantity__isnull=True) | Q(stock_quantity__gt=0)).exclude(category_id__in=_non_veg_category_ids()).first()
     if food is None:
         return _error("This food is not currently available.", 404)
 
@@ -1129,6 +1353,8 @@ def cart(request):
     new_quantity = int(existing.get(str(food.id), 0)) + quantity
     if new_quantity > MAX_CART_QUANTITY:
         return _error(f"Maximum quantity is {MAX_CART_QUANTITY}.")
+    if food.stock_quantity is not None and new_quantity > food.stock_quantity:
+        return _error(f"Only {food.stock_quantity} item(s) are currently in stock.", 409)
     existing[str(food.id)] = new_quantity
     request.session["cart"] = existing
     return JsonResponse(_serialize_cart(request), status=201)
@@ -1152,6 +1378,9 @@ def cart_item(request, food_id):
             return _error("A valid quantity is required.")
         if not 1 <= quantity <= MAX_CART_QUANTITY:
             return _error(f"Quantity must be between 1 and {MAX_CART_QUANTITY}.")
+        food = Food.objects.filter(id=food_id, restaurant__approved=True).first()
+        if food and food.stock_quantity is not None and quantity > food.stock_quantity:
+            return _error(f"Only {food.stock_quantity} item(s) are currently in stock.", 409)
         if str(food_id) not in cart_data:
             return _error("Cart item not found.", 404)
         cart_data[str(food_id)] = quantity
@@ -1222,56 +1451,74 @@ def create_order(request):
         return _error("Delivery address is too long.")
     confirmation_code = f"{secrets.randbelow(10000):04d}"
 
-    with transaction.atomic():
-        order = Order.objects.create(
-            customer=request.user,
-            customer_name=customer_name,
-            customer_email=customer_email,
-            customer_phone=customer_phone,
-            delivery_address=delivery_address,
-            delivery_latitude=(
-                delivery_latitude
-                if order_type == Order.OrderType.DELIVERY
-                else None
-            ),
-            delivery_longitude=(
-                delivery_longitude
-                if order_type == Order.OrderType.DELIVERY
-                else None
-            ),
-            restaurant=restaurant,
-            order_type=order_type,
-            item_total=quote["itemTotal"],
-            commission_percentage=quote["commissionPercentage"],
-            commission_amount=quote["commissionAmount"],
-            delivery_fee=quote["deliveryFee"],
-            platform_fee=quote["platformFee"],
-            customer_total=quote["customerTotal"],
-            restaurant_payout=quote["restaurantPayout"],
-            gateway_amount=quote["gatewayAmount"],
-            confirmation_code=confirmation_code,
-            status=(
-                Order.Status.PAYMENT_PENDING
-                if settings.CASHFREE_ENABLED
-                else Order.Status.PLACED
-            ),
-            gateway_payment_status=(
-                "pending" if settings.CASHFREE_ENABLED else "not_required"
-            ),
-        )
-        OrderItem.objects.bulk_create(
-            [
-                OrderItem(
-                    order=order,
-                    food=food,
-                    food_name=food.name,
-                    unit_price=food.price,
-                    quantity=quantity,
-                    line_total=money(food.price * quantity),
-                )
-                for food, quantity in items
-            ]
-        )
+    try:
+        with transaction.atomic():
+            locked_items = []
+            for food, quantity in items:
+                locked_food = Food.objects.select_for_update().get(pk=food.pk)
+                if not locked_food.available or locked_food.stock_quantity == 0 or (
+                    locked_food.stock_quantity is not None
+                    and locked_food.stock_quantity < quantity
+                ):
+                    raise ValidationError(f"{locked_food.name} no longer has enough stock.")
+                locked_items.append((locked_food, quantity))
+            order = Order.objects.create(
+                customer=request.user,
+                customer_name=customer_name,
+                customer_email=customer_email,
+                customer_phone=customer_phone,
+                delivery_address=delivery_address,
+                delivery_latitude=(
+                    delivery_latitude
+                    if order_type == Order.OrderType.DELIVERY
+                    else None
+                ),
+                delivery_longitude=(
+                    delivery_longitude
+                    if order_type == Order.OrderType.DELIVERY
+                    else None
+                ),
+                restaurant=restaurant,
+                order_type=order_type,
+                item_total=quote["itemTotal"],
+                commission_percentage=quote["commissionPercentage"],
+                commission_amount=quote["commissionAmount"],
+                delivery_fee=quote["deliveryFee"],
+                platform_fee=quote["platformFee"],
+                customer_total=quote["customerTotal"],
+                restaurant_payout=quote["restaurantPayout"],
+                gateway_amount=quote["gatewayAmount"],
+                confirmation_code=confirmation_code,
+                status=(
+                    Order.Status.PAYMENT_PENDING
+                    if settings.CASHFREE_ENABLED
+                    else Order.Status.PLACED
+                ),
+                gateway_payment_status=(
+                    "pending" if settings.CASHFREE_ENABLED else "not_required"
+                ),
+            )
+            OrderItem.objects.bulk_create(
+                [
+                    OrderItem(
+                        order=order,
+                        food=food,
+                        food_name=food.name,
+                        unit_price=food.price,
+                        quantity=quantity,
+                        line_total=money(food.price * quantity),
+                    )
+                    for food, quantity in locked_items
+                ]
+            )
+            for food, quantity in locked_items:
+                if food.stock_quantity is not None:
+                    food.stock_quantity -= quantity
+                    if food.stock_quantity == 0:
+                        food.available = False
+                    food.save(update_fields=["stock_quantity", "available"])
+    except ValidationError as error:
+        return _error(" ".join(error.messages), 409)
 
     payment_session_id = ""
     if settings.CASHFREE_ENABLED:
@@ -1309,6 +1556,7 @@ def create_order(request):
             order.gateway_payment_status = "error"
             order.status = Order.Status.PAYMENT_FAILED
             order.save(update_fields=["gateway_payment_status", "status"])
+            _restore_order_stock(order)
             return _error(str(error), 502)
         payment_session_id = str(cashfree_order.get("payment_session_id", ""))
         if not payment_session_id:
@@ -1316,6 +1564,7 @@ def create_order(request):
             order.gateway_payment_status = "error"
             order.status = Order.Status.PAYMENT_FAILED
             order.save(update_fields=["gateway_payment_status", "status"])
+            _restore_order_stock(order)
             return _error("Cashfree did not return a payment session. Please try again.", 502)
         order.cashfree_payment_session_id = payment_session_id
         order.save(update_fields=["cashfree_payment_session_id"])
@@ -1354,6 +1603,9 @@ def order_detail(request, order_id):
     data = {
         "id": str(order.id),
         "status": order.status,
+        "rejectionReason": order.rejection_reason,
+        "preparingMinutes": order.preparing_minutes,
+        "refundStatus": order.refund_status,
         "statusText": {
             Order.Status.PLACED: "Order sent to restaurant",
             Order.Status.PAYMENT_PENDING: "Waiting for payment",
@@ -1472,12 +1724,15 @@ def cashfree_payment_status(request, order_id):
                     })
         cashfree_status = str(cashfree_order.get("order_status", "pending")).lower()
         if cashfree_status in {"expired", "terminated"}:
-            Order.objects.filter(
-                pk=order.pk, status=Order.Status.PAYMENT_PENDING
-            ).update(
-                status=Order.Status.PAYMENT_FAILED,
-                gateway_payment_status=cashfree_status,
-            )
+            with transaction.atomic():
+                failed_order = Order.objects.select_for_update().filter(
+                    pk=order.pk, status=Order.Status.PAYMENT_PENDING
+                ).first()
+                if failed_order:
+                    failed_order.status = Order.Status.PAYMENT_FAILED
+                    failed_order.gateway_payment_status = cashfree_status
+                    failed_order.save(update_fields=["status", "gateway_payment_status"])
+                    _restore_order_stock(failed_order)
             return JsonResponse({
                 "enabled": True,
                 "status": "failed",
@@ -1570,6 +1825,10 @@ def _restaurant_order_data(order):
         "orderNumber": str(order.id).split("-")[0].upper(),
         "date": timezone.localtime(order.created_at).strftime("%d %b %Y, %I:%M %p"),
         "status": display_status,
+        "rejectionReason": order.rejection_reason,
+        "preparingMinutes": order.preparing_minutes,
+        "acceptedAt": order.accepted_at.isoformat() if order.accepted_at else None,
+        "refundStatus": order.refund_status,
         "orderType": order.order_type,
         "orderTypeText": "Pickup (customer is on the way)" if order.order_type == "pickup" else "Delivery",
         "customerName": order.customer_name,
@@ -1614,6 +1873,80 @@ def _restaurant_order_data(order):
             for item in order.items.all()
         ],
     }
+
+
+def _restore_order_stock(order):
+    for item in order.items.select_related("food").all():
+        food = item.food
+        if food.stock_quantity is None:
+            continue
+        food.stock_quantity += item.quantity
+        food.available = True
+        food.save(update_fields=["stock_quantity", "available"])
+
+
+def _request_order_refund(order):
+    if order.gateway_payment_status != "success" or not order.cashfree_order_id:
+        order.refund_status = "not_required"
+        order.save(update_fields=["refund_status"])
+        return
+    if not settings.CASHFREE_ENABLED:
+        order.refund_status = "manual_review"
+        order.refund_error = "Cashfree is disabled; refund requires manual handling."
+        order.save(update_fields=["refund_status", "refund_error"])
+        return
+    refund_id = order.refund_id or f"rc{order.id.hex[:26]}01"
+    try:
+        create_refund = not bool(order.refund_id)
+        if order.refund_id:
+            refund_path = f"/orders/{order.cashfree_order_id}/refunds/{refund_id}"
+            try:
+                result = _cashfree_api("GET", refund_path)
+            except CashfreeAPIError as error:
+                if error.status_code != 404:
+                    raise
+                create_refund = True
+            else:
+                status = str(result.get("refund_status", "pending")).lower()
+                if status == "failed" and order.refund_attempts < 3:
+                    order.refund_attempts += 1
+                    refund_id = f"rc{order.id.hex[:24]}{order.refund_attempts + 1:02d}"
+                    create_refund = True
+                elif status == "failed":
+                    order.refund_status = "manual_review"
+                    order.refund_error = "Cashfree rejected three refund attempts; review this order manually."
+                    order.save(update_fields=["refund_status", "refund_error"])
+                    return
+                else:
+                    order.refund_status = status[:16]
+                    order.refund_error = ""
+                    order.refund_requested_at = timezone.now()
+                    order.save(update_fields=["refund_status", "refund_error", "refund_requested_at"])
+                    return
+        order.refund_id = refund_id
+        order.refund_status = "pending"
+        order.save(update_fields=["refund_id", "refund_status"])
+        if create_refund:
+            result = _cashfree_api(
+                "POST",
+                f"/orders/{order.cashfree_order_id}/refunds",
+                {
+                "refund_amount": float(order.gateway_amount),
+                "refund_id": refund_id,
+                "refund_note": f"Order {str(order.id)[:8]} cancelled: {order.rejection_reason or 'restaurant did not accept in time'}",
+                "refund_speed": "STANDARD",
+                },
+            )
+        order.refund_status = str(result.get("refund_status", "pending")).lower()[:16]
+        order.refund_error = ""
+        order.refund_requested_at = timezone.now()
+        order.save(update_fields=["refund_id", "refund_status", "refund_error", "refund_requested_at"])
+    except RuntimeError as error:
+        order.refund_id = refund_id
+        order.refund_status = "failed"
+        order.refund_error = str(error)[:2000]
+        order.save(update_fields=["refund_id", "refund_status", "refund_error"])
+        logger.error("Refund initiation failed for order %s", order.pk)
 
 
 @csrf_protect
@@ -1692,6 +2025,10 @@ def restaurant_profile(request):
             "logo": _restaurant_logo_url(restaurant),
             "approved": restaurant.approved,
             "acceptOrders": restaurant.accepting_orders,
+            "openNow": restaurant.accepts_orders_now(),
+            "openingHoursEnabled": restaurant.opening_hours_enabled,
+            "opensAt": restaurant.opens_at.strftime("%H:%M") if restaurant.opens_at else "",
+            "closesAt": restaurant.closes_at.strftime("%H:%M") if restaurant.closes_at else "",
             "city": restaurant.city,
             "pincode": restaurant.pincode,
             "latitude": (
@@ -1747,6 +2084,9 @@ def restaurant_settings(request):
         return JsonResponse(
             {
                 "acceptOrders": restaurant.accepting_orders,
+                "openingHoursEnabled": restaurant.opening_hours_enabled,
+                "opensAt": restaurant.opens_at.strftime("%H:%M") if restaurant.opens_at else "",
+                "closesAt": restaurant.closes_at.strftime("%H:%M") if restaurant.closes_at else "",
                 "orderNotifications": restaurant.order_notifications,
                 "orderSound": restaurant.order_sound,
                 "email": request.user.email,
@@ -1778,18 +2118,34 @@ def restaurant_settings(request):
     request.user.email = email
     request.user.username = email
     restaurant.email = email
-    for key in ("acceptOrders", "orderNotifications", "orderSound"):
+    for key in ("acceptOrders", "orderNotifications", "orderSound", "openingHoursEnabled"):
         if key in data and not isinstance(data[key], bool):
             return _error(f"{key} must be true or false.")
-    restaurant.accepting_orders = data.get("acceptOrders", True)
+    restaurant.accepting_orders = data.get("acceptOrders", restaurant.accepting_orders)
     restaurant.order_notifications = data.get("orderNotifications", True)
     restaurant.order_sound = data.get("orderSound", True)
+    if "openingHoursEnabled" in data:
+        enabled = data["openingHoursEnabled"]
+        if enabled:
+            try:
+                opens_at = datetime.strptime(str(data.get("opensAt", "")), "%H:%M").time()
+                closes_at = datetime.strptime(str(data.get("closesAt", "")), "%H:%M").time()
+            except ValueError:
+                return _error("Opening and closing times are required in HH:MM format.")
+            restaurant.opening_hours_enabled = True
+            restaurant.opens_at = opens_at
+            restaurant.closes_at = closes_at
+        else:
+            restaurant.opening_hours_enabled = False
     with transaction.atomic():
         request.user.save()
         restaurant.save(
             update_fields=[
                 "email",
                 "accepting_orders",
+                "opening_hours_enabled",
+                "opens_at",
+                "closes_at",
                 "order_notifications",
                 "order_sound",
             ]
@@ -1826,6 +2182,71 @@ def restaurant_dashboard(request):
     )
 
 
+@require_GET
+def restaurant_reports(request):
+    restaurant, error = _restaurant_for_request(request)
+    if error:
+        return error
+    today = timezone.localdate()
+    try:
+        start_date = date.fromisoformat(request.GET.get("startDate", (today - timedelta(days=6)).isoformat()))
+        end_date = date.fromisoformat(request.GET.get("endDate", today.isoformat()))
+    except ValueError:
+        return _error("Choose valid report dates in YYYY-MM-DD format.")
+    if end_date < start_date:
+        return _error("End date must be on or after the start date.")
+    if (end_date - start_date).days > 366:
+        return _error("Choose a date range of 367 days or less.")
+    orders = Order.objects.filter(
+        restaurant=restaurant,
+        created_at__date__gte=start_date,
+        created_at__date__lte=end_date,
+    ).exclude(status__in=[Order.Status.PAYMENT_PENDING, Order.Status.PAYMENT_FAILED]).order_by("-created_at")
+    completed = orders.filter(status=Order.Status.COMPLETED)
+    totals = completed.aggregate(
+        sales=Sum("item_total"),
+        commission=Sum("commission_amount"),
+        payout=Sum("restaurant_payout"),
+    )
+    rows = [
+        {
+            "orderNumber": str(order.id).split("-")[0].upper(),
+            "date": timezone.localtime(order.created_at).strftime("%Y-%m-%d %H:%M"),
+            "status": order.get_status_display(),
+            "itemSales": float(order.item_total),
+            "commissionRate": float(order.commission_percentage),
+            "commission": float(order.commission_amount),
+            "restaurantPayout": float(order.restaurant_payout),
+            "settlementStatus": order.get_settlement_status_display(),
+            "settlementReference": order.settlement_reference,
+            "refundStatus": order.refund_status,
+        }
+        for order in orders
+    ]
+    if request.GET.get("format", "").lower() == "csv":
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="ramjicart-report-{start_date}-{end_date}.csv"'
+        response.write("\ufeff")
+        writer = csv.writer(response)
+        writer.writerow(["Order", "Date", "Status", "Item sales", "Commission %", "Commission", "Restaurant payout", "Settlement", "Settlement reference", "Refund"])
+        for row in rows:
+            values = [row[key] for key in ("orderNumber", "date", "status", "itemSales", "commissionRate", "commission", "restaurantPayout", "settlementStatus", "settlementReference", "refundStatus")]
+            writer.writerow([f"'{value}" if isinstance(value, str) and value[:1] in "=+-@" else value for value in values])
+        return response
+    return JsonResponse({
+        "startDate": start_date.isoformat(),
+        "endDate": end_date.isoformat(),
+        "orderCount": orders.count(),
+        "completedOrders": completed.count(),
+        "itemSales": float(totals["sales"] or 0),
+        "commission": float(totals["commission"] or 0),
+        "restaurantPayout": float(totals["payout"] or 0),
+        "settledPayout": float(completed.filter(settlement_status=Order.SettlementStatus.SETTLED).aggregate(total=Sum("restaurant_payout"))["total"] or 0),
+        "unsettledPayout": float(completed.exclude(settlement_status=Order.SettlementStatus.SETTLED).aggregate(total=Sum("restaurant_payout"))["total"] or 0),
+        "orders": rows,
+    })
+
+
 def _product_payload(food):
     return {
         "id": food.id,
@@ -1836,7 +2257,47 @@ def _product_payload(food):
         "image": food.image,
         "price": float(food.price),
         "available": food.available,
+        "stockQuantity": food.stock_quantity,
+        "variants": food.variants,
+        "addons": food.addons,
     }
+
+
+def _parse_menu_options(value, label, allow_empty=True):
+    if value in (None, ""):
+        return []
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError:
+            parsed = []
+            for line in value.splitlines():
+                if not line.strip():
+                    continue
+                if ":" not in line:
+                    raise ValueError(f"{label}: use Name:Price on each line.")
+                name, price = line.rsplit(":", 1)
+                parsed.append({"name": name.strip(), "price": price.strip()})
+            value = parsed
+    if not isinstance(value, list) or len(value) > 20:
+        raise ValueError(f"{label} must contain at most 20 options.")
+    result = []
+    names = set()
+    for option in value:
+        if not isinstance(option, dict):
+            raise ValueError(f"Each {label.lower()} option must have a name and price.")
+        name = str(option.get("name", "")).strip()
+        try:
+            price = Decimal(str(option.get("price", "")))
+        except (InvalidOperation, TypeError):
+            raise ValueError(f"Enter a valid price for each {label.lower()} option.")
+        if not name or len(name) > 80 or not price.is_finite() or price < 0:
+            raise ValueError(f"Each {label.lower()} option needs a name and a non-negative price.")
+        if name.casefold() in names:
+            raise ValueError(f"{label} names must be unique.")
+        names.add(name.casefold())
+        result.append({"name": name, "price": str(money(price))})
+    return result
 
 
 @csrf_protect
@@ -1853,6 +2314,18 @@ def restaurant_products(request):
     category_name = data.get("productCategory", "").strip()
     description = data.get("productDescription", "").strip()
     image = data.get("productImage", "").strip()
+    raw_stock = data.get("stockQuantity", "").strip()
+    try:
+        stock_quantity = int(raw_stock) if raw_stock else None
+        if stock_quantity is not None and stock_quantity < 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        return _error("Stock quantity must be a whole number of zero or more.")
+    try:
+        variants = _parse_menu_options(data.get("variants", ""), "Variants")
+        addons = _parse_menu_options(data.get("addons", ""), "Add-ons")
+    except ValueError as error:
+        return _error(str(error))
     try:
         price = Decimal(data.get("productPrice", ""))
     except (InvalidOperation, TypeError):
@@ -1877,6 +2350,10 @@ def restaurant_products(request):
             description=description,
             image=image,
             price=price,
+            stock_quantity=stock_quantity,
+            available=stock_quantity != 0,
+            variants=variants,
+            addons=addons,
         )
         try:
             food.full_clean()
@@ -1884,6 +2361,80 @@ def restaurant_products(request):
             return _error("; ".join(validation_error.messages))
         food.save()
     return JsonResponse(_product_payload(food), status=201)
+
+
+@csrf_protect
+@require_http_methods(["PUT", "DELETE"])
+def restaurant_product_detail(request, food_id):
+    restaurant, error = _restaurant_for_request(request)
+    if error:
+        return error
+    food = get_object_or_404(Food, id=food_id, restaurant=restaurant)
+    if request.method == "DELETE":
+        if OrderItem.objects.filter(food=food).exists():
+            food.available = False
+            food.save(update_fields=["available"])
+            return JsonResponse({"message": "This product is part of order history, so it was marked unavailable instead of deleted."})
+        food.delete()
+        return JsonResponse({"message": "Product deleted."})
+    try:
+        data = _json_body(request)
+    except ValueError as error:
+        return _error(str(error))
+    name = str(data.get("name", food.name)).strip()
+    description = str(data.get("description", food.description)).strip()
+    image = str(data.get("image", food.image)).strip()
+    if not name or len(name) > 160 or len(description) > 2000:
+        return _error("Product name and description are required and within the allowed length.")
+    if image:
+        try:
+            URLValidator(schemes=["http", "https"])(image)
+        except ValidationError:
+            return _error("Product image must be a valid HTTP or HTTPS URL.")
+    try:
+        price = Decimal(str(data.get("price", food.price)))
+        if not price.is_finite() or price <= 0:
+            raise InvalidOperation
+    except (InvalidOperation, TypeError):
+        return _error("Product price must be greater than zero.")
+    category = food.category
+    if "categoryId" in data:
+        category = get_object_or_404(Category, id=data["categoryId"], is_active=True)
+    stock_quantity = food.stock_quantity
+    if "stockQuantity" in data:
+        try:
+            raw_stock = data["stockQuantity"]
+            stock_quantity = int(raw_stock) if raw_stock not in (None, "") else None
+            if stock_quantity is not None and stock_quantity < 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            return _error("Stock quantity must be a whole number of zero or more.")
+    try:
+        variants = _parse_menu_options(data.get("variants", food.variants), "Variants")
+        addons = _parse_menu_options(data.get("addons", food.addons), "Add-ons")
+    except ValueError as error:
+        return _error(str(error))
+    food.name = name
+    food.description = description
+    food.image = image
+    food.price = price
+    food.category = category
+    if "available" in data and not isinstance(data["available"], bool):
+        return _error("Availability must be true or false.")
+    food.stock_quantity = stock_quantity
+    food.available = data.get("available", food.available)
+    if food.stock_quantity == 0:
+        if data.get("available") is True:
+            return _error("Set stock above zero before marking this product available.")
+        food.available = False
+    food.variants = variants
+    food.addons = addons
+    try:
+        food.full_clean()
+    except ValidationError as error:
+        return _error(" ".join(error.messages))
+    food.save()
+    return JsonResponse(_product_payload(food))
 
 
 def restaurant_orders(request):
@@ -1909,7 +2460,8 @@ def restaurant_update_order(request, order_id):
         return error
     order = get_object_or_404(Order, id=order_id, restaurant=restaurant)
     try:
-        requested_status = str(_json_body(request).get("status", "")).lower()
+        data = _json_body(request)
+        requested_status = str(data.get("status", "")).lower()
     except ValueError as body_error:
         return _error(str(body_error))
     transitions = {
@@ -1918,6 +2470,7 @@ def restaurant_update_order(request, order_id):
         "preparing": (Order.Status.ACCEPTED, Order.Status.PREPARING),
         "ready": (Order.Status.PREPARING, Order.Status.READY_FOR_PICKUP),
         "cancelled": (Order.Status.PLACED, Order.Status.CANCELLED),
+        "rejected": (Order.Status.PLACED, Order.Status.CANCELLED),
     }
     transition = transitions.get(requested_status)
     if transition is None:
@@ -1925,8 +2478,25 @@ def restaurant_update_order(request, order_id):
     allowed_current, new_status = transition
     if order.status != allowed_current:
         return _error("This order can no longer be changed to that status.", 409)
+    if requested_status in {"cancelled", "rejected"}:
+        reason = str(data.get("reason", "")).strip()
+        if requested_status == "rejected" and len(reason) < 4:
+            return _error("A short reason is required to reject an order.")
+        if len(reason) > 300:
+            return _error("Rejection reason must be 300 characters or fewer.")
+        order.rejection_reason = reason or "Restaurant cancelled before acceptance."
+    if new_status == Order.Status.ACCEPTED:
+        order.accepted_at = timezone.now()
     order.status = new_status
-    order.save(update_fields=["status"])
+    update_fields = ["status"]
+    if order.rejection_reason:
+        update_fields.append("rejection_reason")
+    if new_status == Order.Status.ACCEPTED:
+        update_fields.append("accepted_at")
+    order.save(update_fields=update_fields)
+    if new_status == Order.Status.CANCELLED:
+        _restore_order_stock(order)
+        _request_order_refund(order)
     return JsonResponse(
         {
             "message": f"Order status changed to {order.get_status_display()}.",
@@ -2495,4 +3065,5 @@ def cancel_order(request, order_id):
         return _error("Only new orders can be cancelled here.", 409)
     order.status = Order.Status.CANCELLED
     order.save(update_fields=["status"])
+    _restore_order_stock(order)
     return JsonResponse({"message": "Order cancelled.", "status": order.status})

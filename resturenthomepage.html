@@ -1491,6 +1491,50 @@ body {
 
 }
 
+    .report-controls { display:flex; flex-wrap:wrap; align-items:end; gap:10px; margin:16px 0; }
+    .report-controls label { display:grid; gap:5px; font-size:13px; }
+    .report-controls button, .report-controls a { border:0; border-radius:8px; padding:10px 13px; background:#198754; color:#fff; text-decoration:none; cursor:pointer; }
+    .report-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin:16px 0; }
+    .report-metric { padding:14px; border-radius:10px; background:#f1f8f4; }
+    .report-metric span { display:block; color:#52615a; font-size:13px; }
+    .report-metric strong { display:block; margin-top:6px; font-size:20px; }
+    .report-table-wrap { overflow-x:auto; }
+    .report-table { width:100%; border-collapse:collapse; min-width:760px; }
+    .report-table th,.report-table td { text-align:left; border-bottom:1px solid #e6e9e7; padding:10px 8px; }
+    @media print { body * { visibility:hidden !important; } #restaurant-reports,#restaurant-reports * { visibility:visible !important; } #restaurant-reports { position:absolute; inset:0; width:100%; } .report-controls,.back-to-dashboard { display:none !important; } }
+
+@media (max-width: 550px) {
+    .header { height: auto; min-height: 74px; padding: 10px 14px; }
+    .header-container { gap: 8px; }
+    .main-upperdiv h1 { font-size: 22px; line-height: 1.2; }
+    .header-right { gap: 6px; }
+    .dashboard-stats-container { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .stat-card { min-width: 0; padding: 13px; }
+    .hero-banner { padding: 18px; }
+    .product-form { gap: 12px; }
+    .restaurant-orders-section,
+    .restaurant-profile-summary,
+    .add-product-section,
+    .menu-section { padding: 16px; }
+    .report-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+    .report-controls label { min-width: 0; }
+    .report-controls input { min-width: 0; width: 100%; }
+}
+
+@media (max-width: 550px) {
+    button,
+    .second-list a { min-height: 44px; }
+    input:not([type="checkbox"]):not([type="radio"]),
+    select,
+    textarea { min-height: 46px; font-size: 16px; }
+    .report-controls a,
+    .report-controls button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; text-align: center; }
+    .report-table-wrap { max-width: 100%; }
+}
+
+@media (max-width: 370px) {
+    .dashboard-stats-container { grid-template-columns: 1fr; }
+}
 </style>
 
     <script src="/static/js/auth-client.js"></script>
@@ -1573,6 +1617,7 @@ body {
             <li class="first-list"><a href="#">🏠 Dashboard</a></li><hr>
             
             <li><a href="#restaurant-orders">📋 Orders</a></li><hr>
+            <li><a href="#restaurant-reports">📊 Reports</a></li><hr>
             <li><a href="#menu-section">🍱 Menu items</a></li><hr>
             <li><a href="/api/restaurant/certificate">📜 Partnership certificate</a></li><hr>
             <li><a href="resturentprofilepage.html">🏪  Profile</a></li><hr>
@@ -1677,6 +1722,8 @@ body {
         <a class="back-to-dashboard" href="#dashboard">← Dashboard</a>
     </div>
     <div class="order-controls">
+        <button type="button" id="enableOrderAlerts">Enable browser alerts and sound</button>
+        <span id="orderAlertStatus" role="status">Orders refresh automatically every 30 seconds.</span>
         <label class="order-search">
             <span class="sr-only">Search orders</span>
             <input type="search" id="restaurantOrderSearch" placeholder="Search order or customer">
@@ -1704,6 +1751,24 @@ body {
         <strong>No orders yet</strong>
         New customer orders will appear here.
     </div>
+</section>
+<section class="restaurant-orders-section" id="restaurant-reports">
+    <div class="restaurant-orders-header">
+        <div><h2>Sales &amp; settlement reports</h2><p>Completed order sales, commission deductions, payout totals and settlement records.</p></div>
+        <a class="back-to-dashboard" href="#dashboard">← Dashboard</a>
+    </div>
+    <div class="report-controls">
+        <label>From <input type="date" id="reportStartDate"></label>
+        <label>To <input type="date" id="reportEndDate"></label>
+        <button type="button" id="reportToday">Today</button>
+        <button type="button" id="reportWeek">Last 7 days</button>
+        <button type="button" id="loadReport">Generate report</button>
+        <a href="#" id="downloadReportCsv">Download CSV</a>
+        <button type="button" id="downloadReportPdf">Print / Save PDF</button>
+    </div>
+    <p id="reportMessage" role="status" hidden></p>
+    <div id="reportSummary" class="report-summary"></div>
+    <div class="report-table-wrap"><table class="report-table"><thead><tr><th>Order</th><th>Date</th><th>Status</th><th>Item sales</th><th>Commission</th><th>Payout</th><th>Settlement</th><th>Refund</th></tr></thead><tbody id="reportRows"></tbody></table></div>
 </section>
 <section class="add-product-section">
 
@@ -1738,13 +1803,7 @@ body {
                 name="productCategory"
                 required
             >
-                <option value="">Select category</option>
-                <option value="burger">Burger</option>
-                <option value="pizza">Pizza</option>
-                <option value="rice">Rice</option>
-                <option value="snacks">Snacks</option>
-                <option value="drinks">Drinks</option>
-                <option value="desserts">Desserts</option>
+                <option value="">Loading categories...</option>
             </select>
         </div>
 
@@ -1786,6 +1845,19 @@ body {
                 name="productImage"
                 placeholder="https://example.com/food.jpg"
             >
+        </div>
+
+        <div class="form-group">
+            <label for="productVariants">Variants (one per line: Name:Price)</label>
+            <textarea id="productVariants" name="variants" maxlength="2000" placeholder="Half:120&#10;Full:210"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="productAddons">Add-ons (one per line: Name:Price)</label>
+            <textarea id="productAddons" name="addons" maxlength="2000" placeholder="Extra cheese:25&#10;Dip:15"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="productStock">Stock quantity (leave empty to avoid tracking stock)</label>
+            <input type="number" id="productStock" name="stockQuantity" min="0" step="1" inputmode="numeric">
         </div>
 
 
@@ -2084,6 +2156,23 @@ async function loadMenuProducts() {
 
 }
 
+async function loadProductCategories() {
+    const select = document.getElementById("productCategory");
+    if (!select) return;
+    try {
+        const response = await fetch("/api/customer/categories");
+        const categories = await response.json();
+        if (!response.ok) throw new Error("Categories could not be loaded.");
+        select.replaceChildren(new Option("Select category", ""));
+        categories.forEach(function(category) {
+            select.add(new Option(category.name, category.name));
+        });
+    } catch (error) {
+        select.replaceChildren(new Option("Categories unavailable", ""));
+        console.error("Category options error:", error);
+    }
+}
+
 
 /* =========================================
    4. SHOW PRODUCTS
@@ -2132,6 +2221,7 @@ function renderMenuProducts(products) {
             "menu-item";
 
 
+        const safeOptions = list => (list || []).map(option => `${escapeMenuHtml(option.name)} (+₹${escapeMenuHtml(option.price)})`).join(", ");
         productCard.innerHTML = `
 
             <img
@@ -2153,20 +2243,89 @@ function renderMenuProducts(products) {
                 <p class="menu-item-price">
                     ₹ ${product.price ?? 0}
                 </p>
+                <p class="menu-item-options">${safeOptions(product.variants) ? "Variants: " + safeOptions(product.variants) : ""}</p>
+                <p class="menu-item-options">${safeOptions(product.addons) ? "Add-ons: " + safeOptions(product.addons) : ""}</p>
 
                 <span class="menu-item-status">
                     ${product.available ? "Available" : "Unavailable"}
                 </span>
+                <p class="menu-item-stock">${product.stockQuantity === null || product.stockQuantity === undefined ? "Stock not tracked" : `Stock: ${product.stockQuantity}`}</p>
 
             </div>
 
         `;
 
 
+        const controls = document.createElement("div");
+        controls.className = "menu-item-controls";
+        controls.innerHTML = `<button type="button" data-toggle-product="${Number(product.id)}">${product.available ? "Mark unavailable" : "Mark available"}</button><button type="button" data-edit-product="${Number(product.id)}">Edit</button><button type="button" data-delete-product="${Number(product.id)}">Delete</button>`;
+        controls.querySelector("[data-toggle-product]").addEventListener("click", () => toggleMenuProduct(product));
+        productCard.appendChild(controls);
+        controls.querySelector("[data-edit-product]").addEventListener("click", () => editMenuProduct(product));
+        controls.querySelector("[data-delete-product]").addEventListener("click", () => deleteMenuProduct(product));
         menuItems.appendChild(productCard);
 
     });
 
+}
+
+function escapeMenuHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
+}
+
+function optionLines(options) {
+    return (options || []).map(option => `${option.name}:${option.price}`).join("\n");
+}
+
+async function editMenuProduct(product) {
+    const name = prompt("Product name", product.name);
+    if (name === null) return;
+    const price = prompt("Price (₹)", product.price);
+    if (price === null) return;
+    const description = prompt("Description", product.description || "");
+    if (description === null) return;
+    const image = prompt("Photo URL (leave blank for no photo)", product.image || "");
+    if (image === null) return;
+    const variantsText = prompt("Variants (Name:Price per line)", optionLines(product.variants));
+    if (variantsText === null) return;
+    const addonsText = prompt("Add-ons (Name:Price per line)", optionLines(product.addons));
+    if (addonsText === null) return;
+    const categoryName = prompt("Category", product.category || "");
+    if (categoryName === null) return;
+    const stockQuantity = prompt("Stock quantity (blank = not tracked)", product.stockQuantity ?? "");
+    if (stockQuantity === null) return;
+    const category = (await (await fetch("/api/customer/categories")).json()).find(item => item.name.toLowerCase() === categoryName.trim().toLowerCase());
+    if (!category) { alert("Select one of the listed categories."); return; }
+    const variants = variantsText.trim() ? variantsText.trim().split(/\r?\n/).map(line => { const [optionName, ...amount] = line.split(":"); return {name: optionName.trim(), price: amount.join(":").trim()}; }) : [];
+    const addons = addonsText.trim() ? addonsText.trim().split(/\r?\n/).map(line => { const [optionName, ...amount] = line.split(":"); return {name: optionName.trim(), price: amount.join(":").trim()}; }) : [];
+    try {
+        const response = await fetch(`/api/restaurant/products/${product.id}`, {method:"PUT", headers:{"Content-Type":"application/json","X-CSRFToken":orderCsrfToken()}, body:JSON.stringify({name, price, description, image, categoryId:category.id, variants, addons, stockQuantity:stockQuantity.trim() ? stockQuantity : null})});
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || "Product update failed.");
+        menuProducts = menuProducts.map(item => item.id === result.id ? result : item);
+        renderMenuProducts(menuProducts);
+    } catch (error) { alert(error.message); }
+}
+
+async function toggleMenuProduct(product) {
+    try {
+        const response = await fetch(`/api/restaurant/products/${product.id}`, {method:"PUT", headers:{"Content-Type":"application/json","X-CSRFToken":orderCsrfToken()}, body:JSON.stringify({available:!product.available})});
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || "Availability could not be updated.");
+        menuProducts = menuProducts.map(item => item.id === result.id ? result : item);
+        renderMenuProducts(menuProducts);
+    } catch (error) { alert(error.message); }
+}
+
+async function deleteMenuProduct(product) {
+    if (!confirm(`Delete ${product.name}?`)) return;
+    try {
+        const response = await fetch(`/api/restaurant/products/${product.id}`, {method:"DELETE", headers:{"X-CSRFToken":orderCsrfToken()}});
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || "Product delete failed.");
+        await loadMenuProducts();
+        if (result.message) alert(result.message);
+    } catch (error) { alert(error.message); }
 }
 
 
@@ -2362,6 +2521,13 @@ if (productForm) {
    ========================================= */
 
 let restaurantOrders = [];
+const RESTAURANT_ORDER_POLL_MS = 30000;
+let orderPollingReady = false;
+let knownPendingOrderIds = new Set();
+let ringingPendingOrderIds = new Set();
+let orderAlarmInterval = null;
+let restaurantNotificationPreferences = {orderNotifications: true, orderSound: true};
+let restaurantAudioContext = null;
 
 function escapeOrderText(value) {
     return String(value ?? "").replace(/[&<>"']/g, character => ({
@@ -2424,7 +2590,8 @@ function renderRestaurantOrders() {
         if (order.status === "pending") {
             actions = `
                 <button type="button" data-order-action="confirmed" data-order-id="${safeId}">Accept order</button>
-                <button type="button" class="cancel-order-button" data-order-action="cancelled" data-order-id="${safeId}">Cancel</button>`;
+                <button type="button" class="cancel-order-button" data-order-action="rejected" data-order-id="${safeId}">Reject</button>
+                <p class="order-card-label">Please respond within 15 minutes. A reminder is sent after 3 minutes.</p>`;
         } else if (order.status === "confirmed") {
             actions = `<button type="button" data-order-action="preparing" data-order-id="${safeId}">Start preparing</button>`;
         } else if (order.status === "preparing") {
@@ -2470,6 +2637,7 @@ function renderRestaurantOrders() {
                 ${items}
                 <div class="restaurant-order-total"><span>Total</span><span>₹${escapeOrderText(order.total)}</span></div>
             </div>
+            ${order.rejectionReason ? `<p class="order-card-label">Reason: ${escapeOrderText(order.rejectionReason)}${order.refundStatus && order.refundStatus !== "not_required" ? ` · Refund: ${escapeOrderText(order.refundStatus)}` : ""}</p>` : ""}
             <div class="restaurant-order-actions">${actions}</div>`;
         list.appendChild(card);
     });
@@ -2481,7 +2649,50 @@ function renderRestaurantOrders() {
     document.getElementById("completed-orders").textContent = completedCount;
 }
 
-async function loadRestaurantOrders() {
+function playNewOrderSound() {
+    if (!restaurantNotificationPreferences.orderSound || !restaurantAudioContext) return;
+    const oscillator = restaurantAudioContext.createOscillator();
+    const gain = restaurantAudioContext.createGain();
+    oscillator.frequency.value = 880;
+    gain.gain.value = 0.32;
+    oscillator.connect(gain);
+    gain.connect(restaurantAudioContext.destination);
+    oscillator.start();
+    oscillator.stop(restaurantAudioContext.currentTime + 0.35);
+}
+
+function startPendingOrderAlarm(orderId) {
+    ringingPendingOrderIds.add(orderId);
+    playNewOrderSound();
+    if (orderAlarmInterval === null) {
+        orderAlarmInterval = window.setInterval(() => {
+            if (ringingPendingOrderIds.size) playNewOrderSound();
+        }, 4000);
+    }
+}
+
+function syncPendingOrderAlarm(pendingOrders) {
+    const pendingIds = new Set(pendingOrders.map(order => order.id));
+    ringingPendingOrderIds = new Set(
+        [...ringingPendingOrderIds].filter(orderId => pendingIds.has(orderId))
+    );
+    if (ringingPendingOrderIds.size === 0 && orderAlarmInterval !== null) {
+        window.clearInterval(orderAlarmInterval);
+        orderAlarmInterval = null;
+    }
+}
+
+function announceNewOrder(order) {
+    startPendingOrderAlarm(order.id);
+    if (restaurantNotificationPreferences.orderNotifications && "Notification" in window && Notification.permission === "granted") {
+        new Notification("Ramjicart: new order", {
+            body: `Order #${order.orderNumber} from ${order.customerName}`,
+            tag: `ramjicart-order-${order.id}`
+        });
+    }
+}
+
+async function loadRestaurantOrders({notify = false} = {}) {
     const errorMessage = document.getElementById("restaurantOrdersError");
     try {
         const response = await fetch("/api/restaurant/orders");
@@ -2493,6 +2704,13 @@ async function loadRestaurantOrders() {
             throw new Error(data.message || "Orders could not be loaded.");
         }
         restaurantOrders = data.orders || [];
+        const pending = restaurantOrders.filter(order => order.status === "pending");
+        if (notify && orderPollingReady) {
+            pending.filter(order => !knownPendingOrderIds.has(order.id)).forEach(announceNewOrder);
+        }
+        syncPendingOrderAlarm(pending);
+        knownPendingOrderIds = new Set(pending.map(order => order.id));
+        orderPollingReady = true;
         errorMessage.hidden = true;
         renderRestaurantOrders();
     } catch (error) {
@@ -2502,7 +2720,48 @@ async function loadRestaurantOrders() {
     }
 }
 
-async function updateRestaurantOrder(orderId, status) {
+async function loadRestaurantNotificationPreferences() {
+    try {
+        const response = await fetch("/api/restaurant/settings");
+        if (response.ok) {
+            const data = await response.json();
+            restaurantNotificationPreferences = {
+                orderNotifications: data.orderNotifications !== false,
+                orderSound: data.orderSound !== false
+            };
+        }
+    } catch (error) {
+        console.error("Notification preferences error:", error);
+    }
+}
+
+async function enableRestaurantBrowserAlerts() {
+    try {
+        if ("Notification" in window && Notification.permission === "default") {
+            await Notification.requestPermission();
+        }
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+            restaurantAudioContext = restaurantAudioContext || new AudioContextClass();
+            await restaurantAudioContext.resume();
+            playNewOrderSound();
+        }
+        document.getElementById("orderAlertStatus").textContent =
+            ("Notification" in window && Notification.permission === "granted" ? "Browser alerts enabled" : "Sound enabled; allow notifications in your browser settings")
+            + " · polling every 30 seconds";
+    } catch (error) {
+        document.getElementById("orderAlertStatus").textContent = "Browser alerts could not be enabled.";
+    }
+}
+
+async function pollRestaurantOrders() {
+    if (!document.hidden) await loadRestaurantOrders({notify: true});
+    window.setTimeout(pollRestaurantOrders, RESTAURANT_ORDER_POLL_MS);
+}
+
+document.getElementById("enableOrderAlerts").addEventListener("click", enableRestaurantBrowserAlerts);
+
+async function updateRestaurantOrder(orderId, status, extra = {}) {
     try {
         const response = await fetch(`/api/restaurant/orders/${orderId}`, {
             method: "PUT",
@@ -2510,7 +2769,7 @@ async function updateRestaurantOrder(orderId, status) {
                 "Content-Type": "application/json",
                 "X-CSRFToken": orderCsrfToken()
             },
-            body: JSON.stringify({ status })
+            body: JSON.stringify({ status, ...extra })
         });
         const data = await response.json();
         if (!response.ok) {
@@ -2575,6 +2834,10 @@ document.getElementById("restaurantOrderList").addEventListener("click", event =
         confirmRestaurantPickup(orderId).finally(() => {
             button.disabled = false;
         });
+    } else if (orderAction === "rejected") {
+        const reason = prompt("Why are you rejecting this order?", "Item unavailable");
+        if (reason === null) { button.disabled = false; return; }
+        updateRestaurantOrder(orderId, orderAction, {reason}).finally(() => { button.disabled = false; });
     } else {
         updateRestaurantOrder(orderId, orderAction).finally(() => {
             button.disabled = false;
@@ -2722,7 +2985,11 @@ document.addEventListener(
 
         loadMenuProducts();
 
+        loadProductCategories();
+
         loadRestaurantOrders();
+        loadRestaurantNotificationPreferences();
+        window.setTimeout(pollRestaurantOrders, RESTAURANT_ORDER_POLL_MS);
 
     }
 );
@@ -2760,6 +3027,43 @@ if (restaurantLogoutButton) {
         }
     });
 }
+
+const reportStartInput = document.getElementById("reportStartDate");
+const reportEndInput = document.getElementById("reportEndDate");
+const reportMessage = document.getElementById("reportMessage");
+const reportCsvLink = document.getElementById("downloadReportCsv");
+const reportMoney = value => `₹${Number(value || 0).toFixed(2)}`;
+function setReportRange(days) {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - (days - 1));
+    const localDate = value => `${value.getFullYear()}-${String(value.getMonth()+1).padStart(2,"0")}-${String(value.getDate()).padStart(2,"0")}`;
+    reportStartInput.value = localDate(start);
+    reportEndInput.value = localDate(end);
+}
+async function loadRestaurantReport() {
+    reportMessage.hidden = false;
+    reportMessage.textContent = "Loading report…";
+    const params = new URLSearchParams({startDate: reportStartInput.value, endDate: reportEndInput.value});
+    reportCsvLink.href = `/api/restaurant/reports?${params.toString()}&format=csv`;
+    try {
+        const response = await fetch(`/api/restaurant/reports?${params.toString()}`, {headers:{Accept:"application/json"}});
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || "Report load nahi hua.");
+        const metrics = [["Orders", data.orderCount], ["Completed", data.completedOrders], ["Item sales", reportMoney(data.itemSales)], ["Commission", reportMoney(data.commission)], ["Restaurant payout", reportMoney(data.restaurantPayout)], ["Settled", reportMoney(data.settledPayout)], ["Unsettled", reportMoney(data.unsettledPayout)]];
+        const summary = document.getElementById("reportSummary");
+        summary.replaceChildren(...metrics.map(([label, value]) => { const card=document.createElement("div"); card.className="report-metric"; const name=document.createElement("span"); name.textContent=label; const amount=document.createElement("strong"); amount.textContent=value; card.append(name,amount); return card; }));
+        const rows = document.getElementById("reportRows");
+        rows.replaceChildren(...data.orders.map(order => { const tr=document.createElement("tr"); [order.orderNumber,order.date,order.status,reportMoney(order.itemSales),`${order.commissionRate}% (${reportMoney(order.commission)})`,reportMoney(order.restaurantPayout),order.settlementStatus,order.refundStatus].forEach(value => { const td=document.createElement("td"); td.textContent=value ?? "—"; tr.appendChild(td); }); return tr; }));
+        reportMessage.textContent = data.orders.length ? "Report updated." : "Is date range mein koi order nahi mila.";
+    } catch (error) { reportMessage.textContent = error.message; }
+}
+document.getElementById("reportToday").addEventListener("click", () => { setReportRange(1); loadRestaurantReport(); });
+document.getElementById("reportWeek").addEventListener("click", () => { setReportRange(7); loadRestaurantReport(); });
+document.getElementById("loadReport").addEventListener("click", loadRestaurantReport);
+document.getElementById("downloadReportPdf").addEventListener("click", () => window.print());
+setReportRange(7);
+loadRestaurantReport();
 
 </script>
 

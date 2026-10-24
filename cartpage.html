@@ -485,6 +485,31 @@
 
         }
 
+        @media (max-width: 600px) {
+            body { padding: 14px 14px calc(20px + env(safe-area-inset-bottom)); }
+            header { margin-bottom: 18px; }
+            .cart-layout { gap: 16px; }
+            .cart-items { gap: 14px; }
+            .cart-item { gap: 12px; padding: 16px; }
+            .food-details { text-align: left; }
+            .foodname, .description, .itemprice { text-align: left; }
+            .description { font-size: 16px; line-height: 1.4; }
+            .food-type { min-height: 36px; display: inline-flex; align-items: center; }
+            .quantity { min-height: 52px; gap: 12px; padding: 5px 9px; }
+            .quantity button { width: 44px; height: 44px; flex: 0 0 44px; }
+            .delete-btn { width: 44px; height: 44px; }
+            .bill-summary { padding: 20px 16px; }
+            .bill-row { gap: 10px; font-size: 16px; }
+            .checkout { min-height: 50px; padding: 12px 16px; }
+        }
+
+        @media (max-width: 450px) {
+            .cart-item img { width: 104px; height: 92px; }
+            .foodname { font-size: 19px; }
+            .total-row h1 { font-size: 24px; }
+            .total-row h1:last-child { font-size: 27px; }
+        }
+
     </style>
 
 </head>

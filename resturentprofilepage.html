@@ -315,6 +315,18 @@
                 display: none;
             }
         }
+
+        @media (max-width: 600px) {
+            body { padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+            header { min-height: 64px; }
+            aside { gap: 4px; padding: 6px 10px; }
+            aside a { min-height: 44px; display: inline-flex; align-items: center; padding: 10px 12px; }
+            main { padding: 20px 14px; }
+            .profile-container { gap: 16px; }
+            .restaurant-info { min-width: 0; }
+            input:not([type="checkbox"]):not([type="radio"]), select, textarea { min-height: 46px; font-size: 16px; }
+            button { min-height: 44px; }
+        }
     </style>
     <script src="/static/js/auth-client.js"></script>
     <script src="/static/js/maps-client.js"></script>

@@ -15,12 +15,18 @@ urlpatterns = [
         name="restaurant-certificate",
     ),
     path(
+        "restaurant/certificate/download",
+        views.restaurant_certificate_download,
+        name="restaurant-certificate-download",
+    ),
+    path(
         "certificate/verify/<str:registration_number>",
         views.verify_certificate,
         name="verify-certificate",
     ),
     path("delivery/register", views.delivery_register),
     path("customer/categories", views.categories),
+    path("customer/categories/<slug:slug>", views.category_detail),
     path("customer/foods/popular", views.popular_foods),
     path("customer/restaurants", views.customer_restaurants),
     path("customer/foods", views.foods),
@@ -37,7 +43,9 @@ urlpatterns = [
     path("restaurant/profile/logo", views.restaurant_profile_logo),
     path("restaurant/settings", views.restaurant_settings),
     path("restaurant/dashboard", views.restaurant_dashboard),
+    path("restaurant/reports", views.restaurant_reports),
     path("restaurant/products", views.restaurant_products),
+    path("restaurant/products/<int:food_id>", views.restaurant_product_detail),
     path("restaurant/orders", views.restaurant_orders),
     path("restaurant/orders/<uuid:order_id>", views.restaurant_update_order),
     path(

@@ -149,6 +149,14 @@ to a restaurant or delivery partner.
 - Customers can see their own order status and confirmation code. Restaurant
   and delivery APIs never return that code.
 
+The restaurant panel checks for new orders every 30 seconds while open. Browser
+alerts and sound require the restaurant operator to enable them in the panel.
+The `process_restaurant_orders` command should run every minute: it cancels a
+still-unaccepted order after 15 minutes and retries Cashfree refunds. The Render
+blueprint includes a cron service for this command;
+set the same Cashfree keys/environment on that service for automatic online
+refunds. Automatic refunds return the amount captured by Cashfree.
+
 ## Tests
 
 ```powershell

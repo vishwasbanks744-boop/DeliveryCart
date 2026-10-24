@@ -469,7 +469,7 @@ class OrderWorkflowTests(TestCase):
         self.assertContains(response, 'id="restaurant-orders"')
         self.assertContains(response, 'id="restaurantOrderList"')
         self.assertContains(response, 'id="refreshDashboardBtn"')
-        self.assertNotContains(response, "setInterval")
+        self.assertContains(response, "RESTAURANT_ORDER_POLL_MS")
         self.assertContains(response, 'id="total-orders"')
         self.assertContains(response, 'id="restaurant-header-name"')
         self.assertContains(response, 'id="restaurant-profile"')
@@ -602,6 +602,12 @@ class OrderWorkflowTests(TestCase):
         self.assertContains(certificate, "DATE OF ISSUE")
         self.assertNotContains(certificate, "VALID TILL")
         self.assertContains(certificate, "data:image/svg+xml;base64,")
+
+        certificate_pdf = client.get("/api/restaurant/certificate/download")
+        self.assertEqual(certificate_pdf.status_code, 200)
+        self.assertEqual(certificate_pdf["Content-Type"], "application/pdf")
+        self.assertIn("attachment; filename=\"ramjicart-certificate-", certificate_pdf["Content-Disposition"])
+        self.assertTrue(certificate_pdf.content.startswith(b"%PDF-"))
 
         verification_url = (
             f"/api/certificate/verify/{new_restaurant.registration_number}"

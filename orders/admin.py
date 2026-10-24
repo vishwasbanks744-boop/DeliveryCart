@@ -28,6 +28,8 @@ class RestaurantAdmin(admin.ModelAdmin):
         "approved",
         "certificate_issued_at",
         "accepting_orders",
+        "rating",
+        "delivery_time",
         "commission_percentage",
         "max_commission_percentage",
     )
@@ -61,6 +63,8 @@ class RestaurantAdmin(admin.ModelAdmin):
                     "latitude",
                     "longitude",
                     "logo",
+                    "rating",
+                    "delivery_time",
                 )
             },
         ),
@@ -104,7 +108,13 @@ class FoodAdmin(admin.ModelAdmin):
     search_fields = ("name", "restaurant__name")
 
 
-admin.site.register(Category)
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ("name", "slug", "is_active", "sort_order")
+    list_filter = ("is_active",)
+    search_fields = ("name", "slug")
+    prepopulated_fields = {"slug": ("name",)}
+    ordering = ("sort_order", "name")
 
 
 class OrderItemInline(admin.TabularInline):
@@ -123,9 +133,11 @@ class OrderAdmin(admin.ModelAdmin):
         "status",
         "customer_total",
         "restaurant_payout",
+        "settlement_status",
+        "settled_at",
         "created_at",
     )
-    list_filter = ("status", "order_type", "restaurant")
+    list_filter = ("status", "order_type", "settlement_status", "restaurant")
     search_fields = ("id", "customer_name", "customer_phone")
     readonly_fields = (
         "customer",
@@ -147,8 +159,15 @@ class OrderAdmin(admin.ModelAdmin):
         "restaurant_payout",
         "created_at",
         "paid_at",
+        "settled_at",
     )
     inlines = (OrderItemInline,)
+
+    def save_model(self, request, obj, form, change):
+        if obj.settlement_status == Order.SettlementStatus.SETTLED and obj.settled_at is None:
+            from django.utils import timezone
+            obj.settled_at = timezone.now()
+        super().save_model(request, obj, form, change)
 
     def has_add_permission(self, request):
         return False

@@ -100,6 +100,12 @@ class Restaurant(models.Model):
     )
     approved = models.BooleanField(default=False)
     accepting_orders = models.BooleanField(default=True)
+    opening_hours_enabled = models.BooleanField(default=False)
+    opens_at = models.TimeField(null=True, blank=True)
+    closes_at = models.TimeField(null=True, blank=True)
+    rating = models.DecimalField(max_digits=2, decimal_places=1, null=True, blank=True,
+                                 validators=[MinValueValidator(Decimal("0")), MaxValueValidator(Decimal("5"))])
+    delivery_time = models.CharField(max_length=40, default="30–45 min")
     order_notifications = models.BooleanField(default=True)
     order_sound = models.BooleanField(default=True)
     commission_percentage = models.DecimalField(
@@ -142,15 +148,40 @@ class Restaurant(models.Model):
             )
         if (self.latitude is None) != (self.longitude is None):
             errors["longitude"] = "Latitude and longitude must both be provided."
+        if self.opening_hours_enabled and (self.opens_at is None or self.closes_at is None):
+            errors["opens_at"] = "Set both opening and closing times, or turn scheduled hours off."
         if errors:
             raise ValidationError(errors)
 
     def __str__(self):
         return self.name
 
+    def accepts_orders_now(self, at=None):
+        if not self.accepting_orders:
+            return False
+        if not self.opening_hours_enabled or self.opens_at is None or self.closes_at is None:
+            return True
+        local_time = timezone.localtime(at or timezone.now()).time()
+        if self.opens_at == self.closes_at:
+            return True
+        if self.opens_at < self.closes_at:
+            return self.opens_at <= local_time < self.closes_at
+        return local_time >= self.opens_at or local_time < self.closes_at
+
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
+    slug = models.SlugField(max_length=120, unique=True, blank=True)
+    icon = models.CharField(max_length=32, blank=True)
+    color = models.CharField(max_length=20, default="#fff3e8")
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            from django.utils.text import slugify
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -170,6 +201,9 @@ class Food(models.Model):
         max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))]
     )
     available = models.BooleanField(default=True)
+    stock_quantity = models.PositiveIntegerField(null=True, blank=True)
+    variants = models.JSONField(default=list, blank=True)
+    addons = models.JSONField(default=list, blank=True)
 
     def __str__(self):
         return f"{self.name} ({self.restaurant.name})"
@@ -240,6 +274,11 @@ class Order(models.Model):
         CANCELLED = "cancelled", "Cancelled"
         PAYMENT_FAILED = "payment_failed", "Payment failed"
 
+    class SettlementStatus(models.TextChoices):
+        UNSETTLED = "unsettled", "Unsettled"
+        SETTLED = "settled", "Settled"
+        FAILED = "failed", "Failed"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     customer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -294,6 +333,11 @@ class Order(models.Model):
     platform_fee = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal("0"))
     customer_total = models.DecimalField(max_digits=10, decimal_places=2)
     restaurant_payout = models.DecimalField(max_digits=10, decimal_places=2)
+    settlement_status = models.CharField(
+        max_length=12, choices=SettlementStatus.choices, default=SettlementStatus.UNSETTLED
+    )
+    settled_at = models.DateTimeField(null=True, blank=True)
+    settlement_reference = models.CharField(max_length=120, blank=True)
     gateway_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
     gateway_payment_status = models.CharField(max_length=24, default="not_required")
     cashfree_order_id = models.CharField(max_length=45, blank=True, null=True, unique=True)
@@ -301,6 +345,17 @@ class Order(models.Model):
     cashfree_payment_id = models.CharField(max_length=80, blank=True)
     confirmation_code = models.CharField(max_length=4, null=True, blank=True)
     confirmation_attempts = models.PositiveSmallIntegerField(default=0)
+    rejection_reason = models.CharField(max_length=300, blank=True)
+    preparing_minutes = models.PositiveSmallIntegerField(
+        null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(240)]
+    )
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    reminder_sent_at = models.DateTimeField(null=True, blank=True)
+    refund_status = models.CharField(max_length=16, default="not_required")
+    refund_id = models.CharField(max_length=64, blank=True)
+    refund_error = models.TextField(blank=True)
+    refund_requested_at = models.DateTimeField(null=True, blank=True)
+    refund_attempts = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     paid_at = models.DateTimeField(null=True, blank=True)
 

@@ -61,8 +61,6 @@ if CASHFREE_ENABLED and (not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY):
     raise ImproperlyConfigured(
         "Cashfree is enabled but CASHFREE_APP_ID or CASHFREE_SECRET_KEY is missing."
     )
-
-
 DEBUG = env_bool("DJANGO_DEBUG", True)
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 if not SECRET_KEY:
@@ -96,6 +94,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "axes",
     "orders.apps.OrdersConfig",
 ]
 
@@ -108,7 +107,25 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "axes.middleware.AxesMiddleware",
 ]
+
+AUTHENTICATION_BACKENDS = [
+    "axes.backends.AxesStandaloneBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+# Five bad password attempts from one client IP trigger a temporary lockout.
+# Render forwards the original client IP in the left-most X-Forwarded-For entry.
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = 0.25  # 15 minutes, expressed in hours
+AXES_USE_ATTEMPT_EXPIRATION = True
+AXES_LOCKOUT_PARAMETERS = ["ip_address"]
+AXES_IPWARE_META_PRECEDENCE_ORDER = ["HTTP_X_FORWARDED_FOR", "REMOTE_ADDR"]
+AXES_IPWARE_PROXY_ORDER = "left-most"
+AXES_HTTP_RESPONSE_CODE = 429
+AXES_ENABLE_RETRY_AFTER_HEADER = True
+AXES_LOCKOUT_CALLABLE = "ramjicart.security.login_lockout_response"
 
 ROOT_URLCONF = "ramjicart.urls"
 

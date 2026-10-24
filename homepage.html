@@ -217,8 +217,8 @@
 
         #categoryList {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 16px;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 12px;
         }
 
         .craving-food-card {
@@ -463,8 +463,13 @@
             }
 
             #categoryList {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
+                display: flex;
+                overflow-x: auto;
+                padding: 0 0 10px;
+                scroll-snap-type: x mandatory;
             }
+
+            #categoryList > * { flex: 0 0 132px; scroll-snap-align: start; }
 
             #foodList {
                 grid-template-columns: 1fr;
@@ -517,7 +522,8 @@
             }
 
             #categoryList {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
+                display: flex;
+                overflow-x: auto;
             }
 
             .craving-food-card img { height: 100px; }
@@ -526,6 +532,46 @@
             main > section h2 {
                 font-size: 25px;
             }
+        }
+
+        @media (max-width: 650px) {
+            body { padding-bottom: calc(16px + env(safe-area-inset-bottom)); font-size: 16px; }
+
+            header { padding: 10px 16px; }
+
+            nav { align-items: stretch; gap: 10px; }
+            nav h1 { display: flex; align-items: center; gap: 7px; font-size: 23px; }
+            nav > div { justify-content: flex-start; gap: 4px 8px; }
+            nav > div > a,
+            .account-menu > a { display: inline-flex; min-height: 44px; align-items: center; padding: 8px 10px; }
+
+            main > section:not(:first-child) { margin: 36px auto; padding: 0 16px; }
+            main > section:first-child { min-height: 0; padding: 44px 16px; }
+            main > section:first-child h1 { font-size: clamp(27px, 7vw, 32px); }
+            main > section h2 { margin-bottom: 18px; font-size: 24px; }
+
+            .craving-food-card { padding: 11px; }
+            .craving-food-card img { height: 110px; }
+            .craving-food-card button,
+            .food-card button { min-height: 44px; }
+            .food-card { padding: 12px; }
+            .food-card img { height: 125px; }
+            .food-card h3 { font-size: 17px; }
+            .food-restaurant { font-size: 14px; }
+
+            #orderTracking { padding: 18px; }
+            #trackingSteps p { min-height: 44px; display: flex; align-items: center; }
+            .order-history-card summary { min-height: 62px; }
+            .order-history-meta,
+            .order-history-status { font-size: 14px; }
+
+            #customerProfile { right: 0; width: min(620px, calc(100vw - 32px)); }
+            #signOutButton { min-height: 44px; padding: 10px 16px; }
+        }
+
+        @media (min-width: 390px) and (max-width: 650px) {
+            #foodList { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+            .food-card img { height: 112px; }
         }
     </style>
     <script src="/static/js/auth-client.js"></script>
@@ -625,9 +671,7 @@
 
         <section>
 
-            <h2>
-                What are you craving?
-            </h2>
+            <h2>Shop by Category</h2>
 
             <div id="categoryList">
 
@@ -842,8 +886,8 @@
         */
 
         async function loadPopularFoods() {
-            categoryList.innerHTML = "";
-            categoryMessage.textContent = "Loading customer favourites...";
+            foodList.innerHTML = "";
+            foodMessage.textContent = "Loading customer favourites...";
             try {
                 const response = await fetch(popularFoodsApi);
                 const foods = await response.json();
@@ -853,7 +897,7 @@
                 const orderedItems = foods.filter(function(food) {
                     return Number(food.orderCount || 0) > 0;
                 }).length;
-                categoryMessage.textContent = !foods.length
+                foodMessage.textContent = !foods.length
                     ? "No menu items are available yet."
                     : orderedItems === foods.length
                         ? "Most ordered by customers"
@@ -886,10 +930,10 @@
                         addToCart(food);
                     });
                     card.append(image, title, restaurant, price, button);
-                    categoryList.appendChild(card);
+                    foodList.appendChild(card);
                 });
             } catch (error) {
-                categoryMessage.textContent = error.message || "Popular food could not be loaded.";
+                foodMessage.textContent = error.message || "Popular food could not be loaded.";
             }
         }
 
@@ -926,8 +970,8 @@
                     const categoryCard =
                         document.createElement("div");
 
-                    categoryCard.className =
-                        "category-card";
+                    categoryCard.className = "category-card";
+                    categoryCard.style.cssText = "display:grid;place-items:center;gap:9px;padding:20px 12px;border:1px solid #edf0f2;border-radius:18px;background:" + (category.color || "#fff3e8") + ";color:#20252b;text-decoration:none;font-weight:700;cursor:pointer;transition:transform .2s,box-shadow .2s";
 
                     const categoryIcons = {
                         pizza: "🍕", burger: "🍔", chicken: "🍗",
@@ -935,19 +979,26 @@
                         dessert: "🍰", beverage: "🥤", drinks: "🥤"
                     };
                     const categoryKey = (category.name || "").toLowerCase();
-                    categoryCard.dataset.icon = Object.keys(categoryIcons)
-                        .find(key => categoryKey.includes(key))
-                        ? categoryIcons[Object.keys(categoryIcons).find(key => categoryKey.includes(key))]
-                        : "🍽️";
+                    const matchingIcon = Object.keys(categoryIcons)
+                        .find(key => categoryKey.includes(key));
+                    categoryCard.dataset.icon = category.icon ||
+                        (matchingIcon ? categoryIcons[matchingIcon] : "🍽️");
 
-                    categoryCard.textContent =
-                        category.name;
+                    const iconElement = document.createElement("span");
+                    iconElement.style.fontSize = "34px";
+                    iconElement.setAttribute("aria-hidden", "true");
+                    iconElement.textContent = categoryCard.dataset.icon;
+                    const nameElement = document.createElement("span");
+                    nameElement.textContent = category.name;
+                    categoryCard.append(iconElement, nameElement);
+                    categoryCard.onmouseenter = () => { categoryCard.style.transform = "translateY(-4px)"; categoryCard.style.boxShadow = "0 10px 24px #18223018"; };
+                    categoryCard.onmouseleave = () => { categoryCard.style.transform = ""; categoryCard.style.boxShadow = ""; };
 
                     categoryCard.addEventListener(
                         "click",
                         function() {
 
-                            loadFoods(category.id);
+                            window.location.href = "/category/" + category.slug;
 
                         }
                     );
@@ -1417,6 +1468,8 @@
         */
 
         loadPopularFoods();
+
+        loadCategories();
 
         loadFoods();
 

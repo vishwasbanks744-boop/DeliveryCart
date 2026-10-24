@@ -427,6 +427,14 @@ button {
     }
 }
 
+@media (max-width: 700px) {
+    body { padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+    button, .header-actions button { min-height: 44px; }
+    input:not([type="checkbox"]):not([type="radio"]), select, textarea { min-height: 46px; font-size: 16px; }
+    .button-group { gap: 10px; }
+    .order-card, .delivery-card { min-width: 0; }
+}
+
 </style>
     <script src="/static/js/auth-client.js"></script>
     <script src="/static/js/maps-client.js"></script>

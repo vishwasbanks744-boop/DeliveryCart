@@ -25,7 +25,18 @@
         button:disabled { opacity: .6; cursor: wait; }
         #message { min-height: 24px; color: #b42318; }
         .note { color: #667085; line-height: 1.5; font-size: 14px; }
-        @media (max-width: 700px) { .layout { grid-template-columns: 1fr; } }
+        @media (max-width: 700px) {
+            body { padding: 18px 14px calc(22px + env(safe-area-inset-bottom)); }
+            .layout { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+            .card { min-width: 0; padding: 18px 15px; }
+            .type-option { min-height: 44px; margin-right: 0; line-height: 1.4; }
+            .type-option input { min-width: 20px; min-height: 20px; }
+            .row { align-items: flex-start; gap: 8px; }
+            .row > span { min-width: 0; }
+            .row > strong { text-align: right; overflow-wrap: anywhere; }
+            .note { font-size: 15px; }
+            button { min-height: 48px; }
+        }
     </style>
     <script src="/static/js/auth-client.js"></script>
     <script src="/static/js/maps-client.js"></script>
