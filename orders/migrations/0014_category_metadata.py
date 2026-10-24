@@ -34,7 +34,7 @@ def seed_categories(apps, schema_editor):
 class Migration(migrations.Migration):
     dependencies = [("orders", "0013_order_cashfree_payment_fields")]
     operations = [
-        migrations.AddField(model_name="category", name="slug", field=models.SlugField(blank=True, max_length=120)),
+        migrations.AddField(model_name="category", name="slug", field=models.SlugField(blank=True, db_index=False, max_length=120)),
         migrations.AddField(model_name="category", name="icon", field=models.CharField(blank=True, max_length=32)),
         migrations.AddField(model_name="category", name="color", field=models.CharField(default="#fff3e8", max_length=20)),
         migrations.AddField(model_name="category", name="is_active", field=models.BooleanField(default=True)),
