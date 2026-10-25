@@ -387,11 +387,11 @@ def _cart_items(request):
     parsed = []
     for raw_key, quantity in raw_cart.items():
         try:
-            quantity = int(quantity)
-        except (TypeError, ValueError):
+            quantity = Decimal(str(quantity))
+        except (TypeError, ValueError, InvalidOperation):
             continue
         food_id, variant_name = _decode_cart_key(raw_key)
-        if food_id > 0 and 1 <= quantity <= MAX_CART_QUANTITY:
+        if food_id > 0 and quantity.is_finite() and Decimal("0.05") <= quantity <= MAX_CART_QUANTITY:
             parsed.append((raw_key, food_id, variant_name, quantity))
     food_ids = [food_id for _key, food_id, _variant, _quantity in parsed]
     foods = Food.objects.filter(
@@ -406,7 +406,7 @@ def _cart_items(request):
     items = []
     for _key, food_id, variant_name, quantity in parsed:
         food = food_by_id.get(food_id)
-        if not food or (food.stock_quantity is not None and quantity > food.stock_quantity):
+        if not food or (food.quantity_unit == "piece" and quantity != quantity.to_integral_value()) or (food.stock_quantity is not None and quantity > food.stock_quantity):
             continue
         unit_price = food.price
         if variant_name:
@@ -421,13 +421,7 @@ def _cart_items(request):
 def _grocery_options(food):
     if not food.category or food.category.slug not in {"groceries", "fruits", "vegetables"}:
         return []
-    if food.variants:
-        return food.variants
-    return [
-        {"name": "250 g", "price": str(money(food.price / 4))},
-        {"name": "500 g", "price": str(money(food.price / 2))},
-        {"name": "1 kg", "price": str(money(food.price))},
-    ]
+    return food.variants or []
 
 
 def _cart_key(food_id, variant_name=""):
@@ -474,8 +468,9 @@ def _serialize_cart(request):
             "image": food.image,
             "foodType": food.category.name if food.category else "",
             "price": float(unit_price),
-            "quantity": quantity,
+            "quantity": float(quantity),
             "variantName": variant_name,
+            "quantityUnit": food.quantity_unit,
         }
         for food, quantity, variant_name, unit_price in items
     ]
@@ -1036,6 +1031,7 @@ def category_detail(_request, slug):
             "id": food.id, "name": food.name, "description": food.description,
             "photo": food.image, "price": float(food.price),
             "variants": _grocery_options(food),
+            "quantityUnit": food.quantity_unit,
             "veg": not _is_non_veg_category(category.name),
         })
     return JsonResponse({
@@ -1321,6 +1317,7 @@ def foods(request):
             "image": food.image,
             "price": float(food.price),
             "variants": _grocery_options(food),
+            "quantityUnit": food.quantity_unit,
             "restaurantId": food.restaurant_id,
             "restaurantName": food.restaurant.name,
             "categoryId": food.category_id,
@@ -1366,11 +1363,11 @@ def cart(request):
     try:
         data = _json_body(request)
         food_id = int(data.get("foodId", data.get("productId")))
-        quantity = int(data.get("quantity", 1))
-    except (ValueError, TypeError):
+        quantity = Decimal(str(data.get("quantity", 1)))
+    except (ValueError, TypeError, InvalidOperation):
         return _error("A valid foodId and quantity are required.")
-    if not 1 <= quantity <= MAX_CART_QUANTITY:
-        return _error(f"Quantity must be between 1 and {MAX_CART_QUANTITY}.")
+    if not quantity.is_finite() or quantity != quantity.quantize(Decimal("0.01")) or not Decimal("0.05") <= quantity <= MAX_CART_QUANTITY:
+        return _error(f"Quantity must be between 0.05 and {MAX_CART_QUANTITY}.")
     food = Food.objects.filter(
         id=food_id,
         available=True,
@@ -1382,10 +1379,10 @@ def cart(request):
 
     variant_name = str(data.get("variantName", "")).strip()
     options = _grocery_options(food)
-    if options and not variant_name:
-        return _error("Choose how much you want before adding this grocery item.")
     if variant_name and not any(option["name"] == variant_name for option in options):
         return _error("Choose a valid grocery size.")
+    if food.quantity_unit == "piece" and quantity != quantity.to_integral_value():
+        return _error("Piece and dozen quantities must be whole numbers.")
     cart_key = _cart_key(food.id, variant_name)
     existing = request.session.get("cart", {})
     if not isinstance(existing, dict):
@@ -1398,12 +1395,16 @@ def cart(request):
     }
     if other_restaurants:
         return _error("Please finish or clear the current restaurant's cart first.")
-    new_quantity = int(existing.get(cart_key, 0)) + quantity
+    try:
+        old_quantity = Decimal(str(existing.get(cart_key, 0)))
+    except InvalidOperation:
+        old_quantity = Decimal("0")
+    new_quantity = old_quantity + quantity
     if new_quantity > MAX_CART_QUANTITY:
         return _error(f"Maximum quantity is {MAX_CART_QUANTITY}.")
     if food.stock_quantity is not None and new_quantity > food.stock_quantity:
         return _error(f"Only {food.stock_quantity} item(s) are currently in stock.", 409)
-    existing[cart_key] = new_quantity
+    existing[cart_key] = str(new_quantity)
     request.session["cart"] = existing
     return JsonResponse(_serialize_cart(request), status=201)
 
@@ -1423,17 +1424,25 @@ def cart_item(request, food_id):
         cart_data.pop(raw_key, None)
     else:
         try:
-            quantity = int(_json_body(request).get("quantity"))
-        except (ValueError, TypeError):
+            quantity = Decimal(str(_json_body(request).get("quantity")))
+        except (ValueError, TypeError, InvalidOperation):
             return _error("A valid quantity is required.")
-        if not 1 <= quantity <= MAX_CART_QUANTITY:
-            return _error(f"Quantity must be between 1 and {MAX_CART_QUANTITY}.")
+        if not quantity.is_finite() or quantity != quantity.quantize(Decimal("0.01")) or quantity < 0:
+            return _error("Enter a valid quantity.")
+        if quantity == 0:
+            cart_data.pop(raw_key, None)
+            request.session["cart"] = cart_data
+            return JsonResponse(_serialize_cart(request))
         food = Food.objects.filter(id=actual_food_id, restaurant__approved=True).first()
+        if quantity < Decimal("0.05") or quantity > MAX_CART_QUANTITY:
+            return _error("Quantity must be at least 0.05 and no more than 99.")
+        if food and food.quantity_unit == "piece" and quantity != quantity.to_integral_value():
+            return _error("Piece and dozen quantities must be whole numbers.")
         if food and food.stock_quantity is not None and quantity > food.stock_quantity:
             return _error(f"Only {food.stock_quantity} item(s) are currently in stock.", 409)
         if raw_key not in cart_data:
             return _error("Cart item not found.", 404)
-        cart_data[raw_key] = quantity
+        cart_data[raw_key] = str(quantity)
     request.session["cart"] = cart_data
     return JsonResponse(_serialize_cart(request))
 
@@ -1745,7 +1754,7 @@ def order_detail(request, order_id):
             {
                 "name": item.food_name,
                 "price": float(item.unit_price),
-                "quantity": item.quantity,
+                "quantity": float(item.quantity),
                 "image": item.food.image,
             }
             for item in order.items.all()
@@ -1933,7 +1942,7 @@ def _restaurant_order_data(order):
         "items": [
             {
                 "name": item.food_name,
-                "quantity": item.quantity,
+                "quantity": float(item.quantity),
                 "price": float(item.line_total),
             }
             for item in order.items.all()
@@ -2273,6 +2282,7 @@ def restaurant_reports(request):
     rows = [
         {
             "orderNumber": _order_public_number(order),
+            "customerName": order.customer_name,
             "date": timezone.localtime(order.created_at).strftime("%Y-%m-%d %H:%M"),
             "itemSales": float(order.item_total),
         }
@@ -2318,9 +2328,9 @@ def restaurant_reports(request):
             ("BOTTOMPADDING", (0, 0), (-1, -1), 9),
         ]))
         content.extend([summary_table, Spacer(1, 8 * mm)])
-        table_data = [["Order", "Date", "Item sales"]]
-        table_data.extend([[row["orderNumber"], row["date"], f"Rs. {row['itemSales']:.2f}"] for row in rows])
-        report_table = Table(table_data, colWidths=[45 * mm, 75 * mm, 45 * mm], repeatRows=1)
+        table_data = [["Order", "Name", "Date", "Item sales"]]
+        table_data.extend([[row["orderNumber"], row["customerName"], row["date"], f"Rs. {row['itemSales']:.2f}"] for row in rows])
+        report_table = Table(table_data, colWidths=[35 * mm, 45 * mm, 65 * mm, 35 * mm], repeatRows=1)
         report_table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#198754")),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
@@ -2342,9 +2352,9 @@ def restaurant_reports(request):
         response["Content-Disposition"] = f'attachment; filename="ramjicart-report-{start_date}-{end_date}.csv"'
         response.write("\ufeff")
         writer = csv.writer(response)
-        writer.writerow(["Order", "Date", "Item sales"])
+        writer.writerow(["Order", "Name", "Date", "Item sales"])
         for row in rows:
-            values = [row[key] for key in ("orderNumber", "date", "itemSales")]
+            values = [row[key] for key in ("orderNumber", "customerName", "date", "itemSales")]
             writer.writerow([f"'{value}" if isinstance(value, str) and value[:1] in "=+-@" else value for value in values])
         return response
     return JsonResponse({
@@ -2369,6 +2379,7 @@ def _product_payload(food):
         "available": food.available,
         "stockQuantity": food.stock_quantity,
         "variants": food.variants,
+        "quantityUnit": food.quantity_unit,
         "addons": food.addons,
     }
 
@@ -2422,14 +2433,15 @@ def restaurant_products(request):
     data = request.POST
     name = data.get("productName", "").strip()
     category_name = data.get("productCategory", "").strip()
+    quantity_unit = data.get("quantityUnit", "").strip()
     description = data.get("productDescription", "").strip()
     image = data.get("productImage", "").strip()
     raw_stock = data.get("stockQuantity", "").strip()
     try:
-        stock_quantity = int(raw_stock) if raw_stock else None
-        if stock_quantity is not None and stock_quantity < 0:
+        stock_quantity = Decimal(raw_stock) if raw_stock else None
+        if stock_quantity is not None and (not stock_quantity.is_finite() or stock_quantity < 0 or stock_quantity != stock_quantity.quantize(Decimal("0.01"))):
             raise ValueError
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, InvalidOperation):
         return _error("Stock quantity must be a whole number of zero or more.")
     try:
         variants = _parse_menu_options(data.get("variants", ""), "Variants")
@@ -2442,6 +2454,8 @@ def restaurant_products(request):
         return _error("Enter a valid product price.")
     if not name or len(name) > 160 or not category_name or len(description) > 2000:
         return _error("Enter a product name, category, and a description under 2000 characters.")
+    if quantity_unit not in {"kg", "piece"}:
+        return _error("Choose kg or piece as the quantity unit.")
     if not price.is_finite() or price <= 0:
         return _error("Product price must be greater than zero.")
     if image:
@@ -2463,6 +2477,7 @@ def restaurant_products(request):
             stock_quantity=stock_quantity,
             available=stock_quantity != 0,
             variants=variants,
+            quantity_unit=quantity_unit,
             addons=addons,
         )
         try:
@@ -2514,10 +2529,10 @@ def restaurant_product_detail(request, food_id):
     if "stockQuantity" in data:
         try:
             raw_stock = data["stockQuantity"]
-            stock_quantity = int(raw_stock) if raw_stock not in (None, "") else None
-            if stock_quantity is not None and stock_quantity < 0:
+            stock_quantity = Decimal(str(raw_stock)) if raw_stock not in (None, "") else None
+            if stock_quantity is not None and (not stock_quantity.is_finite() or stock_quantity < 0 or stock_quantity != stock_quantity.quantize(Decimal("0.01"))):
                 raise ValueError
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, InvalidOperation):
             return _error("Stock quantity must be a whole number of zero or more.")
     try:
         variants = _parse_menu_options(data.get("variants", food.variants), "Variants")
@@ -2529,6 +2544,10 @@ def restaurant_product_detail(request, food_id):
     food.image = image
     food.price = price
     food.category = category
+    quantity_unit = str(data.get("quantityUnit", "kg" if category and category.slug in {"groceries", "fruits", "vegetables"} else "piece"))
+    if quantity_unit not in {"kg", "piece"}:
+        return _error("Choose kg or piece as the quantity unit.")
+    food.quantity_unit = quantity_unit
     if "available" in data and not isinstance(data["available"], bool):
         return _error("Availability must be true or false.")
     food.stock_quantity = stock_quantity

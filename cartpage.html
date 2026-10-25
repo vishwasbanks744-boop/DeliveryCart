@@ -592,6 +592,8 @@
                 Bill summary
             </h2>
 
+            <button type="button" id="clearCartButton">Clear Cart</button>
+
 
             <hr>
 
@@ -814,6 +816,10 @@
 
         function displayCart(data) {
 
+            localStorage.setItem("ramjicart-cart", JSON.stringify(data.items || []));
+            emptyCart.style.display = data.items && data.items.length ? "none" : "block";
+            if (!data.items || !data.items.length) emptyCart.querySelector("h2").textContent = "Cart khali hai";
+
 
             cartItems
                 .querySelectorAll(".cart-item")
@@ -1004,8 +1010,13 @@
                     "quantity-number";
 
 
-                quantityNumber.textContent =
-                    item.quantity;
+                const quantityInput = document.createElement("input");
+                quantityInput.type = "number";
+                quantityInput.min = item.quantityUnit === "kg" ? "0.05" : "1";
+                quantityInput.step = item.quantityUnit === "kg" ? "0.01" : "1";
+                quantityInput.value = item.quantity;
+                quantityInput.setAttribute("aria-label", "Quantity");
+                quantityInput.addEventListener("change", function() { updateQuantity(item.id, quantityInput.value); });
 
 
                 const plusButton =
@@ -1028,9 +1039,7 @@
                     minusButton
                 );
 
-                quantity.appendChild(
-                    quantityNumber
-                );
+                quantity.appendChild(quantityInput);
 
                 quantity.appendChild(
                     plusButton
@@ -1049,12 +1058,7 @@
                     "total-price";
 
 
-                itemTotal.textContent =
-                    "₹" +
-                    (
-                        item.price *
-                        item.quantity
-                    );
+                itemTotal.textContent = String.fromCharCode(8377) + (Math.round(Number(item.price) * Number(item.quantity) * 100) / 100).toFixed(2);
 
 
                 /*
@@ -1089,7 +1093,7 @@
 
                         updateQuantity(
                             item.id,
-                            item.quantity + 1
+                            Math.round((Number(item.quantity) + (item.quantityUnit === "kg" ? 0.01 : 1)) * 100) / 100
                         );
 
                     }
@@ -1106,11 +1110,11 @@
                     "click",
                     function() {
 
-                        if (item.quantity > 1) {
+                        if (item.quantity > (item.quantityUnit === "kg" ? 0.05 : 1)) {
 
                             updateQuantity(
                                 item.id,
-                                item.quantity - 1
+                                Math.max(item.quantityUnit === "kg" ? 0.05 : 1, Math.round((Number(item.quantity) - (item.quantityUnit === "kg" ? 0.01 : 1)) * 100) / 100)
                             );
 
                         }
@@ -1159,20 +1163,16 @@
             ========================================
             */
 
-            itemTotalAmount.textContent =
-                "₹" + (data.itemTotal || 0);
+            itemTotalAmount.textContent = String.fromCharCode(8377) + Number(data.itemTotal || 0).toFixed(2);
 
 
-            deliveryFeeAmount.textContent =
-                "₹" + (data.deliveryFee || 0);
+            deliveryFeeAmount.textContent = String.fromCharCode(8377) + Number(data.deliveryFee || 0).toFixed(2);
 
 
-            discountAmount.textContent =
-                "₹" + (data.discount || 0);
+            discountAmount.textContent = String.fromCharCode(8377) + Number(data.discount || 0).toFixed(2);
 
 
-            total.textContent =
-                "₹" + (data.total || 0);
+            total.textContent = String.fromCharCode(8377) + Number(data.total || 0).toFixed(2);
 
         }
 
@@ -1329,6 +1329,12 @@
         ============================================
         */
 
+        document.getElementById("clearCartButton").addEventListener("click", async function() {
+            if (!confirm("Saare cart items hata dein?")) return;
+            const response = await fetch(cartApi);
+            const data = await response.json();
+            for (const item of data.items || []) await removeFromCart(item.id);
+        });
         loadCart();
 
     </script>

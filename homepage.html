@@ -1351,11 +1351,24 @@
                     const price = document.createElement("p");
                     price.className = "food-price";
                     price.textContent = "₹" + Number(food.price).toFixed(2);
+                    let selectedQuantity = 1;
+                    if (food.quantityUnit === "kg" && !(food.variants || []).length) {
+                        const quantity = document.createElement("input");
+                        quantity.type = "number"; quantity.min = "0.05"; quantity.step = "0.01"; quantity.value = "1";
+                        quantity.setAttribute("aria-label", "Aapko kitna chahiye? kg");
+                        const unit = document.createElement("select");
+                        [["kg", 1], ["g", 0.001]].forEach(([label, factor]) => { const option = document.createElement("option"); option.value = factor; option.textContent = label; unit.append(option); });
+                        const quick = document.createElement("div");
+                        [[250, "g"], [500, "g"], [1, "kg"], [2, "kg"]].forEach(([amount, label]) => { const q = document.createElement("button"); q.type = "button"; q.textContent = amount + " " + label; q.addEventListener("click", () => { quantity.value = amount; unit.value = label === "g" ? "0.001" : "1"; quantity.dispatchEvent(new Event("input")); }); quick.append(q); });
+                        const updatePrice = () => { selectedQuantity = Math.round(Number(quantity.value || 0) * Number(unit.value) * 100) / 100; price.textContent = String.fromCharCode(8377) + (Math.round(Number(food.price) * selectedQuantity * 100) / 100).toFixed(2); };
+                        quantity.addEventListener("input", updatePrice); unit.addEventListener("change", updatePrice);
+                        card.append(quantity, unit, quick);
+                    }
                     const button = document.createElement("button");
                     button.type = "button";
                     button.textContent = "Order Now";
                     button.addEventListener("click", function() {
-                        addToCart(food);
+                        addToCart(food, selectedQuantity);
                     });
                     card.append(image, title, restaurant, price, button);
                     foodList.appendChild(card);
@@ -1584,7 +1597,7 @@
         ==========================================
         */
 
-        async function addToCart(food) {
+        async function addToCart(food, quantity = 1) {
             try {
                 const csrfToken = document.cookie
                     .split("; ")
@@ -1599,7 +1612,7 @@
                             ? decodeURIComponent(csrfToken.split("=")[1])
                             : ""
                     },
-                    body: JSON.stringify({ foodId: food.id, quantity: 1 })
+                    body: JSON.stringify({ foodId: food.id, quantity: quantity })
                 });
                 const data = await response.json();
                 if (!response.ok) {

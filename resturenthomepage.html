@@ -1768,7 +1768,7 @@ body {
     </div>
     <p id="reportMessage" role="status" hidden></p>
     <div id="reportSummary" class="report-summary"></div>
-    <div class="report-table-wrap"><table class="report-table"><thead><tr><th>Order</th><th>Date</th><th>Item sales</th></tr></thead><tbody id="reportRows"></tbody></table></div>
+    <div class="report-table-wrap"><table class="report-table"><thead><tr><th>Order</th><th>Name</th><th>Date</th><th>Item sales</th></tr></thead><tbody id="reportRows"></tbody></table></div>
 </section>
 <section class="add-product-section">
 
@@ -1816,12 +1816,20 @@ body {
                 type="number"
                 id="productPrice"
                 name="productPrice"
+                step="0.01"
                 placeholder="e.g. 199"
                 min="0"
                 required
             >
         </div>
 
+        <div class="form-group">
+            <label for="productQuantityUnit">Quantity unit</label>
+            <select id="productQuantityUnit" name="quantityUnit">
+                <option value="kg">Kilogram (kg)</option>
+                <option value="piece">Piece / dozen</option>
+            </select>
+        </div>
 
         <!-- Description -->
         <div class="form-group">
@@ -1858,7 +1866,7 @@ body {
         </div>
         <div class="form-group">
             <label for="productStock">Stock quantity (leave empty to avoid tracking stock)</label>
-            <input type="number" id="productStock" name="stockQuantity" min="0" step="1" inputmode="numeric">
+            <input type="number" id="productStock" name="stockQuantity" min="0" step="0.01" inputmode="decimal">
         </div>
 
 
@@ -2168,6 +2176,10 @@ async function loadProductCategories() {
         categories.forEach(function(category) {
             select.add(new Option(category.name, category.name));
         });
+        select.addEventListener("change", function() {
+            const selected = categories.find(category => category.name === select.value);
+            document.getElementById("productQuantityUnit").value = selected && ["groceries", "fruits", "vegetables"].includes(selected.slug) ? "kg" : "piece";
+        });
     } catch (error) {
         select.replaceChildren(new Option("Categories unavailable", ""));
         console.error("Category options error:", error);
@@ -2300,7 +2312,7 @@ async function editMenuProduct(product) {
     const variants = variantsText.trim() ? variantsText.trim().split(/\r?\n/).map(line => { const [optionName, ...amount] = line.split(":"); return {name: optionName.trim(), price: amount.join(":").trim()}; }) : [];
     const addons = addonsText.trim() ? addonsText.trim().split(/\r?\n/).map(line => { const [optionName, ...amount] = line.split(":"); return {name: optionName.trim(), price: amount.join(":").trim()}; }) : [];
     try {
-        const response = await fetch(`/api/restaurant/products/${product.id}`, {method:"PUT", headers:{"Content-Type":"application/json","X-CSRFToken":orderCsrfToken()}, body:JSON.stringify({name, price, description, image, categoryId:category.id, variants, addons, stockQuantity:stockQuantity.trim() ? stockQuantity : null})});
+        const response = await fetch(`/api/restaurant/products/${product.id}`, {method:"PUT", headers:{"Content-Type":"application/json","X-CSRFToken":orderCsrfToken()}, body:JSON.stringify({name, price, description, image, categoryId:category.id, quantityUnit:product.quantityUnit, variants, addons, stockQuantity:stockQuantity.trim() ? stockQuantity : null})});
         const result = await response.json();
         if (!response.ok) throw new Error(result.message || "Product update failed.");
         menuProducts = menuProducts.map(item => item.id === result.id ? result : item);
@@ -3056,7 +3068,7 @@ async function loadRestaurantReport() {
         const summary = document.getElementById("reportSummary");
         summary.replaceChildren(...metrics.map(([label, value]) => { const card=document.createElement("div"); card.className="report-metric"; const name=document.createElement("span"); name.textContent=label; const amount=document.createElement("strong"); amount.textContent=value; card.append(name,amount); return card; }));
         const rows = document.getElementById("reportRows");
-        rows.replaceChildren(...data.orders.map(order => { const tr=document.createElement("tr"); [order.orderNumber,order.date,reportMoney(order.itemSales)].forEach(value => { const td=document.createElement("td"); td.textContent=value ?? "—"; tr.appendChild(td); }); return tr; }));
+        rows.replaceChildren(...data.orders.map(order => { const tr=document.createElement("tr"); [order.orderNumber,order.customerName,order.date,reportMoney(order.itemSales)].forEach(value => { const td=document.createElement("td"); td.textContent=value ?? "—"; tr.appendChild(td); }); return tr; }));
         reportMessage.textContent = data.orders.length ? "Report updated." : "Is date range mein koi order nahi mila.";
     } catch (error) { reportMessage.textContent = error.message; }
 }

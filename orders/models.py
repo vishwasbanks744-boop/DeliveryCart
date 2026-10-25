@@ -201,7 +201,8 @@ class Food(models.Model):
         max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))]
     )
     available = models.BooleanField(default=True)
-    stock_quantity = models.PositiveIntegerField(null=True, blank=True)
+    stock_quantity = models.DecimalField(max_digits=9, decimal_places=2, null=True, blank=True)
+    quantity_unit = models.CharField(max_length=8, choices=[("piece", "Piece"), ("kg", "Kilogram")], default="piece")
     variants = models.JSONField(default=list, blank=True)
     addons = models.JSONField(default=list, blank=True)
 
@@ -392,7 +393,7 @@ class OrderItem(models.Model):
     food_name = models.CharField(max_length=160)
     variant_name = models.CharField(max_length=80, blank=True)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
-    quantity = models.PositiveSmallIntegerField(validators=[MinValueValidator(1)])
+    quantity = models.DecimalField(max_digits=7, decimal_places=2, validators=[MinValueValidator(Decimal("0.05"))])
     line_total = models.DecimalField(max_digits=10, decimal_places=2)
 
     def __str__(self):
