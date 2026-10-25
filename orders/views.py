@@ -46,6 +46,7 @@ FRONTEND_PAGES = {
     "contact",
     "terms",
     "privacy",
+    "refund",
     "login",
     "register",
     "resturentpage",
