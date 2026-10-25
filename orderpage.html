@@ -739,7 +739,7 @@ function displayOrder(order) {
     /* Order ID */
 
     document.getElementById("orderid").textContent =
-        "Order ID: " + order.id;
+        "Order number: #" + (order.orderNumber || order.id);
 
 
     /* Heading */

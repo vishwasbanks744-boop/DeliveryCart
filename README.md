@@ -155,7 +155,11 @@ The `process_restaurant_orders` command should run every minute: it cancels a
 still-unaccepted order after 15 minutes and retries Cashfree refunds. The Render
 blueprint includes a cron service for this command;
 set the same Cashfree keys/environment on that service for automatic online
-refunds. Automatic refunds return the amount captured by Cashfree.
+refunds. Automatic refunds return the amount captured by Cashfree. The same
+command permanently deletes completed, cancelled, and failed order records and
+their line items once they are older than 15 days. Active orders and orders
+with pending payment/refunds are retained; customer accounts, restaurants, and
+products are retained.
 
 ## Tests
 

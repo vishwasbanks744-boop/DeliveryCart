@@ -944,7 +944,7 @@
 
 
                 foodType.textContent =
-                    item.foodType || "";
+                    [item.foodType, item.variantName].filter(Boolean).join(" · ");
 
 
                 const price =

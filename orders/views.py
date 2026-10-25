@@ -19,6 +19,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.core.validators import URLValidator
 from django.db import transaction
+from django.db import IntegrityError
 from django.db.models import F, Q, Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -29,7 +30,7 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 import qrcode
 from qrcode.image.svg import SvgPathImage
 
-from .models import Category, Food, Order, OrderItem, PricingSettings, Restaurant
+from .models import Category, DailyOrderSequence, Food, Order, OrderItem, PricingSettings, Restaurant
 from .models import AccountProfile
 from .pricing import money, quote_order
 
@@ -382,15 +383,16 @@ def _cart_items(request):
     raw_cart = request.session.get("cart", {})
     if not isinstance(raw_cart, dict):
         return []
-    food_ids = []
-    for raw_id, quantity in raw_cart.items():
+    parsed = []
+    for raw_key, quantity in raw_cart.items():
         try:
-            food_id = int(raw_id)
             quantity = int(quantity)
         except (TypeError, ValueError):
             continue
+        food_id, variant_name = _decode_cart_key(raw_key)
         if food_id > 0 and 1 <= quantity <= MAX_CART_QUANTITY:
-            food_ids.append(food_id)
+            parsed.append((raw_key, food_id, variant_name, quantity))
+    food_ids = [food_id for _key, food_id, _variant, _quantity in parsed]
     foods = Food.objects.filter(
         id__in=food_ids,
         available=True,
@@ -401,25 +403,56 @@ def _cart_items(request):
     )
     food_by_id = {food.id: food for food in foods}
     items = []
-    for raw_id, raw_quantity in raw_cart.items():
-        try:
-            food_id = int(raw_id)
-            quantity = int(raw_quantity)
-        except (TypeError, ValueError):
-            continue
+    for _key, food_id, variant_name, quantity in parsed:
         food = food_by_id.get(food_id)
-        if food and 1 <= quantity <= MAX_CART_QUANTITY and (
-            food.stock_quantity is None or quantity <= food.stock_quantity
-        ):
-            items.append((food, quantity))
+        if not food or (food.stock_quantity is not None and quantity > food.stock_quantity):
+            continue
+        unit_price = food.price
+        if variant_name:
+            option = next((option for option in _grocery_options(food) if option["name"] == variant_name), None)
+            if option is None:
+                continue
+            unit_price = Decimal(option["price"])
+        items.append((food, quantity, variant_name, unit_price))
     return items
+
+
+def _grocery_options(food):
+    if not food.category or food.category.slug not in {"groceries", "fruits", "vegetables"}:
+        return []
+    if food.variants:
+        return food.variants
+    return [
+        {"name": "250 g", "price": str(money(food.price / 4))},
+        {"name": "500 g", "price": str(money(food.price / 2))},
+        {"name": "1 kg", "price": str(money(food.price))},
+    ]
+
+
+def _cart_key(food_id, variant_name=""):
+    if not variant_name:
+        return str(food_id)
+    encoded = base64.urlsafe_b64encode(variant_name.encode("utf-8")).decode("ascii").rstrip("=")
+    return f"{food_id}~{encoded}"
+
+
+def _decode_cart_key(raw_key):
+    try:
+        raw_key = str(raw_key)
+        if "~" not in raw_key:
+            return int(raw_key), ""
+        raw_id, encoded = raw_key.split("~", 1)
+        encoded += "=" * (-len(encoded) % 4)
+        return int(raw_id), base64.urlsafe_b64decode(encoded.encode("ascii")).decode("utf-8")
+    except (TypeError, ValueError, UnicodeDecodeError):
+        return 0, ""
 
 
 def _cart_summary(items):
     item_total = money(
-        sum((food.price * quantity for food, quantity in items), Decimal("0"))
+        sum((unit_price * quantity for _food, quantity, _variant, unit_price in items), Decimal("0"))
     )
-    restaurant_ids = {food.restaurant_id for food, _ in items}
+    restaurant_ids = {food.restaurant_id for food, *_rest in items}
     restaurant = (
         Restaurant.objects.get(id=next(iter(restaurant_ids)))
         if len(restaurant_ids) == 1
@@ -433,16 +466,17 @@ def _serialize_cart(request):
     item_total, restaurant = _cart_summary(items)
     serialized_items = [
         {
-            "id": food.id,
+            "id": _cart_key(food.id, variant_name),
             "productId": food.id,
             "name": food.name,
             "description": food.description,
             "image": food.image,
             "foodType": food.category.name if food.category else "",
-            "price": float(food.price),
+            "price": float(unit_price),
             "quantity": quantity,
+            "variantName": variant_name,
         }
-        for food, quantity in items
+        for food, quantity, variant_name, unit_price in items
     ]
     return {
         "items": serialized_items,
@@ -1000,6 +1034,7 @@ def category_detail(_request, slug):
         entry["items"].append({
             "id": food.id, "name": food.name, "description": food.description,
             "photo": food.image, "price": float(food.price),
+            "variants": _grocery_options(food),
             "veg": not _is_non_veg_category(category.name),
         })
     return JsonResponse({
@@ -1021,6 +1056,10 @@ def _non_veg_category_ids():
 def _is_non_veg_category(name):
     normalized = "".join(character for character in str(name).lower() if character.isalpha())
     return normalized.startswith("nonveg") or normalized.startswith("nonvegetarian")
+
+
+def _order_public_number(order):
+    return str(order.daily_order_number) if order.daily_order_number else str(order.id).split("-")[0].upper()
 
 
 def _accepting_restaurant_ids():
@@ -1280,6 +1319,7 @@ def foods(request):
             "description": food.description,
             "image": food.image,
             "price": float(food.price),
+            "variants": _grocery_options(food),
             "restaurantId": food.restaurant_id,
             "restaurantName": food.restaurant.name,
             "categoryId": food.category_id,
@@ -1339,23 +1379,30 @@ def cart(request):
     if food is None:
         return _error("This food is not currently available.", 404)
 
+    variant_name = str(data.get("variantName", "")).strip()
+    options = _grocery_options(food)
+    if options and not variant_name:
+        return _error("Choose how much you want before adding this grocery item.")
+    if variant_name and not any(option["name"] == variant_name for option in options):
+        return _error("Choose a valid grocery size.")
+    cart_key = _cart_key(food.id, variant_name)
     existing = request.session.get("cart", {})
     if not isinstance(existing, dict):
         existing = {}
     current_items = _cart_items(request)
     other_restaurants = {
         current_food.restaurant_id
-        for current_food, _ in current_items
+        for current_food, *_rest in current_items
         if current_food.restaurant_id != food.restaurant_id
     }
     if other_restaurants:
         return _error("Please finish or clear the current restaurant's cart first.")
-    new_quantity = int(existing.get(str(food.id), 0)) + quantity
+    new_quantity = int(existing.get(cart_key, 0)) + quantity
     if new_quantity > MAX_CART_QUANTITY:
         return _error(f"Maximum quantity is {MAX_CART_QUANTITY}.")
     if food.stock_quantity is not None and new_quantity > food.stock_quantity:
         return _error(f"Only {food.stock_quantity} item(s) are currently in stock.", 409)
-    existing[str(food.id)] = new_quantity
+    existing[cart_key] = new_quantity
     request.session["cart"] = existing
     return JsonResponse(_serialize_cart(request), status=201)
 
@@ -1369,8 +1416,10 @@ def cart_item(request, food_id):
     cart_data = request.session.get("cart", {})
     if not isinstance(cart_data, dict):
         cart_data = {}
+    raw_key = str(food_id)
+    actual_food_id, _variant_name = _decode_cart_key(raw_key)
     if request.method == "DELETE":
-        cart_data.pop(str(food_id), None)
+        cart_data.pop(raw_key, None)
     else:
         try:
             quantity = int(_json_body(request).get("quantity"))
@@ -1378,12 +1427,12 @@ def cart_item(request, food_id):
             return _error("A valid quantity is required.")
         if not 1 <= quantity <= MAX_CART_QUANTITY:
             return _error(f"Quantity must be between 1 and {MAX_CART_QUANTITY}.")
-        food = Food.objects.filter(id=food_id, restaurant__approved=True).first()
+        food = Food.objects.filter(id=actual_food_id, restaurant__approved=True).first()
         if food and food.stock_quantity is not None and quantity > food.stock_quantity:
             return _error(f"Only {food.stock_quantity} item(s) are currently in stock.", 409)
-        if str(food_id) not in cart_data:
+        if raw_key not in cart_data:
             return _error("Cart item not found.", 404)
-        cart_data[str(food_id)] = quantity
+        cart_data[raw_key] = quantity
     request.session["cart"] = cart_data
     return JsonResponse(_serialize_cart(request))
 
@@ -1454,15 +1503,28 @@ def create_order(request):
     try:
         with transaction.atomic():
             locked_items = []
-            for food, quantity in items:
+            for food, quantity, variant_name, unit_price in items:
                 locked_food = Food.objects.select_for_update().get(pk=food.pk)
                 if not locked_food.available or locked_food.stock_quantity == 0 or (
                     locked_food.stock_quantity is not None
                     and locked_food.stock_quantity < quantity
                 ):
                     raise ValidationError(f"{locked_food.name} no longer has enough stock.")
-                locked_items.append((locked_food, quantity))
+                locked_items.append((locked_food, quantity, variant_name, unit_price))
+            order_day = timezone.localdate()
+            try:
+                sequence = DailyOrderSequence.objects.select_for_update().get(day=order_day)
+            except DailyOrderSequence.DoesNotExist:
+                try:
+                    with transaction.atomic():
+                        sequence = DailyOrderSequence.objects.create(day=order_day, last_number=0)
+                except IntegrityError:
+                    sequence = DailyOrderSequence.objects.select_for_update().get(day=order_day)
+            sequence.last_number += 1
+            sequence.save(update_fields=["last_number"])
             order = Order.objects.create(
+                order_day=order_day,
+                daily_order_number=sequence.last_number,
                 customer=request.user,
                 customer_name=customer_name,
                 customer_email=customer_email,
@@ -1503,15 +1565,16 @@ def create_order(request):
                     OrderItem(
                         order=order,
                         food=food,
-                        food_name=food.name,
-                        unit_price=food.price,
+                        food_name=(f"{food.name} ({variant_name})" if variant_name else food.name)[:160],
+                        variant_name=variant_name,
+                        unit_price=unit_price,
                         quantity=quantity,
-                        line_total=money(food.price * quantity),
+                        line_total=money(unit_price * quantity),
                     )
-                    for food, quantity in locked_items
+                    for food, quantity, variant_name, unit_price in locked_items
                 ]
             )
-            for food, quantity in locked_items:
+            for food, quantity, _variant_name, _unit_price in locked_items:
                 if food.stock_quantity is not None:
                     food.stock_quantity -= quantity
                     if food.stock_quantity == 0:
@@ -1574,6 +1637,7 @@ def create_order(request):
     return JsonResponse(
         {
             "orderId": str(order.id),
+            "orderNumber": _order_public_number(order),
             "customerName": customer_name,
             "customerEmail": customer_email,
             "customerPhone": customer_phone,
@@ -1602,6 +1666,7 @@ def order_detail(request, order_id):
     )
     data = {
         "id": str(order.id),
+        "orderNumber": _order_public_number(order),
         "status": order.status,
         "rejectionReason": order.rejection_reason,
         "preparingMinutes": order.preparing_minutes,
@@ -1822,7 +1887,7 @@ def _restaurant_order_data(order):
     }[order.status]
     return {
         "id": str(order.id),
-        "orderNumber": str(order.id).split("-")[0].upper(),
+        "orderNumber": _order_public_number(order),
         "date": timezone.localtime(order.created_at).strftime("%d %b %Y, %I:%M %p"),
         "status": display_status,
         "rejectionReason": order.rejection_reason,
@@ -2203,34 +2268,82 @@ def restaurant_reports(request):
         created_at__date__lte=end_date,
     ).exclude(status__in=[Order.Status.PAYMENT_PENDING, Order.Status.PAYMENT_FAILED]).order_by("-created_at")
     completed = orders.filter(status=Order.Status.COMPLETED)
-    totals = completed.aggregate(
-        sales=Sum("item_total"),
-        commission=Sum("commission_amount"),
-        payout=Sum("restaurant_payout"),
-    )
+    totals = completed.aggregate(sales=Sum("item_total"))
     rows = [
         {
-            "orderNumber": str(order.id).split("-")[0].upper(),
+            "orderNumber": _order_public_number(order),
             "date": timezone.localtime(order.created_at).strftime("%Y-%m-%d %H:%M"),
-            "status": order.get_status_display(),
             "itemSales": float(order.item_total),
-            "commissionRate": float(order.commission_percentage),
-            "commission": float(order.commission_amount),
-            "restaurantPayout": float(order.restaurant_payout),
-            "settlementStatus": order.get_settlement_status_display(),
-            "settlementReference": order.settlement_reference,
-            "refundStatus": order.refund_status,
         }
         for order in orders
     ]
-    if request.GET.get("format", "").lower() == "csv":
+    output_format = request.GET.get("format", "").lower()
+    if output_format == "pdf":
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib.units import mm
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+        pdf_buffer = BytesIO()
+        document = SimpleDocTemplate(
+            pdf_buffer,
+            pagesize=A4,
+            rightMargin=18 * mm,
+            leftMargin=18 * mm,
+            topMargin=18 * mm,
+            bottomMargin=18 * mm,
+            title=f"Ramjicart order report {start_date} to {end_date}",
+        )
+        styles = getSampleStyleSheet()
+        content = [
+            Paragraph("Ramjicart Order Report", styles["Title"]),
+            Paragraph(f"Date range: {start_date:%d-%m-%Y} to {end_date:%d-%m-%Y}", styles["Normal"]),
+            Spacer(1, 8 * mm),
+        ]
+        summary_table = Table(
+            [["Orders", str(orders.count()), "Completed", str(completed.count()), "Item sales", f"Rs. {float(totals['sales'] or 0):.2f}"]],
+            colWidths=[22 * mm, 18 * mm, 28 * mm, 18 * mm, 25 * mm, 32 * mm],
+        )
+        summary_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f1f8f4")),
+            ("TEXTCOLOR", (0, 0), (-1, -1), colors.HexColor("#172033")),
+            ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#dce8e1")),
+            ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.white),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, -1), 9),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 9),
+        ]))
+        content.extend([summary_table, Spacer(1, 8 * mm)])
+        table_data = [["Order", "Date", "Item sales"]]
+        table_data.extend([[row["orderNumber"], row["date"], f"Rs. {row['itemSales']:.2f}"] for row in rows])
+        report_table = Table(table_data, colWidths=[45 * mm, 75 * mm, 45 * mm], repeatRows=1)
+        report_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#198754")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#dce2df")),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f7faf8")]),
+            ("ALIGN", (-1, 1), (-1, -1), "RIGHT"),
+            ("TOPPADDING", (0, 0), (-1, -1), 7),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+        ]))
+        content.append(report_table)
+        document.build(content)
+        response = HttpResponse(pdf_buffer.getvalue(), content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="ramjicart-order-report-{start_date}-{end_date}.pdf"'
+        return response
+    if output_format == "csv":
         response = HttpResponse(content_type="text/csv; charset=utf-8")
         response["Content-Disposition"] = f'attachment; filename="ramjicart-report-{start_date}-{end_date}.csv"'
         response.write("\ufeff")
         writer = csv.writer(response)
-        writer.writerow(["Order", "Date", "Status", "Item sales", "Commission %", "Commission", "Restaurant payout", "Settlement", "Settlement reference", "Refund"])
+        writer.writerow(["Order", "Date", "Item sales"])
         for row in rows:
-            values = [row[key] for key in ("orderNumber", "date", "status", "itemSales", "commissionRate", "commission", "restaurantPayout", "settlementStatus", "settlementReference", "refundStatus")]
+            values = [row[key] for key in ("orderNumber", "date", "itemSales")]
             writer.writerow([f"'{value}" if isinstance(value, str) and value[:1] in "=+-@" else value for value in values])
         return response
     return JsonResponse({
@@ -2239,10 +2352,6 @@ def restaurant_reports(request):
         "orderCount": orders.count(),
         "completedOrders": completed.count(),
         "itemSales": float(totals["sales"] or 0),
-        "commission": float(totals["commission"] or 0),
-        "restaurantPayout": float(totals["payout"] or 0),
-        "settledPayout": float(completed.filter(settlement_status=Order.SettlementStatus.SETTLED).aggregate(total=Sum("restaurant_payout"))["total"] or 0),
-        "unsettledPayout": float(completed.exclude(settlement_status=Order.SettlementStatus.SETTLED).aggregate(total=Sum("restaurant_payout"))["total"] or 0),
         "orders": rows,
     })
 
@@ -2638,7 +2747,7 @@ def _latest_delivery_location(profile):
 def _delivery_order_data(order):
     return {
         "id": str(order.id),
-        "orderNumber": str(order.id).split("-")[0].upper(),
+        "orderNumber": _order_public_number(order),
         "date": timezone.localtime(order.created_at).strftime("%d %b %Y, %I:%M %p"),
         "statusCode": order.status,
         "status": order.get_status_display(),
@@ -3035,7 +3144,7 @@ def customer_order_history(request):
             "orders": [
                 {
                     "id": str(order.id),
-                    "orderNumber": str(order.id).split("-")[0].upper(),
+                    "orderNumber": _order_public_number(order),
                     "createdAt": timezone.localtime(order.created_at).strftime(
                         "%d %b %Y, %I:%M %p"
                     ),

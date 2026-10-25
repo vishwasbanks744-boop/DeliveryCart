@@ -280,6 +280,8 @@ class Order(models.Model):
         FAILED = "failed", "Failed"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    order_day = models.DateField(null=True, blank=True, editable=False)
+    daily_order_number = models.PositiveIntegerField(null=True, blank=True, editable=False)
     customer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -356,11 +358,17 @@ class Order(models.Model):
     refund_error = models.TextField(blank=True)
     refund_requested_at = models.DateTimeField(null=True, blank=True)
     refund_attempts = models.PositiveSmallIntegerField(default=0)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     paid_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["order_day", "daily_order_number"],
+                name="unique_daily_order_number",
+            )
+        ]
 
     def clean(self):
         if (self.delivery_latitude is None) != (
@@ -382,9 +390,15 @@ class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
     food = models.ForeignKey(Food, on_delete=models.PROTECT)
     food_name = models.CharField(max_length=160)
+    variant_name = models.CharField(max_length=80, blank=True)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     quantity = models.PositiveSmallIntegerField(validators=[MinValueValidator(1)])
     line_total = models.DecimalField(max_digits=10, decimal_places=2)
 
     def __str__(self):
         return f"{self.quantity} x {self.food_name}"
+
+
+class DailyOrderSequence(models.Model):
+    day = models.DateField(primary_key=True)
+    last_number = models.PositiveIntegerField(default=0)

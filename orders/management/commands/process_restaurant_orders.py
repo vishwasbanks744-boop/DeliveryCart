@@ -48,8 +48,22 @@ class Command(BaseCommand):
         for order in Order.objects.filter(pk__in=retry_ids).select_related("restaurant"):
             _request_order_refund(order)
 
+        retention_cutoff = now - timedelta(days=15)
+        deletable_orders = Order.objects.filter(
+            created_at__lt=retention_cutoff,
+            status__in=[
+                Order.Status.COMPLETED,
+                Order.Status.CANCELLED,
+                Order.Status.PAYMENT_FAILED,
+            ],
+        ).exclude(gateway_payment_status="pending").exclude(
+            refund_status__in=["pending", "failed", "manual_review", "processing", "queued", "initiated"]
+        )
+        deleted_count, _ = deletable_orders.delete()
+
         self.stdout.write(
             self.style.SUCCESS(
-                f"Restaurant order check complete: {cancelled} auto-cancel(s)."
+                f"Restaurant order check complete: {cancelled} auto-cancel(s); "
+                f"{deleted_count} old record(s) removed."
             )
         )

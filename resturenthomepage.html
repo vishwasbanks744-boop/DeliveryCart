@@ -1754,7 +1754,7 @@ body {
 </section>
 <section class="restaurant-orders-section" id="restaurant-reports">
     <div class="restaurant-orders-header">
-        <div><h2>Sales &amp; settlement reports</h2><p>Completed order sales, commission deductions, payout totals and settlement records.</p></div>
+        <div><h2>Order reports</h2><p>Review order counts and item sales for a selected date range.</p></div>
         <a class="back-to-dashboard" href="#dashboard">← Dashboard</a>
     </div>
     <div class="report-controls">
@@ -1764,11 +1764,11 @@ body {
         <button type="button" id="reportWeek">Last 7 days</button>
         <button type="button" id="loadReport">Generate report</button>
         <a href="#" id="downloadReportCsv">Download CSV</a>
-        <button type="button" id="downloadReportPdf">Print / Save PDF</button>
+        <a href="#" id="downloadReportPdf" download>Download PDF</a>
     </div>
     <p id="reportMessage" role="status" hidden></p>
     <div id="reportSummary" class="report-summary"></div>
-    <div class="report-table-wrap"><table class="report-table"><thead><tr><th>Order</th><th>Date</th><th>Status</th><th>Item sales</th><th>Commission</th><th>Payout</th><th>Settlement</th><th>Refund</th></tr></thead><tbody id="reportRows"></tbody></table></div>
+    <div class="report-table-wrap"><table class="report-table"><thead><tr><th>Order</th><th>Date</th><th>Item sales</th></tr></thead><tbody id="reportRows"></tbody></table></div>
 </section>
 <section class="add-product-section">
 
@@ -1848,8 +1848,9 @@ body {
         </div>
 
         <div class="form-group">
-            <label for="productVariants">Variants (one per line: Name:Price)</label>
+            <label for="productVariants">Variants / grocery pack sizes (one per line: Name:Price)</label>
             <textarea id="productVariants" name="variants" maxlength="2000" placeholder="Half:120&#10;Full:210"></textarea>
+            <small>Groceries, fruits and vegetables: add sizes like 250 g:30 and 500 g:60 with each pack's price. If left blank, the product price is treated as the 1 kg price.</small>
         </div>
         <div class="form-group">
             <label for="productAddons">Add-ons (one per line: Name:Price)</label>
@@ -3046,22 +3047,22 @@ async function loadRestaurantReport() {
     reportMessage.textContent = "Loading report…";
     const params = new URLSearchParams({startDate: reportStartInput.value, endDate: reportEndInput.value});
     reportCsvLink.href = `/api/restaurant/reports?${params.toString()}&format=csv`;
+    document.getElementById("downloadReportPdf").href = `/api/restaurant/reports?${params.toString()}&format=pdf`;
     try {
         const response = await fetch(`/api/restaurant/reports?${params.toString()}`, {headers:{Accept:"application/json"}});
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || "Report load nahi hua.");
-        const metrics = [["Orders", data.orderCount], ["Completed", data.completedOrders], ["Item sales", reportMoney(data.itemSales)], ["Commission", reportMoney(data.commission)], ["Restaurant payout", reportMoney(data.restaurantPayout)], ["Settled", reportMoney(data.settledPayout)], ["Unsettled", reportMoney(data.unsettledPayout)]];
+        const metrics = [["Orders", data.orderCount], ["Completed", data.completedOrders], ["Item sales", reportMoney(data.itemSales)]];
         const summary = document.getElementById("reportSummary");
         summary.replaceChildren(...metrics.map(([label, value]) => { const card=document.createElement("div"); card.className="report-metric"; const name=document.createElement("span"); name.textContent=label; const amount=document.createElement("strong"); amount.textContent=value; card.append(name,amount); return card; }));
         const rows = document.getElementById("reportRows");
-        rows.replaceChildren(...data.orders.map(order => { const tr=document.createElement("tr"); [order.orderNumber,order.date,order.status,reportMoney(order.itemSales),`${order.commissionRate}% (${reportMoney(order.commission)})`,reportMoney(order.restaurantPayout),order.settlementStatus,order.refundStatus].forEach(value => { const td=document.createElement("td"); td.textContent=value ?? "—"; tr.appendChild(td); }); return tr; }));
+        rows.replaceChildren(...data.orders.map(order => { const tr=document.createElement("tr"); [order.orderNumber,order.date,reportMoney(order.itemSales)].forEach(value => { const td=document.createElement("td"); td.textContent=value ?? "—"; tr.appendChild(td); }); return tr; }));
         reportMessage.textContent = data.orders.length ? "Report updated." : "Is date range mein koi order nahi mila.";
     } catch (error) { reportMessage.textContent = error.message; }
 }
 document.getElementById("reportToday").addEventListener("click", () => { setReportRange(1); loadRestaurantReport(); });
 document.getElementById("reportWeek").addEventListener("click", () => { setReportRange(7); loadRestaurantReport(); });
 document.getElementById("loadReport").addEventListener("click", loadRestaurantReport);
-document.getElementById("downloadReportPdf").addEventListener("click", () => window.print());
 setReportRange(7);
 loadRestaurantReport();
 

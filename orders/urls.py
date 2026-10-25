@@ -31,7 +31,7 @@ urlpatterns = [
     path("customer/restaurants", views.customer_restaurants),
     path("customer/foods", views.foods),
     path("customer/cart", views.cart),
-    path("customer/cart/<int:food_id>", views.cart_item),
+    path("customer/cart/<str:food_id>", views.cart_item),
     path("customer/checkout/quote", views.checkout_quote),
     path("customer/orders", views.create_order),
     path("customer/orders/<uuid:order_id>/payment-status", views.cashfree_payment_status),
