@@ -1043,6 +1043,200 @@
 
             #foodList > .food-card > a { grid-column: 1 / -1; font-size: 10px; }
         }
+        /* ORDER TRACKING DEFAULT FIX */
+        #orderTracking h2 {
+            color: #1f2937 !important;
+            text-shadow: none !important;
+        }
+
+        /* 5 MATCHING COLOR THEMES FOR GALAXY BACKGROUND */
+        body[data-theme="1"] .food-card,
+        body[data-theme="1"] .craving-food-card,
+        body[data-theme="1"] #orderTracking,
+        body[data-theme="1"] .order-history-card,
+        body[data-theme="1"] .ad-slot,
+        body[data-theme="2"] .food-card,
+        body[data-theme="2"] .craving-food-card,
+        body[data-theme="2"] #orderTracking,
+        body[data-theme="2"] .order-history-card,
+        body[data-theme="2"] .ad-slot,
+        body[data-theme="3"] .food-card,
+        body[data-theme="3"] .craving-food-card,
+        body[data-theme="3"] #orderTracking,
+        body[data-theme="3"] .order-history-card,
+        body[data-theme="3"] .ad-slot,
+        body[data-theme="5"] .food-card,
+        body[data-theme="5"] .craving-food-card,
+        body[data-theme="5"] #orderTracking,
+        body[data-theme="5"] .order-history-card,
+        body[data-theme="5"] .ad-slot {
+            color: #ffffff;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+        }
+
+        body[data-theme="1"] .food-card h3,
+        body[data-theme="1"] .craving-food-card p,
+        body[data-theme="1"] #orderTracking h2,
+        body[data-theme="1"] .order-history-title,
+        body[data-theme="2"] .food-card h3,
+        body[data-theme="2"] .craving-food-card p,
+        body[data-theme="2"] #orderTracking h2,
+        body[data-theme="2"] .order-history-title,
+        body[data-theme="3"] .food-card h3,
+        body[data-theme="3"] .craving-food-card p,
+        body[data-theme="3"] #orderTracking h2,
+        body[data-theme="3"] .order-history-title,
+        body[data-theme="5"] .food-card h3,
+        body[data-theme="5"] .craving-food-card p,
+        body[data-theme="5"] #orderTracking h2,
+        body[data-theme="5"] .order-history-title {
+            color: #ffffff !important;
+            text-shadow: none !important;
+        }
+
+        body[data-theme="1"] .food-card p,
+        body[data-theme="1"] .order-history-meta,
+        body[data-theme="1"] #trackingSteps p,
+        body[data-theme="1"] .ad-slot p,
+        body[data-theme="2"] .food-card p,
+        body[data-theme="2"] .order-history-meta,
+        body[data-theme="2"] #trackingSteps p,
+        body[data-theme="2"] .ad-slot p,
+        body[data-theme="3"] .food-card p,
+        body[data-theme="3"] .order-history-meta,
+        body[data-theme="3"] #trackingSteps p,
+        body[data-theme="3"] .ad-slot p,
+        body[data-theme="5"] .food-card p,
+        body[data-theme="5"] .order-history-meta,
+        body[data-theme="5"] #trackingSteps p,
+        body[data-theme="5"] .ad-slot p {
+            color: #cbd5e1 !important;
+        }
+
+        /* 1: Cosmic Dark Glass */
+        body[data-theme="1"] .food-card,
+        body[data-theme="1"] .craving-food-card,
+        body[data-theme="1"] #orderTracking,
+        body[data-theme="1"] .order-history-card,
+        body[data-theme="1"] .ad-slot {
+            background: rgba(22, 16, 44, 0.82) !important;
+            border: 1px solid rgba(183, 156, 255, 0.22) !important;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45) !important;
+        }
+        body[data-theme="1"] #trackingSteps p {
+            background: rgba(255, 255, 255, 0.08) !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        }
+        body[data-theme="1"] header,
+        body[data-theme="1"] .mobile-nav,
+        body[data-theme="1"] .nav-mobile {
+            background: rgba(14, 10, 28, 0.92) !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+        }
+
+        /* 2: Midnight Slate */
+        body[data-theme="2"] .food-card,
+        body[data-theme="2"] .craving-food-card,
+        body[data-theme="2"] #orderTracking,
+        body[data-theme="2"] .order-history-card,
+        body[data-theme="2"] .ad-slot {
+            background: rgba(15, 23, 42, 0.88) !important;
+            border: 1px solid rgba(99, 102, 241, 0.24) !important;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45) !important;
+        }
+        body[data-theme="2"] #trackingSteps p {
+            background: rgba(30, 41, 59, 0.8) !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        }
+        body[data-theme="2"] header,
+        body[data-theme="2"] .mobile-nav,
+        body[data-theme="2"] .nav-mobile {
+            background: rgba(15, 23, 42, 0.95) !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+        }
+
+        /* 3: Smoked Charcoal */
+        body[data-theme="3"] .food-card,
+        body[data-theme="3"] .craving-food-card,
+        body[data-theme="3"] #orderTracking,
+        body[data-theme="3"] .order-history-card,
+        body[data-theme="3"] .ad-slot {
+            background: rgba(24, 24, 30, 0.92) !important;
+            border: 1px solid rgba(255, 255, 255, 0.14) !important;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45) !important;
+        }
+        body[data-theme="3"] #trackingSteps p {
+            background: rgba(39, 39, 46, 0.8) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        }
+        body[data-theme="3"] header,
+        body[data-theme="3"] .mobile-nav,
+        body[data-theme="3"] .nav-mobile {
+            background: rgba(20, 20, 24, 0.95) !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+        }
+
+        /* 4: Soft Starlight Pearl */
+        body[data-theme="4"] .food-card,
+        body[data-theme="4"] .craving-food-card,
+        body[data-theme="4"] #orderTracking,
+        body[data-theme="4"] .order-history-card,
+        body[data-theme="4"] .ad-slot {
+            background: rgba(243, 240, 255, 0.92) !important;
+            border: 1px solid rgba(183, 156, 255, 0.35) !important;
+            color: #1e1b4b !important;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25) !important;
+        }
+        body[data-theme="4"] .food-card h3,
+        body[data-theme="4"] .craving-food-card p,
+        body[data-theme="4"] #orderTracking h2,
+        body[data-theme="4"] .order-history-title {
+            color: #1e1b4b !important;
+            text-shadow: none !important;
+        }
+        body[data-theme="4"] .food-card p,
+        body[data-theme="4"] .order-history-meta,
+        body[data-theme="4"] #trackingSteps p,
+        body[data-theme="4"] .ad-slot p {
+            color: #475569 !important;
+        }
+        body[data-theme="4"] #trackingSteps p {
+            background: rgba(224, 219, 245, 0.8) !important;
+            border: 1px solid rgba(183, 156, 255, 0.3) !important;
+        }
+        body[data-theme="4"] header,
+        body[data-theme="4"] .mobile-nav,
+        body[data-theme="4"] .nav-mobile {
+            background: rgba(255, 255, 255, 0.96) !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+            border-top: 1px solid #e2e8f0 !important;
+        }
+
+        /* 5: Sunset Nebula Amber */
+        body[data-theme="5"] .food-card,
+        body[data-theme="5"] .craving-food-card,
+        body[data-theme="5"] #orderTracking,
+        body[data-theme="5"] .order-history-card,
+        body[data-theme="5"] .ad-slot {
+            background: rgba(34, 18, 34, 0.88) !important;
+            border: 1px solid rgba(255, 138, 92, 0.28) !important;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45) !important;
+        }
+        body[data-theme="5"] #trackingSteps p {
+            background: rgba(255, 255, 255, 0.08) !important;
+            border: 1px solid rgba(255, 138, 92, 0.2) !important;
+        }
+        body[data-theme="5"] header,
+        body[data-theme="5"] .mobile-nav,
+        body[data-theme="5"] .nav-mobile {
+            background: rgba(26, 14, 26, 0.95) !important;
+            border-bottom: 1px solid rgba(255, 138, 92, 0.2) !important;
+            border-top: 1px solid rgba(255, 138, 92, 0.2) !important;
+        }
     </style>
     <script src="/static/js/auth-client.js"></script>
     <script src="/static/js/maps-client.js"></script>
@@ -1227,6 +1421,31 @@
             <a href="/contact.html">Contact &amp; Support</a>
         </p>
 
+    <!-- FLOATING THEME SELECTOR BAR (For User to preview & choose 5 matching colors) -->
+    <div id="themeSwitcherBar" style="position:fixed;bottom:72px;left:50%;transform:translateX(-50%);z-index:99999;background:rgba(12,8,28,0.94);border:1px solid rgba(255,138,92,0.45);border-radius:30px;padding:6px 12px;display:flex;align-items:center;gap:6px;box-shadow:0 8px 30px rgba(0,0,0,0.6);backdrop-filter:blur(10px);max-width:calc(100vw - 20px);overflow-x:auto;-webkit-overflow-scrolling:touch;">
+        <span style="color:#ff8a5c;font-size:12px;font-weight:bold;white-space:nowrap;margin-right:2px;">&#127912; Select Color:</span>
+        <button type="button" onclick="setAppTheme(1)" style="border:none;background:#231742;color:#fff;padding:6px 10px;border-radius:15px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid #7c3aed;">1: Cosmic Glass</button>
+        <button type="button" onclick="setAppTheme(2)" style="border:none;background:#0f172a;color:#fff;padding:6px 10px;border-radius:15px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid #3b82f6;">2: Midnight Slate</button>
+        <button type="button" onclick="setAppTheme(3)" style="border:none;background:#18181b;color:#fff;padding:6px 10px;border-radius:15px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid #71717a;">3: Charcoal</button>
+        <button type="button" onclick="setAppTheme(4)" style="border:none;background:#f3f0ff;color:#1e1b4b;padding:6px 10px;border-radius:15px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid #a78bfa;">4: Milky Pearl</button>
+        <button type="button" onclick="setAppTheme(5)" style="border:none;background:#241224;color:#fed7aa;padding:6px 10px;border-radius:15px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid #f97316;">5: Sunset Amber</button>
+        <button type="button" onclick="setAppTheme(0)" style="border:none;background:#ffffff;color:#111;padding:6px 10px;border-radius:15px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">Original White</button>
+    </div>
+    <script>
+        function setAppTheme(n) {
+            if (n === 0) {
+                document.body.removeAttribute('data-theme');
+                localStorage.removeItem('user_app_theme');
+            } else {
+                document.body.setAttribute('data-theme', n);
+                localStorage.setItem('user_app_theme', n);
+            }
+        }
+        (function() {
+            var saved = localStorage.getItem('user_app_theme') || '1';
+            setAppTheme(parseInt(saved, 10));
+        })();
+    </script>
     </footer>
 
 
