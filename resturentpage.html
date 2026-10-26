@@ -1059,7 +1059,11 @@ function renderRestaurants() {
         menuButton.type = "button";
         menuButton.textContent = "View menu";
         menuButton.addEventListener("click", function() {
-            window.location.href = "homepage.html?restaurantId=" + encodeURIComponent(restaurant.id);
+            window.location.href = "/restaurant/" + encodeURIComponent(restaurant.id);
+        });
+        name.style.cursor = "pointer";
+        name.addEventListener("click", function() {
+            window.location.href = "/restaurant/" + encodeURIComponent(restaurant.id);
         });
         bottom.append(status, menuButton);
 

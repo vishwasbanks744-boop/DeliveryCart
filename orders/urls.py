@@ -29,6 +29,7 @@ urlpatterns = [
     path("customer/categories/<slug:slug>", views.category_detail),
     path("customer/foods/popular", views.popular_foods),
     path("customer/restaurants", views.customer_restaurants),
+    path("customer/restaurants/<int:restaurant_id>", views.customer_restaurant_detail),
     path("customer/foods", views.foods),
     path("customer/cart", views.cart),
     path("customer/cart/<str:food_id>", views.cart_item),

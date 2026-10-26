@@ -738,8 +738,16 @@ function displayOrder(order) {
 
     /* Order ID */
 
-    document.getElementById("orderid").textContent =
-        "Order number: #" + (order.orderNumber || order.id);
+    const orderIdLabel = document.getElementById("orderid");
+    const displayNum = order.orderNumber || (order.id ? String(order.id).split("-")[0].toUpperCase() : "");
+    orderIdLabel.textContent = "Order number: #" + displayNum;
+    const dailyLabel = document.createElement("span");
+    dailyLabel.style.display = "block";
+    dailyLabel.style.fontSize = "14px";
+    dailyLabel.style.color = "#666";
+    dailyLabel.style.marginTop = "4px";
+    dailyLabel.textContent = "Daily order no: #" + (order.dailyOrderNumber ?? "—");
+    orderIdLabel.appendChild(dailyLabel);
 
 
     /* Heading */

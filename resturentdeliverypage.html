@@ -732,7 +732,10 @@ function renderDeliveryHistory(orders) {
         return `
             <article class="order-card">
                 <div class="order-header">
-                    <span class="order-id">Order #${escapeHtml(order.orderNumber)}</span>
+                    <span class="order-id">
+                        Order #${escapeHtml(order.orderNumber)}
+                        <br><span style="font-size: 13px; font-weight: normal; color: #666;">Daily order no: #${escapeHtml(order.dailyOrderNumber ?? "—")}</span>
+                    </span>
                     <span class="status">Delivered</span>
                 </div>
                 <p class="message">${escapeHtml(order.date)}</p>
@@ -819,6 +822,7 @@ async function loadAvailableOrders() {
 
                     <span class="order-id">
                         Order #${escapeHtml(order.orderNumber)}
+                        <br><span style="font-size: 13px; font-weight: normal; color: #666;">Daily order no: #${escapeHtml(order.dailyOrderNumber ?? "—")}</span>
                     </span>
 
                     <span class="status">
@@ -1058,7 +1062,7 @@ async function loadCurrentDelivery() {
                 <article class="order-card" data-active-order="${order.id}">
                     <div class="delivery-status">
                         <h3>${escapeHtml(order.status || "")}</h3>
-                        <p><strong>Order #${escapeHtml(order.orderNumber)}</strong> · ${escapeHtml(order.date)}</p>
+                        <p><strong>Order #${escapeHtml(order.orderNumber)}</strong> · ${escapeHtml(order.date)}<br><span style="font-size: 13px; color: #666;">Daily order no: #${escapeHtml(order.dailyOrderNumber ?? "—")}</span></p>
                         <p>Restaurant: ${escapeHtml(order.restaurant?.name || "")}</p>
                         <p>Pickup: ${escapeHtml(order.restaurant?.address || "Address not provided")}</p>
                         ${mapsSearchLink(

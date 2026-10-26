@@ -15,6 +15,8 @@ urlpatterns = [
     path("login/", RedirectView.as_view(url="/login.html", permanent=False)),
     path("", views.homepage, name="homepage"),
     path("category/<slug:slug>", views.frontend_page, {"page": "category"}, name="category-page"),
+    path("restaurant/<int:restaurant_id>", views.restaurant_detail_page, name="restaurant-detail-page"),
+    path("restaurant/<int:restaurant_id>/", views.restaurant_detail_page),
     path("<str:page>.html", views.frontend_page, name="frontend-page"),
 ]
 

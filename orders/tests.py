@@ -1629,3 +1629,13 @@ class OrderWorkflowTests(TestCase):
         self.assertEqual(settings_response.status_code, 200)
         self.restaurant.refresh_from_db()
         self.assertFalse(self.restaurant.accepting_orders)
+
+    def test_restaurant_detail_page_and_galaxy_background(self):
+        response = Client().get(f"/restaurant/{self.restaurant.id}")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.restaurant.name)
+        self.assertContains(response, "/static/js/galaxy-bg.js")
+
+        api_response = Client().get(f"/api/customer/restaurants/{self.restaurant.id}")
+        self.assertEqual(api_response.status_code, 200)
+        self.assertEqual(api_response.json()["name"], self.restaurant.name)

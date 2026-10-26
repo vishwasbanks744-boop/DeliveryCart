@@ -49,6 +49,7 @@ FRONTEND_PAGES = {
     "refund",
     "login",
     "register",
+    "restaurant",
     "resturentpage",
     "resturentloginpage",
     "resturentregisterpage",
@@ -67,10 +68,50 @@ def homepage(request):
 
 
 @ensure_csrf_cookie
+def restaurant_detail_page(request, restaurant_id):
+    restaurant = get_object_or_404(Restaurant, id=restaurant_id, approved=True)
+    return render(
+        request,
+        "restaurant.html",
+        {
+            "restaurant": restaurant,
+            "logo": _restaurant_logo_url(restaurant),
+            "rating": restaurant.rating or "4.2",
+            "delivery_time": restaurant.delivery_time or "30–45 min",
+            "accepting_orders": restaurant.accepting_orders,
+        },
+    )
+
+
+@require_GET
+def customer_restaurant_detail(request, restaurant_id):
+    restaurant = get_object_or_404(Restaurant, id=restaurant_id, approved=True)
+    return JsonResponse({
+        "id": restaurant.id,
+        "name": restaurant.name,
+        "address": restaurant.address,
+        "city": restaurant.city,
+        "pincode": restaurant.pincode,
+        "rating": float(restaurant.rating) if restaurant.rating is not None else 4.2,
+        "deliveryTime": restaurant.delivery_time or "30–45 min",
+        "acceptingOrders": restaurant.accepting_orders,
+        "logo": _restaurant_logo_url(restaurant),
+    })
+
+
+@ensure_csrf_cookie
 def frontend_page(request, page, slug=None):
     if page == "category":
         category = get_object_or_404(Category, slug=slug, is_active=True)
         return render(request, "category.html", {"category": category})
+    if page == "restaurant":
+        restaurant_id = request.GET.get("id")
+        if restaurant_id:
+            try:
+                return restaurant_detail_page(request, int(restaurant_id))
+            except (ValueError, TypeError):
+                pass
+        return render(request, "restaurant.html")
     if page not in FRONTEND_PAGES:
         return JsonResponse({"message": "Page not found."}, status=404)
     if page in {"resturenthomepage", "resturentorderpage", "resturentprofilepage", "resturentsettingpage"}:
@@ -1056,7 +1097,7 @@ def _is_non_veg_category(name):
 
 
 def _order_public_number(order):
-    return str(order.daily_order_number) if order.daily_order_number else str(order.id).split("-")[0].upper()
+    return str(order.id).split("-")[0].upper()
 
 
 def _accepting_restaurant_ids():
@@ -1648,6 +1689,7 @@ def create_order(request):
         {
             "orderId": str(order.id),
             "orderNumber": _order_public_number(order),
+            "dailyOrderNumber": order.daily_order_number,
             "customerName": customer_name,
             "customerEmail": customer_email,
             "customerPhone": customer_phone,
@@ -1677,6 +1719,7 @@ def order_detail(request, order_id):
     data = {
         "id": str(order.id),
         "orderNumber": _order_public_number(order),
+        "dailyOrderNumber": order.daily_order_number,
         "status": order.status,
         "rejectionReason": order.rejection_reason,
         "preparingMinutes": order.preparing_minutes,
@@ -1898,6 +1941,7 @@ def _restaurant_order_data(order):
     return {
         "id": str(order.id),
         "orderNumber": _order_public_number(order),
+        "dailyOrderNumber": order.daily_order_number,
         "date": timezone.localtime(order.created_at).strftime("%d %b %Y, %I:%M %p"),
         "status": display_status,
         "rejectionReason": order.rejection_reason,
@@ -2282,6 +2326,7 @@ def restaurant_reports(request):
     rows = [
         {
             "orderNumber": _order_public_number(order),
+            "dailyOrderNumber": order.daily_order_number,
             "customerName": order.customer_name,
             "date": timezone.localtime(order.created_at).strftime("%Y-%m-%d %H:%M"),
             "itemSales": float(order.item_total),
@@ -2768,6 +2813,7 @@ def _delivery_order_data(order):
     return {
         "id": str(order.id),
         "orderNumber": _order_public_number(order),
+        "dailyOrderNumber": order.daily_order_number,
         "date": timezone.localtime(order.created_at).strftime("%d %b %Y, %I:%M %p"),
         "statusCode": order.status,
         "status": order.get_status_display(),
@@ -3165,6 +3211,7 @@ def customer_order_history(request):
                 {
                     "id": str(order.id),
                     "orderNumber": _order_public_number(order),
+                    "dailyOrderNumber": order.daily_order_number,
                     "createdAt": timezone.localtime(order.created_at).strftime(
                         "%d %b %Y, %I:%M %p"
                     ),

@@ -1035,6 +1035,7 @@
                             <div class="order-number">
                                 Order #${order.orderNumber || ""}
                             </div>
+                            <div class="order-date">Daily order no: #${order.dailyOrderNumber ?? "—"}</div>
 
                             <div class="order-date">
                                 ${order.date || ""}
@@ -1222,9 +1223,7 @@
                 allOrders.filter(order => {
 
                     const matchesSearch =
-                        String(
-                            order.orderNumber || ""
-                        )
+                        `${order.orderNumber || ""} ${order.dailyOrderNumber || ""}`
                         .toLowerCase()
                         .includes(search);
 

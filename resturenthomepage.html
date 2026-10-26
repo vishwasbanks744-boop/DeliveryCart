@@ -2566,7 +2566,7 @@ function renderRestaurantOrders() {
     const status = document.getElementById("restaurantOrderStatus").value;
     const filteredOrders = restaurantOrders.filter(order => {
         const matchesStatus = status === "all" || order.status === status;
-        const matchesSearch = `${order.orderNumber || ""} ${order.customerName || ""}`
+        const matchesSearch = `${order.orderNumber || ""} ${order.dailyOrderNumber || ""} ${order.customerName || ""}`
             .toLowerCase()
             .includes(search);
         return matchesStatus && matchesSearch;
@@ -2627,6 +2627,7 @@ function renderRestaurantOrders() {
             <div class="restaurant-order-card-top">
                 <div>
                     <div class="restaurant-order-number">Order #${escapeOrderText(order.orderNumber)}</div>
+                    <div class="order-card-date">Daily order no: #${escapeOrderText(order.dailyOrderNumber ?? "—")}</div>
                     <div class="order-card-date">${escapeOrderText(order.date)}</div>
                 </div>
                 <span class="restaurant-order-status status-${escapeOrderText(order.status)}">${statusLabel}</span>
