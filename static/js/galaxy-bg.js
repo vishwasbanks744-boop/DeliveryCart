@@ -2,6 +2,8 @@
  * Ramjicart - Global Galaxy / Space Background
  * Runs seamlessly on all pages behind the site content.
  * Position: fixed, inset: 0, z-index: -1, pointer-events: none.
+ * Designed to be subtle, soft, and dim ("halka halka") so it feels like
+ * an authentic celestial galaxy floating in the background without being harsh or heavy ("gaadha").
  */
 (function() {
     if (typeof window === "undefined" || typeof document === "undefined") return;
@@ -14,7 +16,7 @@
         style.id = "globalGalaxyStyle";
         style.textContent = `
             html {
-                background-color: #05010f !important;
+                background-color: #070412 !important;
             }
             body {
                 background-color: transparent !important;
@@ -28,7 +30,7 @@
                 z-index: -1;
                 pointer-events: none;
                 display: block;
-                background: radial-gradient(ellipse at 50% 25%, #1a0b3b 0%, #0d0422 55%, #05010f 100%);
+                background: radial-gradient(ellipse at 50% 20%, #160e33 0%, #0d0822 50%, #070412 100%);
             }
         `;
         document.head.appendChild(style);
@@ -69,13 +71,13 @@
         let stars = [];
         let nebulae = [];
         let shootingStars = [];
-        let nextShootingStarTime = performance.now() + 2500 + Math.random() * 2000;
+        let nextShootingStarTime = performance.now() + 3000 + Math.random() * 2500;
 
-        // Palette: mostly white (65%), soft orange #ff8a5c (18%), soft purple #b79cff (17%)
+        // Soft celestial palette: delicate white (70%), soft starlight warm peach (15%), soft lavender (15%)
         const STAR_COLORS = [
-            { r: 255, g: 255, b: 255, weight: 0.65 },
-            { r: 255, g: 138, b: 92,  weight: 0.18 },
-            { r: 183, g: 156, b: 255, weight: 0.17 }
+            { r: 255, g: 255, b: 255, weight: 0.70 },
+            { r: 255, g: 205, b: 165, weight: 0.15 },
+            { r: 215, g: 200, b: 255, weight: 0.15 }
         ];
 
         function pickColor() {
@@ -89,44 +91,44 @@
         }
 
         function initNebulae() {
-            // 3 large blurry nebula clouds (purple, pink/orange, deep indigo)
+            // 3 wide, ultra-soft, ethereal cosmic clouds (faint dust, not heavy blobs)
             nebulae = [
                 {
                     baseXRatio: 0.20,
                     baseYRatio: 0.35,
-                    radiusRatio: 0.45,
-                    colorInner: "rgba(147, 51, 234, 0.13)",   // cosmic purple
-                    colorMid: "rgba(88, 28, 135, 0.04)",
-                    driftSpeedX: 0.00035,
-                    driftSpeedY: 0.0005,
-                    driftAmpX: 50,
-                    driftAmpY: 30,
+                    radiusRatio: 0.55,
+                    colorInner: "rgba(130, 60, 215, 0.048)",   // ethereal purple dust
+                    colorMid: "rgba(75, 25, 125, 0.015)",
+                    driftSpeedX: 0.00025,
+                    driftSpeedY: 0.00035,
+                    driftAmpX: 40,
+                    driftAmpY: 25,
                     phaseX: 0,
                     phaseY: 1.1
                 },
                 {
                     baseXRatio: 0.82,
                     baseYRatio: 0.45,
-                    radiusRatio: 0.40,
-                    colorInner: "rgba(255, 110, 60, 0.10)",   // pink / warm orange
-                    colorMid: "rgba(220, 65, 30, 0.03)",
-                    driftSpeedX: 0.00045,
-                    driftSpeedY: 0.00035,
-                    driftAmpX: 40,
-                    driftAmpY: 35,
+                    radiusRatio: 0.50,
+                    colorInner: "rgba(255, 130, 80, 0.035)",   // warm subtle stardust
+                    colorMid: "rgba(200, 70, 35, 0.010)",
+                    driftSpeedX: 0.00030,
+                    driftSpeedY: 0.00025,
+                    driftAmpX: 35,
+                    driftAmpY: 30,
                     phaseX: 2.3,
                     phaseY: 0.4
                 },
                 {
                     baseXRatio: 0.50,
                     baseYRatio: 0.75,
-                    radiusRatio: 0.50,
-                    colorInner: "rgba(99, 102, 241, 0.11)",   // deep mystic indigo
-                    colorMid: "rgba(59, 130, 246, 0.03)",
-                    driftSpeedX: 0.0003,
-                    driftSpeedY: 0.00045,
-                    driftAmpX: 55,
-                    driftAmpY: 25,
+                    radiusRatio: 0.60,
+                    colorInner: "rgba(90, 110, 240, 0.040)",   // deep mystic indigo dust
+                    colorMid: "rgba(50, 75, 180, 0.012)",
+                    driftSpeedX: 0.00020,
+                    driftSpeedY: 0.00030,
+                    driftAmpX: 45,
+                    driftAmpY: 20,
                     phaseX: 1.6,
                     phaseY: 2.8
                 }
@@ -136,37 +138,37 @@
         function createStars() {
             stars = [];
             const isMobile = width < 768;
-            // Mobile: ~80-100 stars; Desktop: ~200-300 stars
+            // Mobile: ~55-75 stars; Desktop: ~130-180 stars
             const starCount = isMobile
-                ? Math.floor(Math.min(100, Math.max(80, (width * height) / 8000)))
-                : Math.floor(Math.min(300, Math.max(200, (width * height) / 4500)));
+                ? Math.floor(Math.min(75, Math.max(55, (width * height) / 10000)))
+                : Math.floor(Math.min(180, Math.max(130, (width * height) / 6000)));
 
             for (let i = 0; i < starCount; i++) {
                 const color = pickColor();
                 const layerRoll = Math.random();
                 let layer, radius, baseAlpha, twinkleSpeed, twinkleAmp;
 
-                if (layerRoll < 0.60) {
-                    // Layer 1: tiny background stars (subtle drift, high density)
+                if (layerRoll < 0.65) {
+                    // Layer 1: tiny background cosmic dust (faint, gentle shimmer)
                     layer = 1;
-                    radius = 0.5 + Math.random() * 0.7; // 0.5 - 1.2px
-                    baseAlpha = 0.3 + Math.random() * 0.4;
-                    twinkleSpeed = 0.006 + Math.random() * 0.015;
-                    twinkleAmp = 0.12 + Math.random() * 0.18;
-                } else if (layerRoll < 0.85) {
-                    // Layer 2: medium twinkling stars (distinct shimmer)
+                    radius = 0.35 + Math.random() * 0.45; // 0.35 - 0.8px
+                    baseAlpha = 0.12 + Math.random() * 0.20; // 0.12 - 0.32
+                    twinkleSpeed = 0.008 + Math.random() * 0.016;
+                    twinkleAmp = 0.06 + Math.random() * 0.09;
+                } else if (layerRoll < 0.88) {
+                    // Layer 2: delicate twinkling stars (soft diamond shimmer)
                     layer = 2;
-                    radius = 1.2 + Math.random() * 0.7; // 1.2 - 1.9px
-                    baseAlpha = 0.45 + Math.random() * 0.4;
-                    twinkleSpeed = 0.02 + Math.random() * 0.04;
-                    twinkleAmp = 0.28 + Math.random() * 0.32;
+                    radius = 0.75 + Math.random() * 0.45; // 0.75 - 1.2px
+                    baseAlpha = 0.22 + Math.random() * 0.26; // 0.22 - 0.48
+                    twinkleSpeed = 0.016 + Math.random() * 0.030;
+                    twinkleAmp = 0.10 + Math.random() * 0.15;
                 } else {
-                    // Layer 3: large glowing stars (soft radial glow halo)
+                    // Layer 3: gentle glowing stars (subtle, soft halo - NOT giant gaadha blobs!)
                     layer = 3;
-                    radius = 2.0 + Math.random() * 1.0; // 2.0 - 3.0px
-                    baseAlpha = 0.65 + Math.random() * 0.35;
-                    twinkleSpeed = 0.012 + Math.random() * 0.028;
-                    twinkleAmp = 0.18 + Math.random() * 0.22;
+                    radius = 1.15 + Math.random() * 0.40; // 1.15 - 1.55px
+                    baseAlpha = 0.35 + Math.random() * 0.22; // 0.35 - 0.57
+                    twinkleSpeed = 0.010 + Math.random() * 0.020;
+                    twinkleAmp = 0.09 + Math.random() * 0.12;
                 }
 
                 stars.push({
@@ -180,24 +182,24 @@
                     twinkleSpeed: twinkleSpeed,
                     twinkleAmp: twinkleAmp,
                     twinklePhase: Math.random() * Math.PI * 2,
-                    vx: (Math.random() - 0.5) * 0.04,
-                    vy: (Math.random() - 0.5) * 0.03
+                    vx: (Math.random() - 0.5) * 0.025,
+                    vy: (Math.random() - 0.5) * 0.020
                 });
             }
         }
 
         function spawnShootingStar(now) {
             const angle = (Math.PI / 180) * (26 + Math.random() * 18); // 26° to 44° downward
-            const speed = 9 + Math.random() * 6;
-            const startX = Math.random() * (width * 0.8);
-            const startY = Math.random() * (height * 0.4);
-            const length = 90 + Math.random() * 80;
-            const duration = 850 + Math.random() * 500; // ms
+            const speed = 7.5 + Math.random() * 4.5;
+            const startX = Math.random() * (width * 0.85);
+            const startY = Math.random() * (height * 0.35);
+            const length = 65 + Math.random() * 55;
+            const duration = 900 + Math.random() * 400; // ms
 
             const tintRoll = Math.random();
             let tint = { r: 255, g: 255, b: 255 };
-            if (tintRoll < 0.35) tint = { r: 255, g: 155, b: 105 }; // soft orange
-            else if (tintRoll < 0.65) tint = { r: 195, g: 170, b: 255 }; // soft purple
+            if (tintRoll < 0.35) tint = { r: 255, g: 205, b: 175 }; // soft peach
+            else if (tintRoll < 0.70) tint = { r: 220, g: 205, b: 255 }; // soft lavender
 
             shootingStars.push({
                 x: startX,
@@ -262,9 +264,9 @@
             for (let i = 0; i < stars.length; i++) {
                 const s = stars[i];
                 if (s.layer === 3) {
-                    const glowRadius = s.radius * 3.6;
+                    const glowRadius = s.radius * 2.0;
                     const glow = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, glowRadius);
-                    glow.addColorStop(0, `rgba(${s.color.r}, ${s.color.g}, ${s.color.b}, ${s.baseAlpha * 0.45})`);
+                    glow.addColorStop(0, `rgba(${s.color.r}, ${s.color.g}, ${s.color.b}, ${s.baseAlpha * 0.18})`);
                     glow.addColorStop(1, "rgba(0, 0, 0, 0)");
                     ctx.fillStyle = glow;
                     ctx.beginPath();
@@ -301,8 +303,8 @@
                 const n = nebulae[i];
                 const driftX = Math.sin(now * n.driftSpeedX + n.phaseX) * n.driftAmpX;
                 const driftY = Math.cos(now * n.driftSpeedY + n.phaseY) * n.driftAmpY;
-                const cx = width * n.baseXRatio + driftX + currentPX * 8;
-                const cy = height * n.baseYRatio + driftY + currentPY * 6;
+                const cx = width * n.baseXRatio + driftX + currentPX * 6;
+                const cy = height * n.baseYRatio + driftY + currentPY * 5;
                 const radius = Math.max(width, height) * n.radiusRatio;
 
                 const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
@@ -329,28 +331,28 @@
                 if (s.y > height + 10) s.y = -10;
 
                 s.twinklePhase += s.twinkleSpeed * (delta / 16);
-                const currentAlpha = Math.max(0.1, Math.min(1, s.baseAlpha + Math.sin(s.twinklePhase) * s.twinkleAmp));
+                const currentAlpha = Math.max(0.08, Math.min(1, s.baseAlpha + Math.sin(s.twinklePhase) * s.twinkleAmp));
 
                 let pOffsetX = 0;
                 let pOffsetY = 0;
                 if (s.layer === 1) {
-                    pOffsetX = currentPX * 5;
-                    pOffsetY = currentPY * 3;
+                    pOffsetX = currentPX * 4;
+                    pOffsetY = currentPY * 2.5;
                 } else if (s.layer === 2) {
-                    pOffsetX = currentPX * 11;
-                    pOffsetY = currentPY * 7;
+                    pOffsetX = currentPX * 8;
+                    pOffsetY = currentPY * 5;
                 } else {
-                    pOffsetX = currentPX * 22;
-                    pOffsetY = currentPY * 14;
+                    pOffsetX = currentPX * 15;
+                    pOffsetY = currentPY * 10;
                 }
 
                 const drawX = s.x + pOffsetX;
                 const drawY = s.y + pOffsetY;
 
                 if (s.layer === 3) {
-                    const glowRadius = s.radius * 3.6;
+                    const glowRadius = s.radius * 2.0;
                     const glow = ctx.createRadialGradient(drawX, drawY, 0, drawX, drawY, glowRadius);
-                    glow.addColorStop(0, `rgba(${s.color.r}, ${s.color.g}, ${s.color.b}, ${currentAlpha * 0.45})`);
+                    glow.addColorStop(0, `rgba(${s.color.r}, ${s.color.g}, ${s.color.b}, ${currentAlpha * 0.18})`);
                     glow.addColorStop(1, "rgba(0, 0, 0, 0)");
                     ctx.fillStyle = glow;
                     ctx.beginPath();
@@ -364,10 +366,10 @@
                 ctx.fill();
             }
 
-            // 3. Shooting stars (meteors every 3-5 seconds)
+            // 3. Shooting stars (meteors every 3.5 - 6 seconds)
             if (now >= nextShootingStarTime) {
                 spawnShootingStar(now);
-                nextShootingStarTime = now + 3000 + Math.random() * 2000;
+                nextShootingStarTime = now + 3500 + Math.random() * 2500;
             }
 
             for (let i = shootingStars.length - 1; i >= 0; i--) {
@@ -399,10 +401,10 @@
 
                 const streakGrad = ctx.createLinearGradient(tailX, tailY, ss.x, ss.y);
                 streakGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
-                streakGrad.addColorStop(0.7, `rgba(${ss.tint.r}, ${ss.tint.g}, ${ss.tint.b}, ${alpha * 0.6})`);
-                streakGrad.addColorStop(1, `rgba(255, 255, 255, ${alpha * 0.95})`);
+                streakGrad.addColorStop(0.7, `rgba(${ss.tint.r}, ${ss.tint.g}, ${ss.tint.b}, ${alpha * 0.35})`);
+                streakGrad.addColorStop(1, `rgba(255, 255, 255, ${alpha * 0.65})`);
 
-                ctx.lineWidth = 1.8;
+                ctx.lineWidth = 1.1;
                 ctx.strokeStyle = streakGrad;
                 ctx.lineCap = "round";
                 ctx.beginPath();
@@ -410,13 +412,13 @@
                 ctx.lineTo(ss.x, ss.y);
                 ctx.stroke();
 
-                const headGlow = ctx.createRadialGradient(ss.x, ss.y, 0, ss.x, ss.y, 6);
-                headGlow.addColorStop(0, `rgba(255, 255, 255, ${alpha})`);
-                headGlow.addColorStop(0.4, `rgba(${ss.tint.r}, ${ss.tint.g}, ${ss.tint.b}, ${alpha * 0.5})`);
+                const headGlow = ctx.createRadialGradient(ss.x, ss.y, 0, ss.x, ss.y, 3.5);
+                headGlow.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.8})`);
+                headGlow.addColorStop(0.4, `rgba(${ss.tint.r}, ${ss.tint.g}, ${ss.tint.b}, ${alpha * 0.3})`);
                 headGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
                 ctx.fillStyle = headGlow;
                 ctx.beginPath();
-                ctx.arc(ss.x, ss.y, 6, 0, Math.PI * 2);
+                ctx.arc(ss.x, ss.y, 3.5, 0, Math.PI * 2);
                 ctx.fill();
 
                 ctx.restore();
@@ -432,7 +434,8 @@
             animId = requestAnimationFrame(animate);
         }
 
-        function pauseAnimation() {
+        function stopAnimation() {
+            if (!isRunning) return;
             isRunning = false;
             if (animId) {
                 cancelAnimationFrame(animId);
@@ -440,43 +443,41 @@
             }
         }
 
-        function resumeAnimation() {
-            if (!isRunning && !document.hidden && !prefersReducedMotion) {
-                startAnimation();
-            }
+        // Reduced motion preference listener
+        if (motionQuery.addEventListener) {
+            motionQuery.addEventListener("change", (e) => {
+                prefersReducedMotion = e.matches;
+                if (prefersReducedMotion) {
+                    stopAnimation();
+                    renderStatic();
+                } else {
+                    startAnimation();
+                }
+            });
         }
 
-        // Resize with debounce
+        // Visibilitychange listener: pause animation when page is hidden
+        document.addEventListener("visibilitychange", () => {
+            if (document.hidden) {
+                stopAnimation();
+            } else if (!prefersReducedMotion) {
+                startAnimation();
+            }
+        });
+
+        // Resize debounced
         let resizeTimer = null;
         window.addEventListener("resize", () => {
             clearTimeout(resizeTimer);
             resizeTimer = setTimeout(() => {
                 resize();
-                if (prefersReducedMotion) renderStatic();
-            }, 120);
+                if (prefersReducedMotion) {
+                    renderStatic();
+                }
+            }, 100);
         }, { passive: true });
 
-        // Tab hidden / visibility handling
-        document.addEventListener("visibilitychange", () => {
-            if (document.hidden) {
-                pauseAnimation();
-            } else {
-                resumeAnimation();
-            }
-        });
-
-        // Reduced motion preference
-        motionQuery.addEventListener("change", (e) => {
-            prefersReducedMotion = e.matches;
-            if (prefersReducedMotion) {
-                pauseAnimation();
-                renderStatic();
-            } else {
-                resumeAnimation();
-            }
-        });
-
-        // Initialize and start
+        // Initial setup
         resize();
         if (prefersReducedMotion) {
             renderStatic();
