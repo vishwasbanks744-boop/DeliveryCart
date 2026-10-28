@@ -12,13 +12,17 @@ collected online and the remaining amount due at handover.
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
-$env:DJANGO_SECRET_KEY = "replace-with-a-long-random-secret"
-$env:DJANGO_DEBUG = "True"
-$env:DJANGO_ALLOWED_HOSTS = "127.0.0.1,localhost"
+Copy-Item .env.example .env
+# Edit .env and replace DJANGO_SECRET_KEY with a private random value.
 python manage.py migrate
 python manage.py createsuperuser
 python manage.py runserver
 ```
+
+For local development, Django loads values from the root `.env` file. Keep
+`.env` private; `.gitignore` excludes it. `.env.example` contains placeholders
+and can be committed. In production, configure variables in the hosting
+environment instead of relying on a `.env` file.
 
 Open `http://127.0.0.1:8000/`. Visitors go to login first. Customer registration
 is at `/register.html`; restaurant registration is at

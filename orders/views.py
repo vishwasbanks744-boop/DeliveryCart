@@ -371,7 +371,11 @@ def _login_firebase_user(request, identity, expected_role=""):
             "Your account is waiting for administrator approval before login.",
             403,
         )
-    login(request, user)
+    login(
+        request,
+        user,
+        backend="django.contrib.auth.backends.ModelBackend",
+    )
     return JsonResponse(
         {
             "message": "Login successful.",

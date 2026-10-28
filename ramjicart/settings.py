@@ -4,9 +4,11 @@ from pathlib import Path
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
+from dotenv import load_dotenv
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 
 def env_bool(name, default):
@@ -110,6 +112,10 @@ MIDDLEWARE = [
     "axes.middleware.AxesMiddleware",
     "orders.middleware.GalaxyBackgroundMiddleware",
 ]
+
+# Keep OAuth popups connected to their opener window so Firebase can return
+# the Google sign-in result to the page that launched the popup.
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin-allow-popups"
 
 AUTHENTICATION_BACKENDS = [
     "axes.backends.AxesStandaloneBackend",
