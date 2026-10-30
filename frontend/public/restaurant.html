@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ restaurant.name }} Menu | Ramjicart</title>
+    <title>Restaurant Menu | Ramjicart</title>
     <style>
         * {
             margin: 0;
@@ -517,30 +517,26 @@
             <span>›</span>
             <a href="/resturentpage.html">Restaurants</a>
             <span>›</span>
-            <span id="crumbRestaurantName">{{ restaurant.name }}</span>
+            <span id="crumbRestaurantName">Restaurant</span>
         </div>
 
         <!-- RESTAURANT HEADER -->
         <section class="restaurant-header-card">
             <img
-                src="{{ logo|default:'/static/food-placeholder.svg' }}"
-                alt="{{ restaurant.name }}"
+                src="/static/food-placeholder.svg"
+                alt="Restaurant"
                 class="restaurant-logo"
                 onerror="this.onerror=null;this.src='/static/food-placeholder.svg';"
             >
             <div class="restaurant-info">
-                <h1>{{ restaurant.name }}</h1>
+                <h1 id="restaurantName">Restaurant</h1>
                 <p class="restaurant-address">
-                    📍 {{ restaurant.address }}{% if restaurant.city %}, {{ restaurant.city }}{% endif %}
+                    <span id="restaurantAddress">Address unavailable</span>
                 </p>
                 <div class="restaurant-badges">
-                    <span class="badge badge-rating">★ {{ rating|default:"4.2" }}</span>
-                    <span class="badge badge-time">🕐 {{ delivery_time|default:"30–45 min" }}</span>
-                    {% if accepting_orders %}
-                        <span class="badge badge-status">🟢 Accepting orders</span>
-                    {% else %}
-                        <span class="badge badge-status closed">Closed</span>
-                    {% endif %}
+                    <span class="badge badge-rating" id="restaurantRating">★ —</span>
+                    <span class="badge badge-time" id="restaurantDeliveryTime">30–45 min</span>
+                    <span class="badge badge-status" id="restaurantStatus">Checking availability...</span>
                 </div>
             </div>
         </section>
@@ -556,8 +552,8 @@
                     type="text"
                     id="restaurantMenuSearch"
                     class="menu-search-input"
-                    placeholder="Search in {{ restaurant.name }}..."
-                    aria-label="Search in {{ restaurant.name }}"
+                    placeholder="Search in restaurant..."
+                    aria-label="Search in restaurant"
                 >
                 <button type="button" id="clearMenuSearch" class="menu-search-clear" aria-label="Clear search">✕</button>
             </div>
@@ -576,7 +572,7 @@
             </div>
 
             <div id="foodGrid" class="food-grid">
-                <div class="loading-state">Loading {{ restaurant.name }}'s menu...</div>
+                <div class="loading-state">Loading menu...</div>
             </div>
         </section>
     </main>
@@ -586,8 +582,10 @@
 
     <script>
         (function() {
-            const restaurantId = "{{ restaurant.id }}";
-            const restaurantName = "{{ restaurant.name|escapejs }}";
+            const pathParts = window.location.pathname.split("/").filter(Boolean);
+            const routeId = pathParts[pathParts.length - 1] === "restaurant.html" ? "" : pathParts[pathParts.length - 1];
+            const restaurantId = new URLSearchParams(window.location.search).get("id") || routeId || "";
+            let restaurantName = "Restaurant";
             let allItems = [];
             let currentFilterCategory = "all";
 
@@ -609,6 +607,29 @@
             function getCsrfToken() {
                 const cookie = document.cookie.split("; ").find(c => c.startsWith("csrftoken="));
                 return cookie ? decodeURIComponent(cookie.split("=")[1]) : "";
+            }
+
+            async function loadRestaurantDetails() {
+                if (!restaurantId) return;
+                try {
+                    const response = await fetch(`/api/customer/restaurants/${encodeURIComponent(restaurantId)}`);
+                    if (!response.ok) throw new Error("Could not load restaurant details.");
+                    const restaurant = await response.json();
+                    restaurantName = restaurant.name || "Restaurant";
+                    document.title = `${restaurantName} Menu | Ramjicart`;
+                    document.getElementById("restaurantName").textContent = restaurantName;
+                    document.getElementById("crumbRestaurantName").textContent = restaurantName;
+                    document.getElementById("restaurantAddress").textContent = [restaurant.address, restaurant.city].filter(Boolean).join(", ") || "Address unavailable";
+                    document.getElementById("restaurantRating").textContent = `★ ${restaurant.rating ?? "—"}`;
+                    document.getElementById("restaurantDeliveryTime").textContent = restaurant.deliveryTime || "30–45 min";
+                    const status = document.getElementById("restaurantStatus");
+                    status.textContent = restaurant.acceptingOrders ? "Accepting orders" : "Closed";
+                    status.classList.toggle("closed", !restaurant.acceptingOrders);
+                    if (restaurant.logo) document.querySelector(".restaurant-logo").src = restaurant.logo;
+                    searchInput.placeholder = `Search ${restaurantName} menu`;
+                } catch (error) {
+                    console.error(error);
+                }
             }
 
             async function loadRestaurantMenu() {
@@ -839,6 +860,7 @@
             });
 
             loadInitialCartCount();
+            loadRestaurantDetails();
             loadRestaurantMenu();
         })();
     </script>

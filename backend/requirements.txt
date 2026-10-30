@@ -1,6 +1,8 @@
 Django>=5.2,<6.0
 django-axes[ipware]>=8.3,<9.0
+django-cors-headers>=4.7,<5.0
 dj-database-url>=2.3,<3.0
+django-storages[s3]>=1.14,<2.0
 gunicorn>=23.0,<24.0
 psycopg[binary]>=3.2,<4.0
 python-dotenv>=1.0,<2.0

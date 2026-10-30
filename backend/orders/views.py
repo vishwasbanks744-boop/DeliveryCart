@@ -202,6 +202,7 @@ class CashfreeAPIError(RuntimeError):
         self.status_code = status_code
 
 
+@ensure_csrf_cookie
 @require_GET
 def public_client_config(_request):
     return JsonResponse(
@@ -809,7 +810,7 @@ def restaurant_certificate_download(request):
     pdf.setLineWidth(0.8)
     pdf.rect(left + 9, bottom + 9, frame_width - 18, frame_height - 18, stroke=1, fill=0)
 
-    static_dir = settings.BASE_DIR / "static"
+    static_dir = settings.BASE_DIR / "orders" / "static"
     logo_path = static_dir / "logo (2).png"
     photo_path = static_dir / "headshot_with_R_logo_icon.png"
     signature_path = static_dir / "WhatsApp_Image_2026-10-21_at_9.07.20_PM-removebg-preview.png"

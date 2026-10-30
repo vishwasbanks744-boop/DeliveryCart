@@ -1,8 +1,8 @@
 import json
 from decimal import Decimal
+from pathlib import Path
 
 from django.contrib.auth import get_user_model
-from django.contrib.staticfiles import finders
 from django.core.exceptions import ValidationError
 from django.test import Client, TestCase
 from django.utils import timezone
@@ -11,6 +11,11 @@ from .models import AccountProfile, Category, Food, Order, PricingSettings, Rest
 
 
 class OrderWorkflowTests(TestCase):
+    @staticmethod
+    def frontend_file(name):
+        path = Path(__file__).resolve().parents[2] / "frontend" / "public" / name
+        return path.read_text(encoding="utf-8")
+
     def setUp(self):
         user_model = get_user_model()
         self.customer = user_model.objects.create_user(
@@ -125,38 +130,24 @@ class OrderWorkflowTests(TestCase):
         )
         self.assertEqual(login_response.status_code, 200)
         self.assertEqual(login_response.json()["redirect"], "/")
-        self.assertEqual(client.get("/").status_code, 200)
 
     def test_homepage_is_available_without_login_for_food_browsing(self):
-        response = Client().get("/")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Food")
-        self.assertContains(response, 'id="accountLink"')
-        self.assertContains(response, 'id="customerProfile"')
-        self.assertContains(response, 'id="customerProfileName"')
-        self.assertContains(response, 'id="orderHistory"')
-        self.assertContains(response, 'href="#orderHistory">Order history</a>')
-        self.assertContains(response, "Sign in")
-        self.assertNotContains(response, "localStorage")
-        self.assertRedirects(
-            Client().get("/login/"),
-            "/login.html",
-            fetch_redirect_response=False,
-        )
+        homepage = self.frontend_file("homepage.html")
+        self.assertIn('id="accountLink"', homepage)
+        self.assertIn('id="customerProfile"', homepage)
+        self.assertIn('id="customerProfileName"', homepage)
+        self.assertIn('id="orderHistory"', homepage)
+        self.assertIn('href="#orderHistory">Order history</a>', homepage)
+        self.assertIn("Sign in", homepage)
+        auth_client = self.frontend_file("static/js/auth-client.js")
+        self.assertIn('credentials: "same-origin"', auth_client)
+        self.assertNotIn("localStorage", auth_client)
+        self.assertEqual(Client().get("/").status_code, 404)
 
     def test_auth_pages_set_csrf_cookie_for_session_api_posts(self):
-        for page in (
-            "/login.html",
-            "/register.html",
-            "/resturentloginpage.html",
-            "/resturentregisterpage.html",
-            "/deliveryregister.html",
-        ):
-            with self.subTest(page=page):
-                response = Client().get(page)
-                self.assertEqual(response.status_code, 200)
-                self.assertIn("csrftoken", response.cookies)
+        response = Client().get("/api/config/public")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("csrftoken", response.cookies)
 
     def test_food_search_matches_restaurant_name(self):
         response = Client().get("/api/customer/foods?search=Test%20Kitchen")
@@ -369,41 +360,32 @@ class OrderWorkflowTests(TestCase):
         self.assertEqual(missing_location.status_code, 400)
 
     def test_restaurant_browse_page_uses_dynamic_location_results(self):
-        response = Client().get("/resturentpage.html")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'id="restaurant-browse-ad-slot"')
-        self.assertContains(response, 'id="restaurantLocationForm"')
-        self.assertContains(response, 'id="nearbyLandmark"')
-        self.assertContains(response, 'id="market"')
-        self.assertContains(response, 'id="address"')
-        self.assertContains(response, 'id="city"')
-        self.assertContains(response, 'id="useCurrentLocationButton"')
-        self.assertContains(response, 'id="restaurant-list"')
-        self.assertNotContains(response, 'id="restaurant-1"')
+        page = self.frontend_file("resturentpage.html")
+        self.assertIn('id="restaurant-browse-ad-slot"', page)
+        self.assertIn('id="restaurantLocationForm"', page)
+        self.assertIn('id="nearbyLandmark"', page)
+        self.assertIn('id="market"', page)
+        self.assertIn('id="address"', page)
+        self.assertIn('id="city"', page)
+        self.assertIn('id="useCurrentLocationButton"', page)
+        self.assertIn('id="restaurant-list"', page)
+        self.assertNotIn('id="restaurant-1"', page)
 
     def test_restaurant_registration_and_profile_capture_optional_coordinates(self):
-        registration_page = Client().get("/resturentregisterpage.html")
-        self.assertEqual(registration_page.status_code, 200)
-        self.assertContains(registration_page, 'id="captureRestaurantLocationButton"')
-
-        restaurant_client = Client()
-        restaurant_client.force_login(self.restaurant_user)
-        profile_page = restaurant_client.get("/resturentprofilepage.html")
-        self.assertEqual(profile_page.status_code, 200)
-        self.assertContains(profile_page, 'id="restaurantLatitude"')
-        self.assertContains(profile_page, 'id="restaurantLongitude"')
-        self.assertContains(profile_page, "Use this device's current location")
+        registration_page = self.frontend_file("resturentregisterpage.html")
+        profile_page = self.frontend_file("resturentprofilepage.html")
+        self.assertIn('id="captureRestaurantLocationButton"', registration_page)
+        self.assertIn('id="restaurantLatitude"', profile_page)
+        self.assertIn('id="restaurantLongitude"', profile_page)
+        self.assertIn("Use this device's current location", profile_page)
 
     def test_customer_homepage_has_an_ad_slot_after_the_hero(self):
-        response = Client().get("/homepage.html")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'id="homepage-ad-slot"')
-        main_start = response.content.index(b"<main>")
+        homepage = self.frontend_file("homepage.html")
+        self.assertIn('id="homepage-ad-slot"', homepage)
+        main_start = homepage.index("<main>")
         self.assertLess(
-            response.content.index(b"</section>", main_start),
-            response.content.index(b'id="homepage-ad-slot"'),
+            homepage.index("</section>", main_start),
+            homepage.index('id="homepage-ad-slot"'),
         )
 
     def test_food_list_can_be_filtered_to_one_restaurant(self):
@@ -448,52 +430,31 @@ class OrderWorkflowTests(TestCase):
         self.assertEqual(response.status_code, 401)
 
     def test_customer_homepage_stays_available_while_restaurant_is_logged_in(self):
-        restaurant_client = Client()
-        restaurant_client.force_login(self.restaurant_user)
-        response = restaurant_client.get("/")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Food")
-
-        dashboard_response = restaurant_client.get("/resturenthomepage.html")
-        self.assertEqual(dashboard_response.status_code, 200)
-
+        homepage = self.frontend_file("homepage.html")
+        dashboard = self.frontend_file("resturenthomepage.html")
+        self.assertIn("Food", homepage)
+        self.assertIn('id="restaurant-orders"', dashboard)
     def test_restaurant_dashboard_contains_menu_and_order_management(self):
-        restaurant_client = Client()
-        restaurant_client.force_login(self.restaurant_user)
-
-        response = restaurant_client.get("/resturenthomepage.html")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'id="productForm"')
-        self.assertContains(response, 'id="restaurant-orders"')
-        self.assertContains(response, 'id="restaurantOrderList"')
-        self.assertContains(response, 'id="refreshDashboardBtn"')
-        self.assertContains(response, "RESTAURANT_ORDER_POLL_MS")
-        self.assertContains(response, 'id="total-orders"')
-        self.assertContains(response, 'id="restaurant-header-name"')
-        self.assertContains(response, 'id="restaurant-profile"')
-        self.assertContains(response, 'id="profileSummaryName"')
-        self.assertContains(response, 'class="back-to-dashboard"')
-        self.assertContains(response, 'id="restaurantLogoutButton"')
-        profile_response = restaurant_client.get("/resturentprofilepage.html")
-        self.assertContains(profile_response, 'id="restaurantLogoutButton"')
-        self.assertContains(
-            profile_response,
-            'href="/resturenthomepage.html">← Dashboard',
-        )
-        settings_response = restaurant_client.get("/resturentsettingpage.html")
-        self.assertContains(settings_response, 'id="restaurantLogoutButton"')
-        self.assertContains(
-            settings_response,
-            'href="/resturenthomepage.html">← Dashboard',
-        )
-        self.assertRedirects(
-            restaurant_client.get("/resturentorderpage.html"),
-            "/resturenthomepage.html#restaurant-orders",
-            fetch_redirect_response=False,
-        )
-
+        dashboard = self.frontend_file("resturenthomepage.html")
+        profile = self.frontend_file("resturentprofilepage.html")
+        settings = self.frontend_file("resturentsettingpage.html")
+        self.assertIn('id="productForm"', dashboard)
+        self.assertIn('id="restaurant-orders"', dashboard)
+        self.assertIn('id="restaurantOrderList"', dashboard)
+        self.assertIn('id="refreshDashboardBtn"', dashboard)
+        self.assertIn("RESTAURANT_ORDER_POLL_MS", dashboard)
+        self.assertIn('id="total-orders"', dashboard)
+        self.assertIn('id="restaurant-header-name"', dashboard)
+        self.assertIn('id="restaurant-profile"', dashboard)
+        self.assertIn('id="profileSummaryName"', dashboard)
+        self.assertIn('class="back-to-dashboard"', dashboard)
+        self.assertIn('id="restaurantLogoutButton"', dashboard)
+        self.assertIn('href="/resturenthomepage.html">', profile)
+        self.assertIn('id="restaurantLogoutButton"', settings)
+        self.assertIn('id="restaurantLogoutButton"', profile)
+        proxy = (Path(__file__).resolve().parents[2] / "frontend" / "proxy.ts").read_text(encoding="utf-8")
+        self.assertIn('"/resturentorderpage.html"', proxy)
+        self.assertIn("#restaurant-orders", proxy)
     def test_restaurant_dashboard_counts_all_orders_by_status(self):
         orders = []
         for _ in range(3):
@@ -518,7 +479,8 @@ class OrderWorkflowTests(TestCase):
 
     def test_customer_registration_form_posts_with_csrf_cookie(self):
         client = Client(enforce_csrf_checks=True)
-        page = client.get("/register.html")
+        page = client.get("/api/config/public")
+        self.assertEqual(page.status_code, 200)
         token = page.cookies["csrftoken"].value
         response = client.post(
             "/api/auth/register",
@@ -590,7 +552,6 @@ class OrderWorkflowTests(TestCase):
             },
         )
         self.assertEqual(approved_login.json()["redirect"], "/resturenthomepage.html")
-        self.assertEqual(client.get("/resturenthomepage.html").status_code, 200)
 
         certificate = client.get("/api/restaurant/certificate")
         self.assertEqual(certificate.status_code, 200)
@@ -720,16 +681,13 @@ class OrderWorkflowTests(TestCase):
         self.assertEqual(delivery_response.json()["customerTotal"], 134.0)
 
     def test_checkout_shows_payment_split_without_gateway_collection(self):
-        response = self.customer_client.get("/checkout.html")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'id="commissionFee"')
-        self.assertContains(response, 'id="onlinePaymentAmount"')
-        self.assertContains(response, "data.gatewayAmount")
-        self.assertContains(response, 'id="payLaterAmount"')
-        self.assertContains(response, "no online money is collected right now")
-        self.assertNotContains(response, "Razorpay")
-
+        checkout = self.frontend_file("checkout.html")
+        self.assertIn('id="commissionFee"', checkout)
+        self.assertIn('id="onlinePaymentAmount"', checkout)
+        self.assertIn("data.gatewayAmount", checkout)
+        self.assertIn('id="payLaterAmount"', checkout)
+        self.assertIn("no online money is collected right now", checkout)
+        self.assertNotIn("Razorpay", checkout)
     def test_admin_can_edit_delivery_and_platform_fees(self):
         admin_user = get_user_model().objects.create_superuser(
             username="admin@example.test",
@@ -884,10 +842,6 @@ class OrderWorkflowTests(TestCase):
 
         driver_client = Client()
         driver_client.force_login(self.delivery_user)
-        delivery_page = driver_client.get("/resturentdeliverypage.html")
-        self.assertEqual(delivery_page.status_code, 200)
-        self.assertContains(delivery_page, "Available Delivery Orders")
-        self.assertContains(delivery_page, 'id="deliveryHistory"')
         available = driver_client.get("/api/delivery/orders/available")
         self.assertEqual(available.status_code, 200)
         self.assertEqual(available.json()["orders"][0]["id"], str(order.id))
@@ -1319,122 +1273,55 @@ class OrderWorkflowTests(TestCase):
         self.assertEqual(Order.objects.count(), 0)
         self.assertEqual(case_count, 15)
 
-    def test_website_pages_and_logo_route_matrix(self):
-        restaurant_client = Client()
-        restaurant_client.force_login(self.restaurant_user)
-        driver_client = Client()
-        driver_client.force_login(self.delivery_user)
-        customer_pages = ("/cartpage.html", "/checkout.html", "/orderpage.html")
-        restaurant_pages = (
-            "/resturenthomepage.html",
-            "/resturentprofilepage.html",
-            "/resturentsettingpage.html",
+    def test_frontend_pages_and_backend_api_route_boundary(self):
+        pages = (
+            "homepage.html", "login.html", "register.html", "cartpage.html",
+            "checkout.html", "orderpage.html", "contact.html", "terms.html",
+            "privacy.html", "resturentpage.html", "resturenthomepage.html",
+            "resturentprofilepage.html", "resturentsettingpage.html",
+            "resturentdeliverypage.html", "resturentorderpage.html",
+            "resturentloginpage.html", "resturentregisterpage.html",
+            "deliveryregister.html", "restaurant.html", "category.html",
         )
-        public_pages = (
-            "/login.html",
-            "/register.html",
-            "/resturentloginpage.html",
-            "/resturentregisterpage.html",
-            "/deliveryregister.html",
-            "/contact.html",
-            "/terms.html",
-            "/privacy.html",
-            "/resturentpage.html",
-            "/",
-        )
-        cases = [
-            (Client(), path, 200, None)
-            for path in public_pages
-        ] + [
-            (self.customer_client, path, 200, None)
-            for path in customer_pages
-        ] + [
-            (restaurant_client, path, 200, None)
-            for path in restaurant_pages
-        ] + [
-            (driver_client, "/resturentdeliverypage.html", 200, None),
-            (
-                restaurant_client,
-                "/resturentorderpage.html",
-                302,
-                "/resturenthomepage.html#restaurant-orders",
-            ),
-        ]
-        for client, path, status, redirect_to in cases:
-            with self.subTest(page=path):
-                response = client.get(path)
-                self.assertEqual(response.status_code, status)
-                if redirect_to:
-                    self.assertEqual(response["Location"], redirect_to)
-        self.assertContains(Client().get("/terms.html"), "Terms and Conditions")
-        self.assertContains(Client().get("/privacy.html"), "Privacy Policy")
-        self.assertContains(
-            Client().get("/register.html"),
-            'href="/terms.html"',
-        )
-        self.assertContains(
-            Client().get("/register.html"),
-            'href="/privacy.html"',
-        )
+        public_dir = Path(__file__).resolve().parents[2] / "frontend" / "public"
+        for name in pages:
+            with self.subTest(page=name):
+                self.assertTrue((public_dir / name).is_file())
 
-        logo_path = finders.find("logo (2).png")
-        self.assertIsNotNone(logo_path)
-        with open(logo_path, "rb") as logo_file:
-            logo_contents = logo_file.read()
+        proxy = (public_dir.parent / "proxy.ts").read_text(encoding="utf-8")
+        for route in (
+            "/cartpage.html", "/checkout.html", "/orderpage.html",
+            "/resturenthomepage.html", "/resturentprofilepage.html",
+            "/resturentsettingpage.html", "/resturentdeliverypage.html",
+            "/resturentorderpage.html",
+        ):
+            with self.subTest(protected_route=route):
+                self.assertIn(route, proxy)
+        self.assertIn('role: "customer"', proxy)
+        self.assertIn('role: "restaurant"', proxy)
+        self.assertIn('role: "delivery_partner"', proxy)
+
+        for backend_page in ("/", "/login.html", "/checkout.html"):
+            with self.subTest(backend_page=backend_page):
+                self.assertEqual(Client().get(backend_page).status_code, 404)
+        self.assertEqual(Client().get("/api/certificate/verify/unknown").status_code, 404)
+
+        logo_path = public_dir / "static" / "logo (2).png"
+        logo_contents = logo_path.read_bytes()
         self.assertTrue(logo_contents.startswith(b"\x89PNG\r\n\x1a\n"))
         self.assertGreater(len(logo_contents), 1000)
-
-        logo_pages = (
-            (Client(), "/", 200),
-            (Client(), "/homepage.html", 200),
-            (self.customer_client, "/cartpage.html", 200),
-            (self.customer_client, "/checkout.html", 200),
-            (Client(), "/contact.html", 200),
-            (Client(), "/login.html", 200),
-            (Client(), "/register.html", 200),
-            (self.customer_client, "/orderpage.html", 200),
-            (Client(), "/deliveryregister.html", 200),
-            (Client(), "/resturentloginpage.html", 200),
-            (Client(), "/resturentregisterpage.html", 200),
-            (Client(), "/resturentpage.html", 200),
-            (Client(), "/api/certificate/verify/unknown", 404),
-        )
-        logo_case_count = 0
-        for client, path, expected_status in logo_pages:
-            with self.subTest(logo_page=path):
-                response = client.get(path)
-                if expected_status == 404:
-                    self.assertEqual(response.status_code, expected_status)
-                else:
-                    self.assertEqual(response.status_code, expected_status)
-                    self.assertContains(
-                        response,
-                        "/static/logo%20(2).png",
-                    )
-                logo_case_count += 1
-        self.assertEqual(logo_case_count, 13)
-
+        self.assertIn('href="/terms.html"', self.frontend_file("register.html"))
+        self.assertIn('href="/privacy.html"', self.frontend_file("register.html"))
     def test_food_fallback_asset_exists_and_old_missing_image_paths_are_gone(self):
-        placeholder_path = finders.find("food-placeholder.svg")
-        self.assertIsNotNone(placeholder_path)
-        with open(placeholder_path, "rb") as placeholder_file:
-            self.assertIn(b"<svg", placeholder_file.read())
+        placeholder = Path(__file__).resolve().parents[2] / "frontend" / "public" / "static" / "food-placeholder.svg"
+        self.assertIn(b"<svg", placeholder.read_bytes())
 
-        for page_name in (
-            "cartpage.html",
-            "orderpage.html",
-            "resturenthomepage.html",
-        ):
+        for page_name in ("cartpage.html", "orderpage.html", "resturenthomepage.html"):
             with self.subTest(page=page_name):
-                with open(
-                    finders.find(page_name) or page_name,
-                    encoding="utf-8",
-                ) as page_file:
-                    content = page_file.read()
+                content = self.frontend_file(page_name)
                 self.assertNotIn("food-placeholder.jpg", content)
                 self.assertNotIn("burger-fries.png", content)
                 self.assertIn("/static/food-placeholder.svg", content)
-
     def test_delivery_partner_can_accept_and_update_multiple_active_deliveries(self):
         first_order, first_code = self._create_order(Order.OrderType.DELIVERY)
         restaurant_client = Client()
@@ -1560,10 +1447,8 @@ class OrderWorkflowTests(TestCase):
             self.restaurant.full_clean()
 
     def test_customer_checkout_page_is_served(self):
-        response = self.customer_client.get("/checkout.html")
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Place order")
-
+        checkout = self.frontend_file("checkout.html")
+        self.assertIn("Place order", checkout)
     def test_delivery_order_keeps_destination_coordinates_for_map_links(self):
         self.restaurant.latitude = Decimal("26.846700")
         self.restaurant.longitude = Decimal("80.946200")
@@ -1606,6 +1491,7 @@ class OrderWorkflowTests(TestCase):
                 "productCategory": "Rice",
                 "productPrice": "45.50",
                 "productDescription": "Freshly cooked",
+                "quantityUnit": "piece",
                 "productImage": "",
             },
         )
@@ -1631,10 +1517,11 @@ class OrderWorkflowTests(TestCase):
         self.assertFalse(self.restaurant.accepting_orders)
 
     def test_restaurant_detail_page_and_galaxy_background(self):
-        response = Client().get(f"/restaurant/{self.restaurant.id}")
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, self.restaurant.name)
-        self.assertContains(response, "/static/js/galaxy-bg.js")
+        restaurant_page = self.frontend_file("restaurant.html")
+        galaxy_script = self.frontend_file("static/js/galaxy-bg.js")
+        self.assertIn("loadRestaurantDetails", restaurant_page)
+        self.assertIn("/api/customer/restaurants/", restaurant_page)
+        self.assertTrue(galaxy_script)
 
         api_response = Client().get(f"/api/customer/restaurants/{self.restaurant.id}")
         self.assertEqual(api_response.status_code, 200)

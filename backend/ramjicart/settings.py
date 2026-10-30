@@ -8,7 +8,9 @@ from dotenv import load_dotenv
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+REPO_ROOT = BASE_DIR.parent
 load_dotenv(BASE_DIR / ".env")
+load_dotenv(REPO_ROOT / ".env")
 
 
 def env_bool(name, default):
@@ -77,17 +79,20 @@ ALLOWED_HOSTS = [
     ).split(",")
     if host.strip()
 ]
-render_hostname = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
-if render_hostname:
-    ALLOWED_HOSTS.append(render_hostname)
 
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
     if origin.strip()
 ]
-if render_hostname:
-    CSRF_TRUSTED_ORIGINS.append(f"https://{render_hostname}")
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+CORS_ALLOW_CREDENTIALS = True
+CORS_URLS_REGEX = r"^/api/.*$"
+DJANGO_CSRF_COOKIE_DOMAIN = os.environ.get("DJANGO_CSRF_COOKIE_DOMAIN", "").strip() or None
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -97,10 +102,12 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "axes",
+    "corsheaders",
     "orders.apps.OrdersConfig",
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -110,6 +117,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "axes.middleware.AxesMiddleware",
+    # These two public/authenticated certificate views still return HTML for compatibility.
     "orders.middleware.GalaxyBackgroundMiddleware",
 ]
 
@@ -123,7 +131,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # Five bad password attempts from one client IP trigger a temporary lockout.
-# Render forwards the original client IP in the left-most X-Forwarded-For entry.
+# The reverse proxy forwards the original client IP in the left-most X-Forwarded-For entry.
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = 0.25  # 15 minutes, expressed in hours
 AXES_USE_ATTEMPT_EXPIRATION = True
@@ -139,7 +147,7 @@ ROOT_URLCONF = "ramjicart.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR],
+        "DIRS": [],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -166,7 +174,7 @@ elif DEBUG:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
+            "NAME": REPO_ROOT / "db.sqlite3",
         }
     }
 else:
@@ -185,8 +193,9 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "/static/"
-STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
+MEDIA_URL = "/media/"
+MEDIA_ROOT = REPO_ROOT / "media"
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
@@ -195,8 +204,20 @@ STORAGES = {
         "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
 }
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+if not DEBUG:
+    media_bucket = os.environ.get("AWS_STORAGE_BUCKET_NAME", "").strip()
+    if not media_bucket:
+        raise ImproperlyConfigured(
+            "AWS_STORAGE_BUCKET_NAME must be set in production so uploaded media is not stored on ephemeral local disk."
+        )
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "bucket_name": media_bucket,
+            "region_name": os.environ.get("AWS_S3_REGION_NAME", "").strip() or None,
+            "default_acl": None,
+        },
+    }
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 if not DEBUG:
@@ -204,5 +225,8 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    CSRF_COOKIE_SAMESITE = "Lax"
+    CSRF_COOKIE_DOMAIN = DJANGO_CSRF_COOKIE_DOMAIN
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True

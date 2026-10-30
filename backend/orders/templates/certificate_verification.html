@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificate Verification | Ramjicart</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            display: grid;
+            min-height: 100vh;
+            margin: 0;
+            padding: 24px;
+            place-items: center;
+            background: #eef2f7;
+            color: #10233f;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        main {
+            width: min(520px, 100%);
+            padding: 42px 34px;
+            border-top: 7px solid {% if verified %}#20a56b{% else %}#d94c4c{% endif %};
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 12px 40px rgba(16, 35, 63, .12);
+            text-align: center;
+        }
+        .status {
+            display: grid;
+            width: 76px;
+            height: 76px;
+            margin: 0 auto 20px;
+            place-items: center;
+            border-radius: 50%;
+            background: {% if verified %}#e8f7ef{% else %}#fff0f0{% endif %};
+            color: {% if verified %}#168351{% else %}#c43d3d{% endif %};
+            font-size: 42px;
+            font-weight: 700;
+        }
+        h1 { margin: 0 0 10px; font-size: 28px; }
+        p { color: #526174; line-height: 1.6; }
+        .number {
+            margin-top: 24px;
+            padding: 14px;
+            border: 1px solid #d8e0e9;
+            border-radius: 6px;
+            color: #10233f;
+            font-weight: 700;
+            overflow-wrap: anywhere;
+        }
+        .brand { margin-top: 18px; color: #f36b21; font-size: 12px; font-weight: 700; }
+        .company-logo { width: 72px; height: 72px; margin-bottom: 10px; object-fit: contain; }
+        @media (max-width: 480px) {
+            body { padding: 14px; padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
+            main { padding: 28px 18px; }
+            p { font-size: 16px; }
+            .brand { font-size: 14px; }
+            .number { font-size: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <a href="/" aria-label="Ramjicart home"><img class="company-logo" src="/static/logo%20(2).png" alt="Ramjicart logo"></a>
+        <div class="status" aria-hidden="true">{% if verified %}✓{% else %}×{% endif %}</div>
+        {% if verified %}
+            <h1>Certificate Verified</h1>
+            <p>
+                This is a valid Ramjicart restaurant partnership certificate,
+                issued by Ramjicart.
+            </p>
+            <div class="number">{{ restaurant.registration_number }}</div>
+            <p><strong>{{ restaurant.name }}</strong></p>
+        {% else %}
+            <h1>Not Verified</h1>
+            <p>
+                This certificate is not currently active. Contact Ramjicart
+                if you believe this is an error.
+            </p>
+            <div class="number">{{ restaurant.registration_number }}</div>
+        {% endif %}
+        <div class="brand">RAMJICART</div>
+    </main>
+</body>
+</html>
