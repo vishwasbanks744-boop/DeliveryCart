@@ -1,13 +1,16 @@
 
 import os
+import sys
 
-# Hosting ka PORT environment variable
+# Hosting ka PORT read karo
 port = os.environ.get("PORT", "8000")
 
-# Django application ko Gunicorn se start karo
-os.execvp(
-    "gunicorn",
+# Python ke through Gunicorn start karo
+os.execv(
+    sys.executable,
     [
+        sys.executable,
+        "-m",
         "gunicorn",
         "--bind",
         f"0.0.0.0:{port}",
