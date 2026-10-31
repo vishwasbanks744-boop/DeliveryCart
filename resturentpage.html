@@ -737,13 +737,13 @@ form > .message {
     .category { padding: 9px 6px; }
 }
 </style>
-    <script src="/static/js/auth-client.js"></script>
-    <script src="/static/js/maps-client.js"></script>
+    <script src="/assets/js/auth-client.js"></script>
+    <script src="/assets/js/maps-client.js"></script>
 </head>
 <body>
     <header>
         <div>
-         <a href="/" aria-label="Ramjicart home"><img src="/static/logo%20(2).png" alt="Ramjicart logo" style="width:58px;height:58px;object-fit:contain"></a>
+         <a href="/" aria-label="Ramjicart home"><img src="/assets/logo%20(2).png" alt="Ramjicart logo" style="width:58px;height:58px;object-fit:contain"></a>
          <b>   Good Food . Good Mood  </b>
          <h1>Discover The Best Restaurants<br> Near You</h1>
             <h4> Explore top resturents,delicious food and amazing offers <br>- all in one place.</h4>
@@ -855,7 +855,7 @@ const categoryPhotos = [
 function categoryPhoto(name) {
     const key = String(name || "").toLowerCase();
     const match = categoryPhotos.find(function(item) { return key.includes(item.match); });
-    return match ? match.url : "/static/food-placeholder.svg";
+    return match ? match.url : "/assets/food-placeholder.svg";
 }
 
 async function loadCategories() {
@@ -878,7 +878,7 @@ async function loadCategories() {
             image.referrerPolicy = "no-referrer";
             image.onerror = function() {
                 this.onerror = null;
-                this.src = "/static/food-placeholder.svg";
+                this.src = "/assets/food-placeholder.svg";
             };
             imageWrap.appendChild(image);
             const label = document.createElement("p");
@@ -910,12 +910,12 @@ async function loadCategoryFoods(categoryId, categoryName) {
             const card = document.createElement("article");
             card.className = "category-food-card";
             const image = document.createElement("img");
-            image.src = food.image || "/static/food-placeholder.svg";
+            image.src = food.image || "/assets/food-placeholder.svg";
             image.alt = food.name || "Food item";
             image.loading = "lazy";
             image.onerror = function() {
                 this.onerror = null;
-                this.src = "/static/food-placeholder.svg";
+                this.src = "/assets/food-placeholder.svg";
             };
             const title = document.createElement("h3");
             title.textContent = food.name;

@@ -595,7 +595,7 @@ class OrderWorkflowTests(TestCase):
         certificate = client.get("/api/restaurant/certificate")
         self.assertEqual(certificate.status_code, 200)
         self.assertContains(certificate, "Certificate of Authorized Partnership")
-        self.assertContains(certificate, "/static/headshot_with_R_logo_icon.png")
+        self.assertContains(certificate, "/assets/headshot_with_R_logo_icon.png")
         self.assertContains(certificate, "Vishal Shukla")
         self.assertContains(certificate, "CHIEF EXECUTIVE OFFICER · RAMJICART")
         self.assertContains(certificate, new_restaurant.registration_number)
@@ -1409,7 +1409,7 @@ class OrderWorkflowTests(TestCase):
                     self.assertEqual(response.status_code, expected_status)
                     self.assertContains(
                         response,
-                        "/static/logo%20(2).png",
+                        "/assets/logo%20(2).png",
                     )
                 logo_case_count += 1
         self.assertEqual(logo_case_count, 13)
@@ -1433,7 +1433,7 @@ class OrderWorkflowTests(TestCase):
                     content = page_file.read()
                 self.assertNotIn("food-placeholder.jpg", content)
                 self.assertNotIn("burger-fries.png", content)
-                self.assertIn("/static/food-placeholder.svg", content)
+                self.assertIn("/assets/food-placeholder.svg", content)
 
     def test_delivery_partner_can_accept_and_update_multiple_active_deliveries(self):
         first_order, first_code = self._create_order(Order.OrderType.DELIVERY)
@@ -1634,7 +1634,7 @@ class OrderWorkflowTests(TestCase):
         response = Client().get(f"/restaurant/{self.restaurant.id}")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.restaurant.name)
-        self.assertContains(response, "/static/js/galaxy-bg.js")
+        self.assertContains(response, "/assets/js/galaxy-bg.js")
 
         api_response = Client().get(f"/api/customer/restaurants/{self.restaurant.id}")
         self.assertEqual(api_response.status_code, 200)

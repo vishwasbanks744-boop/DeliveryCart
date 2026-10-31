@@ -383,14 +383,14 @@ h1 {
     }
 }
 </style>
-    <script src="/static/js/maps-client.js"></script>
+    <script src="/assets/js/maps-client.js"></script>
 </head>
 
 <body>
 
     <!-- Order ID -->
     <div class="order-top">
-        <a href="/" aria-label="Ramjicart home"><img src="/static/logo%20(2).png" alt="Ramjicart logo" style="width:54px;height:54px;object-fit:contain;vertical-align:middle"></a>
+        <a href="/" aria-label="Ramjicart home"><img src="/assets/logo%20(2).png" alt="Ramjicart logo" style="width:54px;height:54px;object-fit:contain;vertical-align:middle"></a>
         <h2>Check your Order</h2>
         <p id="orderid"></p>
     </div>
@@ -519,7 +519,7 @@ h1 {
         <!-- Restaurant -->
         <div class="restaurant-info">
 
-            <img id="restaurantImage" src="/static/food-placeholder.svg" alt="Restaurant">
+            <img id="restaurantImage" src="/assets/food-placeholder.svg" alt="Restaurant">
 
             <div>
 
@@ -830,10 +830,10 @@ function displayOrder(order) {
 
         const restaurantImage = document.getElementById("restaurantImage");
         restaurantImage.src =
-            order.restaurant.image || "/static/food-placeholder.svg";
+            order.restaurant.image || "/assets/food-placeholder.svg";
         restaurantImage.onerror = function() {
             this.onerror = null;
-            this.src = "/static/food-placeholder.svg";
+            this.src = "/assets/food-placeholder.svg";
         };
 
         if (order.restaurant.id) {
@@ -956,11 +956,11 @@ function displayFoodItems(items) {
 
 
         const image = document.createElement("img");
-        image.src = item.image || "/static/food-placeholder.svg";
+        image.src = item.image || "/assets/food-placeholder.svg";
         image.alt = item.name || "Food";
         image.onerror = function() {
             this.onerror = null;
-            this.src = "/static/food-placeholder.svg";
+            this.src = "/assets/food-placeholder.svg";
         };
 
         const details = document.createElement("div");

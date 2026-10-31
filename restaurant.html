@@ -498,7 +498,7 @@
     <header>
         <nav>
             <a href="/" class="nav-brand">
-                <img src="/static/logo%20(2).png" alt="Ramjicart logo">
+                <img src="/assets/logo%20(2).png" alt="Ramjicart logo">
                 <span>Ramjicart</span>
             </a>
             <div class="nav-links">
@@ -523,10 +523,10 @@
         <!-- RESTAURANT HEADER -->
         <section class="restaurant-header-card">
             <img
-                src="{{ logo|default:'/static/food-placeholder.svg' }}"
+                src="{{ logo|default:'/assets/food-placeholder.svg' }}"
                 alt="{{ restaurant.name }}"
                 class="restaurant-logo"
-                onerror="this.onerror=null;this.src='/static/food-placeholder.svg';"
+                onerror="this.onerror=null;this.src='/assets/food-placeholder.svg';"
             >
             <div class="restaurant-info">
                 <h1>{{ restaurant.name }}</h1>
@@ -718,12 +718,12 @@
                     card.className = "food-card";
 
                     const img = document.createElement("img");
-                    img.src = item.image || "/static/food-placeholder.svg";
+                    img.src = item.image || "/assets/food-placeholder.svg";
                     img.alt = item.name || "Food";
                     img.loading = "lazy";
                     img.onerror = function() {
                         this.onerror = null;
-                        this.src = "/static/food-placeholder.svg";
+                        this.src = "/assets/food-placeholder.svg";
                     };
 
                     const body = document.createElement("div");

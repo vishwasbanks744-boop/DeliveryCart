@@ -256,6 +256,12 @@
         const loginButton = document.getElementById("loginButton");
         const loginMessage = document.getElementById("loginMessage");
         const googleLoginButton = document.getElementById("googleLoginButton");
+        function readableAuthError(error) {
+            if (error && error.code === "auth/invalid-credential") {
+                return "Firebase could not verify this email and password. Check both, or use Continue with Google if you registered with Google.";
+            }
+            return error && error.message ? error.message : "Sign-in failed. Please try again.";
+        }
         document.querySelector(".forgot-password").addEventListener("click", async function(event) {
             event.preventDefault();
             const email = document.getElementById("loginemail").value.trim();
@@ -286,7 +292,7 @@
                     window.location.href = data.redirect || "/";
                 }, 400);
             } catch (error) {
-                loginMessage.textContent = error.message || "Google sign-in failed.";
+                loginMessage.textContent = readableAuthError(error);
             } finally {
                 googleLoginButton.disabled = false;
             }
@@ -341,8 +347,7 @@
 
             } catch (error) {
 
-                loginMessage.textContent =
-                    error.message || "Something went wrong";
+                loginMessage.textContent = readableAuthError(error);
 
                 loginMessage.className = "error-message";
 
