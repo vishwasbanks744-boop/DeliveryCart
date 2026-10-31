@@ -4,6 +4,8 @@ from .models import (
     AccountProfile,
     Category,
     Food,
+    Landmark,
+    Market,
     Order,
     OrderItem,
     PricingSettings,
@@ -13,9 +15,9 @@ from .models import (
 
 @admin.register(AccountProfile)
 class AccountProfileAdmin(admin.ModelAdmin):
-    list_display = ("user", "role", "phone", "approved", "created_at")
-    list_filter = ("role", "approved")
-    search_fields = ("user__email", "user__first_name", "phone")
+    list_display = ("user", "role", "phone", "market", "pincode", "approved", "created_at")
+    list_filter = ("role", "approved", "market")
+    search_fields = ("user__email", "user__first_name", "phone", "market__name", "landmark", "pincode")
     readonly_fields = ("user", "role", "phone", "created_at")
 
 
@@ -30,16 +32,18 @@ class RestaurantAdmin(admin.ModelAdmin):
         "accepting_orders",
         "rating",
         "delivery_time",
+        "market",
         "commission_percentage",
         "max_commission_percentage",
     )
-    list_filter = ("approved", "accepting_orders")
+    list_filter = ("approved", "accepting_orders", "market")
     search_fields = (
         "name",
         "email",
         "phone",
         "nearby_landmark",
-        "market",
+        "nearby_landmarks__name",
+        "market__name",
         "city",
         "pincode",
     )
@@ -56,8 +60,9 @@ class RestaurantAdmin(admin.ModelAdmin):
                     "certificate_issued_at",
                     "phone",
                     "address",
-                    "nearby_landmark",
                     "market",
+                    "nearby_landmarks",
+                    "legacy_market_name",
                     "city",
                     "pincode",
                     "latitude",
@@ -81,6 +86,20 @@ class RestaurantAdmin(admin.ModelAdmin):
         ),
     )
     readonly_fields = ("registration_number", "certificate_issued_at")
+
+
+@admin.register(Market)
+class MarketAdmin(admin.ModelAdmin):
+    list_display = ("name", "pincode")
+    search_fields = ("name", "pincode")
+    ordering = ("name", "pincode")
+
+
+@admin.register(Landmark)
+class LandmarkAdmin(admin.ModelAdmin):
+    list_display = ("name", "market")
+    list_filter = ("market",)
+    search_fields = ("name", "market__name", "market__pincode")
 
 
 @admin.register(PricingSettings)

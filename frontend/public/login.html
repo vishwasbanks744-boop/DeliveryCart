@@ -54,6 +54,12 @@
             object-fit: contain;
         }
 
+        #loginForm > a:first-child {
+            display: block;
+            width: fit-content;
+            margin: 0 auto;
+        }
+
         label {
             display: inline-block;
             font-size: 14px;
@@ -162,6 +168,20 @@
             min-height: 20px;
         }
 
+        #loginMessage.auth-response {
+            min-height: 0;
+            padding: 8px 10px;
+            border-radius: 6px;
+        }
+
+        #loginMessage.auth-response.success-message {
+            background: #e8f5e9;
+        }
+
+        #loginMessage.auth-response.error-message {
+            background: #ffebee;
+        }
+
         .error-message {
             color: #d93025;
         }
@@ -256,6 +276,21 @@
         const loginButton = document.getElementById("loginButton");
         const loginMessage = document.getElementById("loginMessage");
         const googleLoginButton = document.getElementById("googleLoginButton");
+        const loginQuery = new URLSearchParams(window.location.search);
+        const returnAfterLogin = loginQuery.get("next");
+
+        function getLoginSuccessRedirect(data) {
+            if (returnAfterLogin && returnAfterLogin.startsWith("/") && !returnAfterLogin.startsWith("//")) {
+                return returnAfterLogin;
+            }
+            return data.redirect || "/";
+        }
+
+        if (loginQuery.get("cart") === "1") {
+            loginMessage.textContent = "Cart me add karne ke liye pehle login karo";
+            loginMessage.className = "error-message";
+        }
+
         document.querySelector(".forgot-password").addEventListener("click", async function(event) {
             event.preventDefault();
             const email = document.getElementById("loginemail").value.trim();
@@ -276,17 +311,21 @@
 
         googleLoginButton.addEventListener("click", async function() {
             googleLoginButton.disabled = true;
-            loginMessage.textContent = "Signing in with Google...";
+            loginMessage.textContent = "";
+            loginMessage.className = "";
             try {
                 const response = await RamjicartAuth.loginWithGoogle("customer");
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.message || "Google sign-in failed.");
-                loginMessage.textContent = data.message || "Login successful.";
+                loginMessage.textContent = "Login successful";
+                loginMessage.className = "auth-response success-message";
                 window.setTimeout(function() {
-                    window.location.href = data.redirect || "/";
-                }, 400);
+                    window.location.href = getLoginSuccessRedirect(data);
+                }, 1500);
             } catch (error) {
-                loginMessage.textContent = error.message || "Google sign-in failed.";
+                console.error("Google login failed:", error);
+                loginMessage.textContent = "Try again";
+                loginMessage.className = "auth-response error-message";
             } finally {
                 googleLoginButton.disabled = false;
             }
@@ -330,12 +369,7 @@
                  * Nahi to customer home page open hoga.
                  */
                 setTimeout(function() {
-
-                    if (data.redirect) {
-                        window.location.href = data.redirect;
-                    } else {
-                        window.location.href = "/";
-                    }
+                    window.location.href = getLoginSuccessRedirect(data);
 
                 }, 700);
 

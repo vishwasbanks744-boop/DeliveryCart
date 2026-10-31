@@ -791,10 +791,9 @@ async function loadAvailableOrders() {
 
         if (!data.orders || !data.orders.length) {
 
-            document.getElementById(
-                "ordersMessage"
-            ).textContent =
-                "No delivery orders available right now. New orders appear after the restaurant marks them ready.";
+            document.getElementById("ordersMessage").textContent = data.pincodeRequired
+                ? "Ask the administrator to add your 6-digit PIN code before viewing delivery offers."
+                : "No delivery orders available right now. New orders appear after the restaurant marks them ready.";
             container.innerHTML =
                 '<p class="empty-state">You are all caught up.</p>';
 
@@ -807,6 +806,7 @@ async function loadAvailableOrders() {
                 document.createElement("div");
 
             card.className = "order-card";
+            card.dataset.orderId = order.id;
             const eligibility = escapeHtml(order.eligibilityMessage || "Open delivery offer")
                 + (order.distanceKm !== null && order.distanceKm !== undefined
                     ? ` · ${escapeHtml(order.distanceKm)} km away`
@@ -969,13 +969,24 @@ async function acceptDelivery(orderId) {
         );
 
 
-        await loadAvailableOrders();
+        const availableCard = document.querySelector(
+            `#availableOrders [data-order-id="${orderId}"]`
+        );
+        if (availableCard) availableCard.remove();
         await loadCurrentDelivery();
 
 
     } catch (error) {
 
-        alert(error.message);
+        if (error.message === "Ye order kisi aur ne le liya") {
+            const availableCard = document.querySelector(
+                `#availableOrders [data-order-id="${orderId}"]`
+            );
+            if (availableCard) availableCard.remove();
+            document.getElementById("ordersMessage").textContent = error.message;
+        } else {
+            alert(error.message);
+        }
 
     }
 
@@ -1180,7 +1191,6 @@ async function updateDeliveryStatus(orderId, status) {
 
 
         await loadCurrentDelivery();
-        await loadAvailableOrders();
 
 
     } catch (error) {
@@ -1226,7 +1236,6 @@ async function toggleDispatchLocation() {
             if (!response.ok) throw new Error(data.message || "Could not stop sharing.");
             button.textContent = "Share location";
             message.textContent = "Location sharing stopped. Open offers remain visible; accepting requires a fresh location within 10 km.";
-            await loadAvailableOrders();
         } else {
             message.textContent = "Requesting location permission...";
             const position = await RamjicartMaps.getCurrentPosition({
@@ -1239,7 +1248,6 @@ async function toggleDispatchLocation() {
                 dispatchLocationLastSent = Date.now();
                 try {
                     await updateDispatchLocation(nextPosition);
-                    await loadAvailableOrders();
                 } catch (error) {
                     message.textContent = error.message;
                 }
@@ -1252,7 +1260,6 @@ async function toggleDispatchLocation() {
                 message.textContent = error.message || "Location access stopped.";
             }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 });
             button.textContent = "Stop location sharing";
-            await loadAvailableOrders();
         }
     } catch (error) {
         message.textContent = error.message || "Could not share your location.";
@@ -1384,7 +1391,7 @@ async function verifyDeliveryOtp(orderId) {
         );
 
 
-        await refreshDeliveryDashboard();
+        await Promise.all([loadDashboard(), loadCurrentDelivery()]);
 
 
     } catch (error) {
@@ -1436,14 +1443,6 @@ document.getElementById("deliveryLogoutButton").addEventListener("click", async 
 /* Start */
 
 refreshDeliveryDashboard();
-
-window.setInterval(function() {
-    if (!document.hidden) {
-        loadDashboard();
-        loadAvailableOrders();
-        loadCurrentDelivery();
-    }
-}, 15000);
 
 </script>
 

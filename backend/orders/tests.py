@@ -1,13 +1,14 @@
 import json
 from decimal import Decimal
 from pathlib import Path
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.utils import timezone
 
-from .models import AccountProfile, Category, Food, Order, PricingSettings, Restaurant
+from .models import AccountProfile, Category, Food, Market, Order, PricingSettings, Restaurant
 
 
 class OrderWorkflowTests(TestCase):
@@ -99,6 +100,10 @@ class OrderWorkflowTests(TestCase):
         payload = {"orderType": order_type}
         if order_type == Order.OrderType.DELIVERY:
             payload["deliveryAddress"] = "12 Main Road, Delhi"
+            self.restaurant.pincode = "110001"
+            self.restaurant.save(update_fields=["pincode"])
+            self.delivery_profile.pincode = "110001"
+            self.delivery_profile.save(update_fields=["pincode"])
         response = self._json_post(
             self.customer_client, "/api/customer/orders", payload
         )
@@ -117,6 +122,7 @@ class OrderWorkflowTests(TestCase):
                 "fullname": "New Customer",
                 "email": "new@example.test",
                 "mobile": "9333333333",
+                "pincode": "110001",
                 "password": "GoodPass!2026",
             },
         )
@@ -130,6 +136,33 @@ class OrderWorkflowTests(TestCase):
         )
         self.assertEqual(login_response.status_code, 200)
         self.assertEqual(login_response.json()["redirect"], "/")
+
+    def test_google_customer_registration_logs_in_and_returns_required_message(self):
+        client = Client()
+        identity = {"uid": "firebase-google-uid", "email": "google@example.test"}
+        with override_settings(FIREBASE_AUTH_ENABLED=True), patch(
+            "orders.views._firebase_registration_identity",
+            return_value=(identity, None),
+        ):
+            response = self._json_post(
+                client,
+                "/api/auth/register",
+                {
+                    "fullname": "Google Customer",
+                    "email": "google@example.test",
+                    "mobile": "9333333334",
+                    "pincode": "110001",
+                    "password": "IgnoredForGoogle!2026",
+                    "firebaseIdToken": "verified-by-mock",
+                },
+            )
+
+        self.assertEqual(response.status_code, 201, response.content)
+        self.assertEqual(response.json()["message"], "Login successful")
+        self.assertEqual(response.json()["redirect"], "/")
+        current_user = client.get("/api/auth/me")
+        self.assertEqual(current_user.status_code, 200)
+        self.assertEqual(current_user.json()["role"], "customer")
 
     def test_homepage_is_available_without_login_for_food_browsing(self):
         homepage = self.frontend_file("homepage.html")
@@ -239,7 +272,9 @@ class OrderWorkflowTests(TestCase):
         self.restaurant.city = "Lucknow"
         self.restaurant.pincode = "226001"
         self.restaurant.nearby_landmark = "City Hospital"
-        self.restaurant.market = "Other Market"
+        self.restaurant.market = Market.objects.create(
+            name="Other Market", pincode="226001"
+        )
         self.restaurant.save(
             update_fields=["city", "pincode", "nearby_landmark", "market"]
         )
@@ -251,11 +286,14 @@ class OrderWorkflowTests(TestCase):
             ("E Far Away", "City Hospital", "Central Market", "Kanpur", "208001"),
         )
         for name, landmark, market, city, pincode in match_data:
+            market_record, _created = Market.objects.get_or_create(
+                name=market, pincode=pincode
+            )
             restaurant = Restaurant.objects.create(
                 name=name,
                 email=f"{name.split()[0].lower()}@example.test",
                 nearby_landmark=landmark,
-                market=market,
+                market=market_record,
                 city=city,
                 pincode=pincode,
                 approved=True,
@@ -340,7 +378,7 @@ class OrderWorkflowTests(TestCase):
         self.assertEqual(self.restaurant.city, "Lucknow")
         self.assertEqual(self.restaurant.pincode, "226001")
         self.assertEqual(self.restaurant.nearby_landmark, "City Hospital")
-        self.assertEqual(self.restaurant.market, "Central Market")
+        self.assertEqual(self.restaurant.market.name, "Central Market")
         self.assertEqual(self.restaurant.latitude, Decimal("26.846700"))
         self.assertEqual(self.restaurant.longitude, Decimal("80.946200"))
 
@@ -489,6 +527,7 @@ class OrderWorkflowTests(TestCase):
                     "fullname": "CSRF Customer",
                     "email": "csrf-customer@example.test",
                     "mobile": "9444444440",
+                    "pincode": "110001",
                     "password": "SecureCustomer!2026",
                 }
             ),
@@ -520,7 +559,7 @@ class OrderWorkflowTests(TestCase):
         self.assertEqual(new_restaurant.city, "Lucknow")
         self.assertEqual(new_restaurant.pincode, "226001")
         self.assertEqual(new_restaurant.nearby_landmark, "City Hospital")
-        self.assertEqual(new_restaurant.market, "Central Market")
+        self.assertEqual(new_restaurant.market.name, "Central Market")
         restaurant_login = self._json_post(
             client,
             "/api/auth/login",
@@ -590,6 +629,7 @@ class OrderWorkflowTests(TestCase):
                 "name": "New Driver",
                 "email": "new-driver@example.test",
                 "phone": "9555555555",
+                "pincode": "110001",
                 "password": "StrongDriver!2026",
             },
         )
@@ -600,6 +640,7 @@ class OrderWorkflowTests(TestCase):
             ).approved
         )
         driver = AccountProfile.objects.get(user__email="new-driver@example.test")
+        self.assertEqual(driver.pincode, "110001")
         driver.approved = True
         driver.save(update_fields=["approved"])
         driver_client = Client()
@@ -640,11 +681,11 @@ class OrderWorkflowTests(TestCase):
         self.assertEqual(response.json()["restaurantPayout"], 95.0)
         self.assertEqual(response.json()["gatewayAmount"], 35.0)
         self.assertEqual(response.json()["onlinePaymentAmount"], 35.0)
+        self.assertNotIn("commissionAmount", response.json())
+        self.assertNotIn("commissionPercentage", response.json())
         self.assertEqual(
-            response.json()["gatewayAmount"],
-            response.json()["commissionAmount"]
-            + response.json()["deliveryFee"]
-            + response.json()["platformFee"],
+            response.json()["gatewayAmount"] + response.json()["payLaterAmount"],
+            response.json()["customerTotal"],
         )
         self.assertEqual(response.json()["payLaterAmount"], 95.0)
         self.assertEqual(response.json()["payLaterRecipient"], "delivery partner")
@@ -682,7 +723,9 @@ class OrderWorkflowTests(TestCase):
 
     def test_checkout_shows_payment_split_without_gateway_collection(self):
         checkout = self.frontend_file("checkout.html")
-        self.assertIn('id="commissionFee"', checkout)
+        self.assertIn("Pay online during order", checkout)
+        self.assertIn("Pay online for place order", checkout)
+        self.assertNotIn("commission", checkout.lower())
         self.assertIn('id="onlinePaymentAmount"', checkout)
         self.assertIn("data.gatewayAmount", checkout)
         self.assertIn('id="payLaterAmount"', checkout)
@@ -811,6 +854,7 @@ class OrderWorkflowTests(TestCase):
             user=second_user,
             role=AccountProfile.Role.DELIVERY_PARTNER,
             approved=True,
+            pincode="110001",
             latitude=Decimal("0.010000"),
             longitude=Decimal("0.000000"),
             location_updated_at=timezone.now(),
@@ -827,6 +871,36 @@ class OrderWorkflowTests(TestCase):
         self.assertEqual(accepted.status_code, 200, accepted.content)
         order.refresh_from_db()
         self.assertEqual(order.status, Order.Status.ASSIGNED)
+
+    def test_delivery_available_orders_are_limited_to_partner_pincode(self):
+        order, _code = self._create_order(Order.OrderType.DELIVERY)
+        restaurant_client = Client()
+        restaurant_client.force_login(self.restaurant_user)
+        for status in ("confirmed", "preparing", "ready"):
+            restaurant_client.put(
+                f"/api/restaurant/orders/{order.id}",
+                data=json.dumps({"status": status}),
+                content_type="application/json",
+            )
+
+        driver_client = Client()
+        driver_client.force_login(self.delivery_user)
+        self.delivery_profile.pincode = ""
+        self.delivery_profile.save(update_fields=["pincode"])
+        missing_pincode = driver_client.get("/api/delivery/orders/available").json()
+        self.assertTrue(missing_pincode["pincodeRequired"])
+        self.assertEqual(missing_pincode["orders"], [])
+
+        self.delivery_profile.pincode = "999999"
+        self.delivery_profile.save(update_fields=["pincode"])
+        mismatch = driver_client.get("/api/delivery/orders/available").json()
+        self.assertFalse(mismatch["pincodeRequired"])
+        self.assertEqual(mismatch["orders"], [])
+
+        self.delivery_profile.pincode = "110001"
+        self.delivery_profile.save(update_fields=["pincode"])
+        match = driver_client.get("/api/delivery/orders/available").json()
+        self.assertEqual([item["id"] for item in match["orders"]], [str(order.id)])
 
     def test_delivery_workflow_requires_assigned_driver_and_customer_code(self):
         order, code = self._create_order(Order.OrderType.DELIVERY)
@@ -1492,7 +1566,7 @@ class OrderWorkflowTests(TestCase):
                 "productPrice": "45.50",
                 "productDescription": "Freshly cooked",
                 "quantityUnit": "piece",
-                "productImage": "",
+                "productImage": "https://example.test/new-meal.png",
             },
         )
         self.assertEqual(created.status_code, 201, created.content)

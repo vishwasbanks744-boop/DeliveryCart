@@ -72,10 +72,9 @@
         <aside class="card">
             <h2>Order summary</h2>
             <div class="row"><span>Food total</span><strong id="itemTotal">₹0.00</strong></div>
-            <div class="row"><span>Restaurant commission (online)</span><strong id="commissionFee">₹0.00</strong></div>
             <div class="row" id="deliveryRow" hidden><span>Delivery charge</span><strong id="deliveryFee">₹0.00</strong></div>
             <div class="row" id="platformRow"><span>Platform fee</span><strong id="platformFee">₹10.00</strong></div>
-            <div class="row"><span>Gateway amount (fees only)</span><strong id="onlinePaymentAmount">₹0.00</strong></div>
+            <div class="row"><span>Pay online during order<small class="note" style="display:block">Pay online for place order</small></span><strong id="onlinePaymentAmount">₹0.00</strong></div>
             <div class="row"><span id="payLaterLabel">Pay at restaurant</span><strong id="payLaterAmount">₹0.00</strong></div>
             <div class="row total"><span>Total order amount</span><strong id="customerTotal">₹0.00</strong></div>
             <p id="paymentNote" class="note">Payment gateway is not connected yet. This is the planned payment split only; no online money is collected right now. Clicking Place order will place the order without taking payment.</p>
@@ -109,7 +108,7 @@
             cashfreeConfig = await response.json();
             if (cashfreeConfig.cashfreeEnabled) {
                 document.getElementById("paymentNote").textContent =
-                    "Cashfree will collect the commission and applicable fees now. The remaining amount is payable at handover.";
+                    "Online payment covers the listed fees. The remaining amount is payable at handover.";
                 payButton.textContent = "Pay fees with Cashfree";
             }
         } catch (_) {
@@ -187,7 +186,6 @@
             document.getElementById("itemTotal").textContent = formatRupees(data.itemTotal);
             document.getElementById("deliveryFee").textContent = formatRupees(data.deliveryFee);
             document.getElementById("platformFee").textContent = formatRupees(data.platformFee);
-            document.getElementById("commissionFee").textContent = formatRupees(data.commissionAmount);
             document.getElementById("onlinePaymentAmount").textContent = formatRupees(data.gatewayAmount);
             document.getElementById("payLaterAmount").textContent = formatRupees(data.payLaterAmount);
             document.getElementById("customerTotal").textContent = formatRupees(data.customerTotal);

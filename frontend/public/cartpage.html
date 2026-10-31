@@ -40,6 +40,12 @@
             text-align: center;
         }
 
+        header > a[aria-label="Ramjicart home"] {
+            display: block;
+            width: fit-content;
+            margin: 0 auto;
+        }
+
 
         header h1 {
             font-size: 38px;
@@ -178,8 +184,8 @@
 
 
         .quantity button {
-            width: 35px;
-            height: 35px;
+            width: 36px;
+            height: 36px;
             border: none;
             border-radius: 50%;
             background: #fff1e8;
@@ -187,6 +193,7 @@
             font-size: 22px;
             font-weight: bold;
             cursor: pointer;
+            transition: background 0.2s, color 0.2s, transform 0.15s;
         }
 
 
@@ -194,6 +201,42 @@
             background: #ff5a00;
             color: white;
         }
+
+        .quantity button:active { transform: scale(0.98); }
+
+        #clearCartButton {
+            display: block;
+            width: 100%;
+            margin: 10px 0 14px;
+            padding: 12px 20px;
+            border: 1px solid #d93025;
+            border-radius: 11px;
+            background: transparent;
+            color: #d93025;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.15s;
+        }
+
+        #clearCartButton:hover { background: #fff0ef; }
+        #clearCartButton:active { transform: scale(0.98); }
+
+        .clear-cart-confirm {
+            width: min(420px, calc(100% - 32px));
+            padding: 24px;
+            border: 0;
+            border-radius: 14px;
+            color: #172033;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+        }
+
+        .clear-cart-confirm::backdrop { background: rgba(23, 32, 51, 0.45); }
+        .clear-cart-confirm p { margin-bottom: 20px; font-size: 18px; font-weight: 600; }
+        .clear-cart-confirm-actions { display: flex; justify-content: flex-end; gap: 10px; }
+        .clear-cart-confirm-actions button { min-height: 44px; padding: 10px 14px; border-radius: 9px; font: inherit; font-weight: 600; cursor: pointer; }
+        #confirmClearCart { border: 1px solid #d93025; background: #d93025; color: white; }
+        #cancelClearCart { border: 1px solid #d5d9e0; background: white; color: #172033; }
 
 
         .quantity span {
@@ -342,6 +385,8 @@
             background: #e84f00;
             transform: translateY(-2px);
         }
+
+        .checkout:active { transform: scale(0.98); }
 
 
         /* =========================
@@ -567,7 +612,7 @@
             >
 
                 <h2>
-                    Your Cart is Empty 🛒
+                    Your cart is empty 🛒
                 </h2>
 
 
@@ -576,6 +621,8 @@
                 </p>
 
             </div>
+
+            <button type="button" id="clearCartButton">🗑 Clear cart</button>
 
         </div>
 
@@ -591,9 +638,6 @@
             <h2>
                 Bill summary
             </h2>
-
-            <button type="button" id="clearCartButton">Clear Cart</button>
-
 
             <hr>
 
@@ -678,8 +722,15 @@
 
         </div>
 
-
     </div>
+
+    <dialog class="clear-cart-confirm" id="clearCartConfirmDialog" aria-labelledby="clearCartConfirmText">
+        <p id="clearCartConfirmText">Pura cart khali karna hai?</p>
+        <div class="clear-cart-confirm-actions">
+            <button type="button" id="cancelClearCart">Rehne do</button>
+            <button type="button" id="confirmClearCart">Haan, khali karo</button>
+        </div>
+    </dialog>
 
 
 
@@ -723,6 +774,9 @@
 
         const emptyCart =
             document.getElementById("emptyCart");
+
+        const clearCartButton =
+            document.getElementById("clearCartButton");
 
 
         const billSummary =
@@ -817,8 +871,9 @@
         function displayCart(data) {
 
             localStorage.setItem("ramjicart-cart", JSON.stringify(data.items || []));
+            clearCartButton.style.display = data.items && data.items.length ? "block" : "none";
             emptyCart.style.display = data.items && data.items.length ? "none" : "block";
-            if (!data.items || !data.items.length) emptyCart.querySelector("h2").textContent = "Cart khali hai";
+            if (!data.items || !data.items.length) emptyCart.querySelector("h2").textContent = "Your cart is empty 🛒";
 
 
             cartItems
@@ -1330,7 +1385,13 @@
         */
 
         document.getElementById("clearCartButton").addEventListener("click", async function() {
-            if (!confirm("Saare cart items hata dein?")) return;
+            document.getElementById("clearCartConfirmDialog").showModal();
+        });
+        document.getElementById("cancelClearCart").addEventListener("click", function() {
+            document.getElementById("clearCartConfirmDialog").close();
+        });
+        document.getElementById("confirmClearCart").addEventListener("click", async function() {
+            document.getElementById("clearCartConfirmDialog").close();
             const response = await fetch(cartApi);
             const data = await response.json();
             for (const item of data.items || []) await removeFromCart(item.id);

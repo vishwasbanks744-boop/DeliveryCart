@@ -41,6 +41,8 @@
         <input id="email" name="email" type="email" autocomplete="email" required>
         <label for="phone">Phone number</label>
         <input id="phone" name="phone" type="tel" autocomplete="tel" required maxlength="30">
+        <label for="pincode">PIN code</label>
+        <input id="pincode" name="pincode" type="text" inputmode="numeric" autocomplete="postal-code" required maxlength="6" pattern="[0-9]{6}">
         <label for="password">Password</label>
         <input id="password" name="password" type="password" autocomplete="new-password" required minlength="8">
         <label for="confirmPassword">Confirm password</label>
@@ -91,6 +93,7 @@
                 name: document.getElementById("name").value.trim(),
                 email: document.getElementById("email").value.trim(),
                 phone: document.getElementById("phone").value.trim(),
+                pincode: document.getElementById("pincode").value.trim(),
                 password: password
             }, googleRegistrationIdentity);
             const data = await response.json();

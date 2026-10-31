@@ -1,4 +1,5 @@
 import uuid
+import os
 import secrets
 from decimal import Decimal
 
@@ -11,6 +12,34 @@ from django.utils import timezone
 
 def generate_registration_number():
     return f"HC-{timezone.localdate():%Y}-{secrets.token_hex(8).upper()}"
+
+
+class Market(models.Model):
+    name = models.CharField(max_length=160)
+    pincode = models.CharField(max_length=6, blank=True)
+
+    class Meta:
+        ordering = ["name", "pincode"]
+        constraints = [
+            models.UniqueConstraint(fields=["name", "pincode"], name="unique_market_name_pincode")
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.pincode})" if self.pincode else self.name
+
+
+class Landmark(models.Model):
+    name = models.CharField(max_length=160)
+    market = models.ForeignKey(Market, on_delete=models.CASCADE, related_name="landmarks")
+
+    class Meta:
+        ordering = ["market__name", "name"]
+        constraints = [
+            models.UniqueConstraint(fields=["name", "market"], name="unique_landmark_per_market")
+        ]
+
+    def __str__(self):
+        return f"{self.name} — {self.market.name}"
 
 
 class AccountProfile(models.Model):
@@ -27,6 +56,11 @@ class AccountProfile(models.Model):
     )
     role = models.CharField(max_length=20, choices=Role.choices)
     phone = models.CharField(max_length=30, blank=True)
+    landmark = models.CharField(max_length=160, blank=True)
+    market = models.ForeignKey(
+        Market, on_delete=models.SET_NULL, null=True, blank=True, related_name="customers"
+    )
+    pincode = models.CharField(max_length=6, blank=True)
     # Latest GPS fix from the delivery partner's device; never set by a customer.
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
@@ -75,9 +109,13 @@ class Restaurant(models.Model):
     address = models.TextField(blank=True)
     logo = models.FileField(upload_to="restaurant-logos/", blank=True)
     nearby_landmark = models.CharField(max_length=160, blank=True)
-    market = models.CharField(max_length=160, blank=True)
+    market = models.ForeignKey(
+        Market, on_delete=models.SET_NULL, null=True, blank=True, related_name="restaurants"
+    )
+    legacy_market_name = models.CharField(max_length=160, blank=True)
     city = models.CharField(max_length=100, blank=True)
     pincode = models.CharField(max_length=12, blank=True)
+    nearby_landmarks = models.ManyToManyField(Landmark, blank=True, related_name="restaurants")
     latitude = models.DecimalField(
         max_digits=9,
         decimal_places=6,
@@ -208,6 +246,37 @@ class Food(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.restaurant.name})"
+
+
+def product_image_upload_to(_instance, filename):
+    extension = os.path.splitext(filename)[1].lower()
+    return f"products/{uuid.uuid4().hex}{extension}"
+
+
+class ProductImage(models.Model):
+    product = models.ForeignKey(
+        Food, on_delete=models.CASCADE, related_name="product_images"
+    )
+    image = models.ImageField(upload_to=product_image_upload_to)
+    is_main = models.BooleanField(default=False)
+    order = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-is_main", "order", "created_at", "id"]
+
+    def __str__(self):
+        return f"Photo for {self.product.name}"
+
+
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
+
+
+@receiver(post_delete, sender=ProductImage)
+def delete_product_image_file(_sender, instance, **_kwargs):
+    if instance.image:
+        instance.image.storage.delete(instance.image.name)
 
 
 class PricingSettings(models.Model):

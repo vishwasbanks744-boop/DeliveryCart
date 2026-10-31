@@ -5,10 +5,13 @@ import hmac
 import json
 import logging
 import math
+import os
+import re
 import secrets
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
+from PIL import Image, UnidentifiedImageError
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -30,7 +33,18 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 import qrcode
 from qrcode.image.svg import SvgPathImage
 
-from .models import Category, DailyOrderSequence, Food, Order, OrderItem, PricingSettings, Restaurant
+from .models import (
+    Category,
+    DailyOrderSequence,
+    Food,
+    Landmark,
+    Market,
+    Order,
+    OrderItem,
+    PricingSettings,
+    ProductImage,
+    Restaurant,
+)
 from .models import AccountProfile
 from .pricing import money, quote_order
 
@@ -196,6 +210,14 @@ def _error(message, status=400):
     return JsonResponse({"message": message}, status=status)
 
 
+def _market_for_location(name, pincode):
+    name = str(name or "").strip()
+    if not name:
+        return None
+    market = Market.objects.filter(name__iexact=name, pincode=pincode).first()
+    return market or Market.objects.create(name=name, pincode=pincode)
+
+
 class CashfreeAPIError(RuntimeError):
     def __init__(self, message, status_code):
         super().__init__(message)
@@ -334,8 +356,8 @@ def _firebase_identity(data, require_verified):
     return {"uid": claims["uid"], "email": email}, None
 
 
-def _firebase_registration_identity(data):
-    identity, error = _firebase_identity(data, require_verified=False)
+def _firebase_registration_identity(data, require_verified=False):
+    identity, error = _firebase_identity(data, require_verified=require_verified)
     if error:
         return None, error
     supplied_email = str(data.get("email", "")).strip().lower()
@@ -542,9 +564,12 @@ def auth_register(request):
     name = str(data.get("fullname", "")).strip()
     email = str(data.get("email", "")).strip().lower()
     phone = str(data.get("mobile", "")).strip()
+    pincode = str(data.get("pincode", "")).strip()
     password = str(data.get("password", ""))
-    if not name or len(name) > 150 or not phone or len(phone) > 30:
-        return _error("Enter a valid name and phone number.")
+    if not name or len(name) > 150 or not re.fullmatch(r"\d{10}", phone):
+        return _error("Enter a valid name and 10-digit mobile number.")
+    if not re.fullmatch(r"\d{6}", pincode):
+        return _error("Enter a valid 6-digit PIN code.")
     try:
         validate_email(email)
     except ValidationError:
@@ -553,7 +578,7 @@ def auth_register(request):
         return _error("Email address must be 150 characters or fewer.")
     firebase_identity = None
     if settings.FIREBASE_AUTH_ENABLED:
-        firebase_identity, error = _firebase_registration_identity(data)
+        firebase_identity, error = _firebase_registration_identity(data, require_verified=True)
         if error:
             return error
     if get_user_model().objects.filter(email__iexact=email).exists():
@@ -574,12 +599,15 @@ def auth_register(request):
             user=user,
             role=AccountProfile.Role.CUSTOMER,
             phone=phone,
+            pincode=pincode,
             firebase_uid=firebase_identity["uid"] if firebase_identity else None,
         )
+    if firebase_identity:
+        login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     return JsonResponse(
         {
-            "message": "Registration successful. Please log in.",
-            "redirect": "/login.html",
+            "message": "Login successful" if firebase_identity else "Registration successful. Please log in.",
+            "redirect": "/" if firebase_identity else "/login.html",
         },
         status=201,
     )
@@ -654,7 +682,8 @@ def restaurant_register(request):
             firebase_uid=firebase_identity["uid"] if firebase_identity else None,
             approved=False,
         )
-        Restaurant.objects.create(
+        market_record = _market_for_location(market, pincode)
+        restaurant = Restaurant.objects.create(
             owner=user,
             name=name,
             owner_name=owner_name,
@@ -662,13 +691,19 @@ def restaurant_register(request):
             phone=phone,
             address=address,
             nearby_landmark=nearby_landmark,
-            market=market,
+            market=market_record,
+            legacy_market_name=market,
             city=city,
             pincode=pincode,
             latitude=latitude,
             longitude=longitude,
             approved=False,
         )
+        if nearby_landmark and market_record:
+            landmark_record, _ = Landmark.objects.get_or_create(
+                name=nearby_landmark, market=market_record
+            )
+            restaurant.nearby_landmarks.add(landmark_record)
     return JsonResponse(
         {
             "message": (
@@ -692,9 +727,12 @@ def delivery_register(request):
     name = str(data.get("name", "")).strip()
     email = str(data.get("email", "")).strip().lower()
     phone = str(data.get("phone", "")).strip()
+    pincode = str(data.get("pincode", "")).strip()
     password = str(data.get("password", ""))
     if not name or len(name) > 150 or not phone or len(phone) > 30:
         return _error("Enter a valid name and phone number.")
+    if not re.fullmatch(r"\d{6}", pincode):
+        return _error("Enter a valid 6-digit PIN code.")
     try:
         validate_email(email)
     except ValidationError:
@@ -724,6 +762,7 @@ def delivery_register(request):
             user=user,
             role=AccountProfile.Role.DELIVERY_PARTNER,
             phone=phone,
+            pincode=pincode,
             firebase_uid=firebase_identity["uid"] if firebase_identity else None,
             approved=False,
         )
@@ -1057,11 +1096,160 @@ def categories(_request):
 
 
 @require_GET
+def customer_markets(_request):
+    markets = Market.objects.order_by("name", "pincode")
+    return JsonResponse(
+        [
+            {"id": market.id, "name": market.name, "pincode": market.pincode}
+            for market in markets
+        ],
+        safe=False,
+    )
+
+
+@require_GET
+def customer_landmarks(request):
+    landmarks = Landmark.objects.select_related("market").order_by("name")
+    market_id = request.GET.get("marketId", "").strip()
+    if market_id:
+        try:
+            landmarks = landmarks.filter(market_id=int(market_id))
+        except ValueError:
+            return _error("marketId must be a number.")
+    return JsonResponse(
+        [
+            {"id": landmark.id, "name": landmark.name, "marketId": landmark.market_id}
+            for landmark in landmarks
+        ],
+        safe=False,
+    )
+
+
+@csrf_protect
+@require_http_methods(["GET", "PUT"])
+def customer_location(request):
+    role_error = _require_role(request, AccountProfile.Role.CUSTOMER)
+    if role_error:
+        return role_error
+    profile = _account_profile(request)
+    if request.method == "PUT":
+        try:
+            data = _json_body(request)
+        except ValueError as error:
+            return _error(str(error))
+        landmark = str(data.get("landmark", "")).strip()
+        pincode = str(data.get("pincode", "")).strip()
+        try:
+            market_id = int(data.get("marketId"))
+        except (TypeError, ValueError):
+            return _error("Choose a market.")
+        if not re.fullmatch(r"\d{6}", pincode):
+            return _error("Enter a valid 6-digit PIN code.")
+        if len(landmark) > 160:
+            return _error("Landmark must be 160 characters or fewer.")
+        market = Market.objects.filter(pk=market_id).first()
+        if market is None:
+            return _error("Choose a valid market.")
+        if market.pincode and market.pincode != pincode:
+            return _error("PIN code does not match the selected market.")
+        profile.market = market
+        profile.pincode = pincode
+        profile.landmark = landmark
+        profile.save(update_fields=["market", "pincode", "landmark"])
+    return JsonResponse(
+        {
+            "landmark": profile.landmark,
+            "marketId": profile.market_id,
+            "market": profile.market.name if profile.market_id else "",
+            "pincode": profile.pincode,
+        }
+    )
+
+
+@require_GET
+def nearby_shops(request):
+    pincode = request.GET.get("pincode", "").strip()
+    landmark_name = request.GET.get("landmark", "").strip()
+    category_id = request.GET.get("categoryId", "").strip()
+    market_id = request.GET.get("marketId", "").strip()
+    if pincode and not re.fullmatch(r"\d{6}", pincode):
+        return _error("Enter a valid 6-digit PIN code.")
+    try:
+        market_id = int(market_id) if market_id else None
+        category_id = int(category_id) if category_id else None
+    except ValueError:
+        return _error("Market and category IDs must be numbers.")
+    if category_id and not Category.objects.filter(pk=category_id, is_active=True).exists():
+        return _error("Choose a valid category.")
+    if not pincode and not market_id and not landmark_name:
+        return JsonResponse({"shops": []})
+
+    restaurants = Restaurant.objects.filter(
+        approved=True,
+        foods__available=True,
+    ).filter(Q(foods__stock_quantity__isnull=True) | Q(foods__stock_quantity__gt=0))
+    if category_id:
+        restaurants = restaurants.filter(foods__category_id=category_id)
+    restaurants = list(
+        restaurants.distinct()
+        .select_related("market")
+        .prefetch_related("foods__category", "nearby_landmarks")
+    )
+
+    ranked = []
+    for restaurant in restaurants:
+        landmark_match = bool(
+            landmark_name
+            and any(
+                landmark.name.casefold() == landmark_name.casefold()
+                and (market_id is None or landmark.market_id == market_id)
+                for landmark in restaurant.nearby_landmarks.all()
+            )
+        )
+        market_match = bool(market_id and restaurant.market_id == market_id)
+        pincode_match = bool(pincode and restaurant.pincode == pincode)
+        if landmark_match:
+            priority, badge = 0, "Near landmark"
+        elif market_match:
+            priority, badge = 1, "Your market"
+        elif pincode_match:
+            priority, badge = 2, "Your pin code"
+        else:
+            continue
+        categories_for_shop = sorted(
+            {
+                food.category.name
+                for food in restaurant.foods.all()
+                if food.available and food.category
+                and (category_id is None or food.category_id == category_id)
+                and not _is_non_veg_category(food.category.name)
+            }
+        )
+        ranked.append(
+            (
+                priority,
+                restaurant.name.casefold(),
+                {
+                    "id": restaurant.id,
+                    "name": restaurant.name,
+                    "logo": _restaurant_logo_url(restaurant),
+                    "category": categories_for_shop[0] if categories_for_shop else "Restaurant",
+                    "categories": categories_for_shop,
+                    "badge": badge,
+                    "isOpen": restaurant.accepts_orders_now(),
+                },
+            )
+        )
+    ranked.sort(key=lambda item: (item[0], item[1]))
+    return JsonResponse({"shops": [item[2] for item in ranked]})
+
+
+@require_GET
 def category_detail(_request, slug):
     category = get_object_or_404(Category, slug=slug, is_active=True)
     foods = Food.objects.filter(
         category=category, available=True, restaurant__approved=True,
-    ).select_related("restaurant", "category").order_by("restaurant__name", "name")
+    ).select_related("restaurant", "category").prefetch_related("product_images").order_by("restaurant__name", "name")
     restaurants = {}
     for food in foods:
         restaurant = food.restaurant
@@ -1073,9 +1261,10 @@ def category_detail(_request, slug):
             "rating": float(restaurant.rating) if restaurant.rating is not None else None,
             "items": [],
         })
+        photo_fields = _food_photo_fields(food)
         entry["items"].append({
             "id": food.id, "name": food.name, "description": food.description,
-            "photo": food.image, "price": float(food.price),
+            **photo_fields, "photo": photo_fields["image"], "price": float(food.price),
             "variants": _grocery_options(food),
             "quantityUnit": food.quantity_unit,
             "veg": not _is_non_veg_category(category.name),
@@ -1132,7 +1321,7 @@ def popular_foods(_request):
         restaurant_id__in=_accepting_restaurant_ids(),
     ).filter(Q(stock_quantity__isnull=True) | Q(stock_quantity__gt=0)).exclude(category_id__in=_non_veg_category_ids()).select_related(
         "restaurant", "category"
-    )
+    ).prefetch_related("product_images")
     ranked_foods = list(
         base_query.annotate(
             order_count=Sum(
@@ -1157,7 +1346,7 @@ def popular_foods(_request):
                 "id": food.id,
                 "name": food.name,
                 "description": food.description,
-                "image": food.image,
+                **_food_photo_fields(food),
                 "price": float(food.price),
                 "restaurantId": food.restaurant_id,
                 "restaurantName": food.restaurant.name,
@@ -1194,7 +1383,7 @@ def customer_restaurants(request):
         approved=True,
         id__in=_accepting_restaurant_ids(),
         foods__available=True,
-    ).filter(Q(foods__stock_quantity__isnull=True) | Q(foods__stock_quantity__gt=0)).distinct().prefetch_related("foods__category")
+    ).filter(Q(foods__stock_quantity__isnull=True) | Q(foods__stock_quantity__gt=0)).distinct().select_related("market").prefetch_related("foods__category", "nearby_landmarks")
     if not has_coordinates:
         restaurants = restaurants.filter(
             Q(city__iexact=city) | Q(pincode=pincode)
@@ -1219,11 +1408,18 @@ def customer_restaurants(request):
     def location_match(restaurant):
         landmark_match = bool(
             nearby_landmark
-            and restaurant.nearby_landmark.casefold()
-            == nearby_landmark.casefold()
+            and (
+                restaurant.nearby_landmark.casefold() == nearby_landmark.casefold()
+                or any(
+                    item.name.casefold() == nearby_landmark.casefold()
+                    for item in restaurant.nearby_landmarks.all()
+                )
+            )
         )
         market_match = bool(
-            market and restaurant.market.casefold() == market.casefold()
+            market
+            and restaurant.market
+            and restaurant.market.name.casefold() == market.casefold()
         )
         pincode_match = bool(pincode and restaurant.pincode == pincode)
         city_match = bool(city and restaurant.city.casefold() == city.casefold())
@@ -1267,7 +1463,7 @@ def customer_restaurants(request):
                     "city": restaurant.city,
                     "pincode": restaurant.pincode,
                     "nearbyLandmark": restaurant.nearby_landmark,
-                    "market": restaurant.market,
+                    "market": restaurant.market.name if restaurant.market_id else restaurant.legacy_market_name,
                     "latitude": (
                         float(restaurant.latitude)
                         if restaurant.latitude is not None
@@ -1308,7 +1504,7 @@ def foods(request):
         restaurant_id__in=_accepting_restaurant_ids(),
     ).filter(Q(stock_quantity__isnull=True) | Q(stock_quantity__gt=0)).exclude(category_id__in=_non_veg_category_ids()).select_related(
         "restaurant", "category"
-    )
+    ).prefetch_related("product_images")
     try:
         latitude, longitude = _coordinates_from_data(request.GET)
     except ValueError as error:
@@ -1360,7 +1556,7 @@ def foods(request):
             "id": food.id,
             "name": food.name,
             "description": food.description,
-            "image": food.image,
+            **_food_photo_fields(food),
             "price": float(food.price),
             "variants": _grocery_options(food),
             "quantityUnit": food.quantity_unit,
@@ -1518,8 +1714,11 @@ def checkout_quote(request):
         return _error("; ".join(error.messages))
     except PricingSettings.DoesNotExist:
         return _error("Marketplace pricing is not configured.", 503)
-    return JsonResponse({key: float(value) if isinstance(value, Decimal) else value
-                         for key, value in quote.items()})
+    return JsonResponse({
+        key: float(value) if isinstance(value, Decimal) else value
+        for key, value in quote.items()
+        if key not in {"commissionAmount", "commissionPercentage"}
+    })
 
 
 @csrf_protect
@@ -1703,8 +1902,11 @@ def create_order(request):
             "paymentRequired": settings.CASHFREE_ENABLED,
             "paymentSessionId": payment_session_id,
             "cashfreeMode": settings.CASHFREE_ENVIRONMENT,
-            "quote": {key: float(value) if isinstance(value, Decimal) else value
-                      for key, value in quote.items()},
+            "quote": {
+                key: float(value) if isinstance(value, Decimal) else value
+                for key, value in quote.items()
+                if key not in {"commissionAmount", "commissionPercentage"}
+            },
         },
         status=201,
     )
@@ -1755,7 +1957,6 @@ def order_detail(request, order_id):
             else None
         ),
         "itemTotal": float(order.item_total),
-        "commission": float(order.commission_amount),
         "deliveryFee": float(order.delivery_fee),
         "platformFee": float(order.platform_fee),
         "discount": 0,
@@ -2123,7 +2324,9 @@ def restaurant_profile(request):
         restaurant.phone = phone
         restaurant.address = address
         restaurant.nearby_landmark = nearby_landmark
-        restaurant.market = market
+        market_record = _market_for_location(market, pincode)
+        restaurant.market = market_record
+        restaurant.legacy_market_name = market
         restaurant.city = city
         restaurant.pincode = pincode
         if coordinates_supplied:
@@ -2135,6 +2338,12 @@ def restaurant_profile(request):
         with transaction.atomic():
             request.user.save(update_fields=["email", "username", "first_name"])
             restaurant.save()
+            restaurant.nearby_landmarks.clear()
+            if nearby_landmark and market_record:
+                landmark_record, _ = Landmark.objects.get_or_create(
+                    name=nearby_landmark, market=market_record
+                )
+                restaurant.nearby_landmarks.add(landmark_record)
     return JsonResponse(
         {
             "id": restaurant.id,
@@ -2145,7 +2354,9 @@ def restaurant_profile(request):
             "phone": restaurant.phone,
             "address": restaurant.address,
             "nearbyLandmark": restaurant.nearby_landmark,
-            "market": restaurant.market,
+            "market": restaurant.market.name if restaurant.market_id else restaurant.legacy_market_name,
+            "marketId": restaurant.market_id,
+            "nearbyLandmarks": list(restaurant.nearby_landmarks.values_list("name", flat=True)),
             "logo": _restaurant_logo_url(restaurant),
             "approved": restaurant.approved,
             "acceptOrders": restaurant.accepting_orders,
@@ -2424,7 +2635,7 @@ def _product_payload(food):
         "category": food.category.name if food.category else "",
         "categoryId": food.category_id,
         "description": food.description,
-        "image": food.image,
+        **_food_photo_fields(food),
         "price": float(food.price),
         "available": food.available,
         "stockQuantity": food.stock_quantity,
@@ -2432,6 +2643,59 @@ def _product_payload(food):
         "quantityUnit": food.quantity_unit,
         "addons": food.addons,
     }
+
+
+def _food_photo_data(food):
+    photos = list(food.product_images.all())
+    main = next((photo for photo in photos if photo.is_main), None)
+    if main:
+        ordered = [main] + [photo for photo in photos if photo.pk != main.pk]
+        result = [
+            {"id": photo.pk, "url": photo.image.url, "isMain": photo.pk == main.pk}
+            for photo in ordered
+        ]
+        if food.image:
+            result.append({"id": None, "url": food.image, "isMain": False, "legacy": True})
+        return result
+    if food.image:
+        return [{"id": None, "url": food.image, "isMain": True, "legacy": True}] + [
+            {"id": photo.pk, "url": photo.image.url, "isMain": False}
+            for photo in photos
+        ]
+    if photos:
+        return [{"id": photos[0].pk, "url": photos[0].image.url, "isMain": True}] + [
+            {"id": photo.pk, "url": photo.image.url, "isMain": False}
+            for photo in photos[1:]
+        ]
+    return []
+
+
+def _food_photo_fields(food):
+    photos = _food_photo_data(food)
+    return {"image": photos[0]["url"] if photos else "", "images": photos}
+
+
+def _validate_product_photos(files):
+    if len(files) > 6:
+        return "A product can have up to 6 photos."
+    allowed_extensions = {".jpg", ".jpeg", ".png", ".webp"}
+    allowed_formats = {"JPEG", "PNG", "WEBP"}
+    for uploaded in files:
+        if uploaded.size > 5 * 1024 * 1024:
+            return f"{uploaded.name}: photo must be 5 MB or smaller."
+        if os.path.splitext(uploaded.name)[1].lower() not in allowed_extensions:
+            return f"{uploaded.name}: use JPG, PNG, or WEBP photos only."
+        try:
+            uploaded.seek(0)
+            with Image.open(uploaded) as image:
+                image.verify()
+                if image.format not in allowed_formats:
+                    return f"{uploaded.name}: use JPG, PNG, or WEBP photos only."
+        except (UnidentifiedImageError, OSError, ValueError):
+            return f"{uploaded.name}: this file is not a valid photo."
+        finally:
+            uploaded.seek(0)
+    return None
 
 
 def _parse_menu_options(value, label, allow_empty=True):
@@ -2478,9 +2742,14 @@ def restaurant_products(request):
     if error:
         return error
     if request.method == "GET":
-        products = restaurant.foods.select_related("category").order_by("name")
+        products = restaurant.foods.select_related("category").prefetch_related("product_images").order_by("name")
         return JsonResponse([_product_payload(food) for food in products], safe=False)
     data = request.POST
+    photos = request.FILES.getlist("photos")
+    try:
+        main_index = int(data.get("mainIndex", "0")) if photos else -1
+    except (TypeError, ValueError):
+        return _error("Choose a valid main photo.")
     name = data.get("productName", "").strip()
     category_name = data.get("productCategory", "").strip()
     quantity_unit = data.get("quantityUnit", "").strip()
@@ -2504,6 +2773,15 @@ def restaurant_products(request):
         return _error("Enter a valid product price.")
     if not name or len(name) > 160 or not category_name or len(description) > 2000:
         return _error("Enter a product name, category, and a description under 2000 characters.")
+    photo_error = _validate_product_photos(photos)
+    if photo_error:
+        return _error(photo_error)
+    if photos and (main_index < 0 or main_index >= len(photos)):
+        return _error("Choose a valid main photo.")
+    if len(photos) + int(bool(image)) > 6:
+        return _error("A product can have up to 6 photos.")
+    if not photos and not image:
+        return _error("Add at least one product photo.")
     if quantity_unit not in {"kg", "piece"}:
         return _error("Choose kg or piece as the quantity unit.")
     if not price.is_finite() or price <= 0:
@@ -2535,7 +2813,131 @@ def restaurant_products(request):
         except ValidationError as validation_error:
             return _error("; ".join(validation_error.messages))
         food.save()
+        for index, uploaded in enumerate(photos):
+            ProductImage.objects.create(
+                product=food, image=uploaded, is_main=index == main_index, order=index
+            )
     return JsonResponse(_product_payload(food), status=201)
+
+
+@csrf_protect
+@require_POST
+def restaurant_product_images(request, food_id):
+    restaurant, error = _restaurant_for_request(request)
+    if error:
+        return error
+    food = get_object_or_404(Food, id=food_id, restaurant=restaurant)
+    photos = request.FILES.getlist("photos")
+    if not photos:
+        return _error("Choose at least one photo to upload.")
+    photo_error = _validate_product_photos(photos)
+    if photo_error:
+        return _error(photo_error)
+    try:
+        main_index = int(request.POST.get("mainIndex", "-1"))
+    except (TypeError, ValueError):
+        return _error("Choose a valid main photo.")
+    if main_index < -1 or main_index >= len(photos):
+        return _error("Choose a valid main photo.")
+    try:
+        remove_ids = json.loads(request.POST.get("removeImageIds", "[]"))
+        if not isinstance(remove_ids, list) or any(not str(value).isdigit() for value in remove_ids):
+            raise ValueError
+        remove_ids = [int(value) for value in remove_ids]
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return _error("Invalid product photos selected for removal.")
+    try:
+        requested_main_id = request.POST.get("mainImageId", "")
+        requested_main_id = int(requested_main_id) if requested_main_id else None
+    except (TypeError, ValueError):
+        return _error("Choose a valid main photo.")
+    with transaction.atomic():
+        food = Food.objects.select_for_update().get(pk=food.pk, restaurant=restaurant)
+        existing = list(food.product_images.select_for_update().order_by("order", "id"))
+        removed = [photo for photo in existing if photo.pk in remove_ids]
+        if len(removed) != len(set(remove_ids)):
+            return _error("One or more selected photos do not belong to this product.", 404)
+        retained_count = len(existing) - len(removed)
+        if retained_count + len(photos) + int(bool(food.image)) > 6:
+            return _error("A product can have up to 6 photos.")
+        if retained_count + len(photos) == 0 and not food.image:
+            return _error("Keep at least one product photo.")
+        if requested_main_id and not any(photo.pk == requested_main_id for photo in existing if photo not in removed):
+            return _error("Choose a valid main photo.")
+        for photo in removed:
+            photo.delete()
+        retained = [photo for photo in existing if photo not in removed]
+        new_images = []
+        first_photo = not retained and not food.image
+        for index, uploaded in enumerate(photos):
+            new_images.append(ProductImage.objects.create(
+                product=food,
+                image=uploaded,
+                is_main=(index == main_index if main_index >= 0 else first_photo and index == 0),
+                order=len(retained) + index,
+            ))
+        if main_index >= 0:
+            food.product_images.exclude(pk__in=[photo.pk for photo in new_images]).update(is_main=False)
+        elif "mainImageId" in request.POST:
+            food.product_images.update(is_main=False)
+            if requested_main_id:
+                food.product_images.filter(pk=requested_main_id).update(is_main=True)
+    return JsonResponse({"images": _food_photo_data(food)}, status=201)
+
+
+@csrf_protect
+@require_http_methods(["PUT"])
+def restaurant_product_main_image(request, food_id):
+    restaurant, error = _restaurant_for_request(request)
+    if error:
+        return error
+    food = get_object_or_404(Food, id=food_id, restaurant=restaurant)
+    try:
+        data = _json_body(request)
+        main_id = data.get("mainImageId")
+        if main_id is not None:
+            main_id = int(main_id)
+    except (ValueError, TypeError):
+        return _error("Choose a valid main photo.")
+    with transaction.atomic():
+        food = Food.objects.select_for_update().get(pk=food.pk, restaurant=restaurant)
+        images = list(food.product_images.select_for_update().order_by("order", "id"))
+        if main_id is None and not food.image:
+            return _error("Keep at least one product photo.")
+        if main_id is not None and not any(photo.pk == main_id for photo in images):
+            return _error("Choose a valid main photo.", 404)
+        for photo in images:
+            photo.is_main = photo.pk == main_id
+        ProductImage.objects.bulk_update(images, ["is_main"])
+    return JsonResponse({"images": _food_photo_data(food)})
+
+
+@csrf_protect
+@require_http_methods(["DELETE"])
+def restaurant_product_image_detail(request, food_id, image_id):
+    restaurant, error = _restaurant_for_request(request)
+    if error:
+        return error
+    food = get_object_or_404(Food, id=food_id, restaurant=restaurant)
+    image = get_object_or_404(ProductImage, id=image_id, product=food)
+    with transaction.atomic():
+        food = Food.objects.select_for_update().get(pk=food.pk, restaurant=restaurant)
+        images = list(food.product_images.select_for_update().order_by("order", "id"))
+        image = next((item for item in images if item.pk == image.pk), None)
+        if image is None:
+            return _error("Product photo not found.", 404)
+        if request.method == "DELETE":
+            if len(images) == 1 and not food.image:
+                return _error("Keep at least one product photo.")
+            was_main = image.is_main
+            image.delete()
+            remaining = list(food.product_images.order_by("order", "created_at", "id"))
+            if was_main and remaining:
+                for index, photo in enumerate(remaining):
+                    photo.is_main = index == 0
+                    photo.order = index
+                ProductImage.objects.bulk_update(remaining, ["is_main", "order"])
+    return JsonResponse({"images": _food_photo_data(food)})
 
 
 @csrf_protect
@@ -2547,6 +2949,7 @@ def restaurant_product_detail(request, food_id):
     food = get_object_or_404(Food, id=food_id, restaurant=restaurant)
     if request.method == "DELETE":
         if OrderItem.objects.filter(food=food).exists():
+            food.product_images.all().delete()
             food.available = False
             food.save(update_fields=["available"])
             return JsonResponse({"message": "This product is part of order history, so it was marked unavailable instead of deleted."})
@@ -2878,7 +3281,11 @@ def delivery_available_orders(request):
         order_type=Order.OrderType.DELIVERY,
         status=Order.Status.READY_FOR_PICKUP,
         delivery_partner__isnull=True,
+        restaurant__pincode=profile.pincode,
     ).select_related("restaurant").prefetch_related("items")
+    pincode_required = not re.fullmatch(r"\d{6}", profile.pincode or "")
+    if pincode_required:
+        orders = orders.none()
     driver_location = _latest_delivery_location(profile)
     fresh_partner_locations = list(
         AccountProfile.objects.filter(
@@ -2955,6 +3362,7 @@ def delivery_available_orders(request):
             "eligibleCount": eligible_count,
             "dispatchRadiusKm": radius_km,
             "locationRequired": driver_location is None,
+            "pincodeRequired": pincode_required,
         }
     )
 
@@ -2997,10 +3405,9 @@ def delivery_accept_order(request, order_id):
         order = get_object_or_404(Order.objects.select_for_update(), id=order_id)
         if order.order_type != Order.OrderType.DELIVERY:
             return _error("Pickup orders do not need a delivery partner.", 400)
-        if (
-            order.status != Order.Status.READY_FOR_PICKUP
-            or order.delivery_partner_id is not None
-        ):
+        if order.delivery_partner_id is not None:
+            return _error("Ye order kisi aur ne le liya", 409)
+        if order.status != Order.Status.READY_FOR_PICKUP:
             return _error("This delivery is no longer available.", 409)
         driver_location = _latest_delivery_location(profile)
         if driver_location is None:
@@ -3193,7 +3600,7 @@ def current_order(request):
     role_error = _require_role(request, AccountProfile.Role.CUSTOMER)
     if role_error:
         return role_error
-    order = Order.objects.filter(customer=request.user).first()
+    order = Order.objects.filter(customer=request.user).order_by("-created_at").first()
     if order is None:
         return _error("No current order.", 404)
     return order_detail(request, order.id)

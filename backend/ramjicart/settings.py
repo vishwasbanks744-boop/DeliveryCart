@@ -210,13 +210,17 @@ if not DEBUG:
         raise ImproperlyConfigured(
             "AWS_STORAGE_BUCKET_NAME must be set in production so uploaded media is not stored on ephemeral local disk."
         )
+    s3_options = {
+        "bucket_name": media_bucket,
+        "region_name": os.environ.get("AWS_S3_REGION_NAME", "").strip() or None,
+        "default_acl": None,
+    }
+    s3_endpoint_url = os.environ.get("AWS_S3_ENDPOINT_URL", "").strip()
+    if s3_endpoint_url:
+        s3_options["endpoint_url"] = s3_endpoint_url
     STORAGES["default"] = {
         "BACKEND": "storages.backends.s3.S3Storage",
-        "OPTIONS": {
-            "bucket_name": media_bucket,
-            "region_name": os.environ.get("AWS_S3_REGION_NAME", "").strip() or None,
-            "default_acl": None,
-        },
+        "OPTIONS": s3_options,
     }
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

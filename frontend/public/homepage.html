@@ -58,8 +58,71 @@
 
         .account-menu {
             position: relative;
-            display: block;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
+
+        .header-location {
+            display: inline-flex;
+            min-width: 48px;
+            min-height: 48px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1px;
+            padding: 2px;
+            border: 0;
+            border-radius: 12px;
+            background: transparent;
+            color: #4f5661;
+            font-size: 10px;
+            line-height: 1.1;
+            cursor: pointer;
+        }
+
+        .header-location-icon {
+            display: grid;
+            width: 30px;
+            height: 30px;
+            place-items: center;
+            border-radius: 50%;
+            background: #fff0e9;
+            font-size: 18px;
+        }
+
+        #locationPanel {
+            position: absolute;
+            z-index: 130;
+            top: calc(100% + 14px);
+            right: 0;
+            width: min(360px, calc(100vw - 32px));
+            padding: 16px;
+            border: 1px solid #f0e4df;
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+            color: #333;
+            text-align: left;
+        }
+
+        .location-panel-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .location-panel-heading h2 { margin: 0; font-size: 18px; }
+        .location-panel-heading button { border: 0; background: transparent; color: #555; font-size: 22px; cursor: pointer; }
+        #locationIntro { margin: 0 0 12px; color: #62666d; font-size: 14px; line-height: 1.4; }
+        .location-field { margin: 0 0 10px; }
+        .location-field label { display: block; margin-bottom: 5px; color: #4f5661; font-size: 13px; font-weight: 600; }
+        .location-field input, .location-field select { width: 100%; min-height: 42px; padding: 9px 11px; border: 1px solid #d9dee5; border-radius: 8px; background: #fff; color: #222; font-size: 14px; }
+        .location-field-error { display: block; margin-top: 3px; color: #c62828; font-size: 12px; }
+        .location-field-error:empty { display: none; }
+        #saveLocationButton { width: 100%; min-height: 42px; border: 0; border-radius: 8px; background: #ff4d2d; color: #fff; font-weight: 700; cursor: pointer; }
 
         #customerProfile {
             position: absolute;
@@ -74,9 +137,55 @@
             text-align: left;
         }
 
+        #nearbyShopsSection { overflow: hidden; }
+        .nearby-shops-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+        .nearby-shops-heading h2 { margin: 0 !important; }
+        .nearby-swipe-hint { color: #62666d; font-size: 12px; font-weight: 600; }
+        .nearby-shop-arrows { display: flex; gap: 6px; margin-left: auto; }
+        .nearby-shop-arrows button { width: 34px; height: 34px; border: 1px solid #e3e7ec; border-radius: 50%; background: #fff; color: #333; font-size: 18px; cursor: pointer; }
+        #nearbyShopsList { display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; -ms-overflow-style: none; padding: 2px 0 8px; }
+        #nearbyShopsList::-webkit-scrollbar { display: none; }
+        .nearby-shop-card { position: relative; display: flex; flex: 0 0 140px; min-height: 166px; flex-direction: column; align-items: flex-start; gap: 5px; overflow: hidden; padding: 10px; border: 1px solid #eceef1; border-radius: 14px; background: #fff; color: #20252b; text-decoration: none; scroll-snap-align: start; }
+        .nearby-shop-card:hover { border-color: #ffd0c2; box-shadow: 0 5px 15px rgba(0,0,0,.08); }
+        .nearby-shop-card img, .nearby-shop-icon { display: grid; width: 46px; height: 46px; place-items: center; object-fit: cover; border-radius: 11px; background: #fff0e9; font-size: 25px; }
+        .nearby-shop-card strong { display: -webkit-box; width: 100%; overflow: hidden; font-size: 13px; line-height: 1.25; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+        .nearby-shop-category { width: 100%; overflow: hidden; color: #777; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+        .nearby-shop-badge { display: inline-block; max-width: 100%; overflow: hidden; margin-top: auto; padding: 4px 6px; border-radius: 99px; background: #fff0e9; color: #c7432b; font-size: 9px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+        .nearby-shop-card.is-closed { background: #f0f1f2; filter: grayscale(.55); }
+        .nearby-shop-card.is-closed .nearby-shop-badge { background: #e2e4e7; color: #555; }
+        .nearby-empty { padding: 14px; border-radius: 12px; background: #fff; color: #62666d; font-size: 14px; text-align: center; }
+        .nearby-empty button { margin-left: 8px; border: 0; background: transparent; color: #e9492d; font-weight: 700; text-decoration: underline; cursor: pointer; }
+
         #customerProfile h2 {
             margin-bottom: 12px;
             font-size: 18px;
+        }
+
+        .profile-theme-controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+            margin-top: 12px;
+            padding: 10px;
+            border: 1px solid #e6ebf1;
+            border-radius: 10px;
+        }
+
+        .profile-theme-controls h3 {
+            flex: 0 0 100%;
+            margin: 0 0 2px;
+            font-size: 14px;
+        }
+
+        .profile-theme-controls button {
+            border: 1px solid transparent;
+            border-radius: 15px;
+            padding: 7px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
         }
 
         .customer-profile-grid {
@@ -464,6 +573,26 @@
             color: #555;
         }
 
+        #trackingOrderSummary {
+            margin: 0 0 8px;
+            color: #777;
+            font-size: 13px;
+        }
+
+        #orderTracking #trackingSteps p.is-done {
+            background: #e8f5e9 !important;
+            color: #17833d !important;
+        }
+
+        #orderTracking #trackingSteps p.is-done::before {
+            content: "✓ ";
+        }
+
+        #orderTracking #trackingSteps p.is-active {
+            background: #ff4d2d !important;
+            color: #fff !important;
+        }
+
         footer {
             background: #222;
             color: #aaa;
@@ -745,6 +874,12 @@
                 width: min(620px, calc(100vw - 24px));
                 transform: none;
             }
+
+            #locationPanel { top: calc(100% + 8px); width: min(360px, calc(100vw - 24px)); }
+            .nearby-shop-arrows { display: none; }
+            .nearby-shop-card { flex-basis: 140px; }
+            .nearby-shops-heading { gap: 7px; }
+            .nearby-swipe-hint { font-size: 11px; }
 
             .customer-profile-grid { grid-template-columns: 1fr; }
 
@@ -1239,7 +1374,9 @@
         }
     </style>
     <script src="/static/js/auth-client.js"></script>
+    <script src="/static/js/cart-access.js"></script>
     <script src="/static/js/maps-client.js"></script>
+    <script src="/static/js/product-gallery.js"></script>
 </head>
 
 <body>
@@ -1267,7 +1404,38 @@
             </div>
 
             <div class="account-menu">
+                <button type="button" id="locationButton" class="header-location" aria-label="Deliver to location" aria-expanded="false">
+                    <span class="header-location-icon" aria-hidden="true">📍</span>
+                    <span id="locationLabel">Set</span>
+                </button>
                 <a href="login.html" id="accountLink">Sign in</a>
+                <section id="locationPanel" aria-label="Location" hidden>
+                    <div class="location-panel-heading">
+                        <button type="button" id="closeLocationPanel" aria-label="Close">×</button>
+                    </div>
+                    <p id="locationIntro">Aap kahan se order karna chahte hain?</p>
+                    <form id="locationForm" novalidate>
+                        <div class="location-field">
+                            <label for="locationLandmark">Nearest landmark (optional)</label>
+                            <input type="text" id="locationLandmark" name="landmark" maxlength="160" list="locationLandmarkOptions" autocomplete="off">
+                            <datalist id="locationLandmarkOptions"></datalist>
+                            <small class="location-field-error" id="locationLandmarkError"></small>
+                        </div>
+                        <div class="location-field">
+                            <label for="locationMarket">Market</label>
+                            <select id="locationMarket" name="marketId" required>
+                                <option value="">Select market</option>
+                            </select>
+                            <small class="location-field-error" id="locationMarketError"></small>
+                        </div>
+                        <div class="location-field">
+                            <label for="locationPincode">Pin code</label>
+                            <input type="text" id="locationPincode" name="pincode" inputmode="numeric" autocomplete="postal-code" maxlength="6" pattern="[0-9]{6}" required>
+                            <small class="location-field-error" id="locationPincodeError"></small>
+                        </div>
+                        <button type="submit" id="saveLocationButton">Save location</button>
+                    </form>
+                </section>
                 <section id="customerProfile" aria-label="Customer profile" hidden>
                     <h2>Your profile</h2>
                     <div class="customer-profile-grid">
@@ -1283,6 +1451,15 @@
                             <span>Phone</span>
                             <strong id="customerProfilePhone"></strong>
                         </div>
+                    </div>
+                    <div class="profile-theme-controls" aria-label="Change color">
+                        <h3>Change color</h3>
+                        <button type="button" onclick="setAppTheme(1)" style="background:#231742;color:#fff;border-color:#7c3aed;">1: Cosmic Glass</button>
+                        <button type="button" onclick="setAppTheme(2)" style="background:#0f172a;color:#fff;border-color:#3b82f6;">2: Midnight Slate</button>
+                        <button type="button" onclick="setAppTheme(3)" style="background:#18181b;color:#fff;border-color:#71717a;">3: Charcoal</button>
+                        <button type="button" onclick="setAppTheme(4)" style="background:#f3f0ff;color:#1e1b4b;border-color:#a78bfa;">4: Milky Pearl</button>
+                        <button type="button" onclick="setAppTheme(5)" style="background:#241224;color:#fed7aa;border-color:#f97316;">5: Sunset Amber</button>
+                        <button type="button" onclick="setAppTheme(0)" style="background:#fff;color:#111;">Original White</button>
                     </div>
                     <button id="signOutButton" type="button">Sign out</button>
                 </section>
@@ -1354,6 +1531,22 @@
 
         </section>
 
+        <section id="nearbyShopsSection">
+            <div class="nearby-shops-heading">
+                <h2>Shops near you</h2>
+                <span class="nearby-swipe-hint">Swipe</span>
+                <div class="nearby-shop-arrows" aria-label="Scroll shops">
+                    <button type="button" id="nearbyShopsPrevious" aria-label="Previous shops">‹</button>
+                    <button type="button" id="nearbyShopsNext" aria-label="Next shops">›</button>
+                </div>
+            </div>
+            <div id="nearbyShopsList" aria-live="polite"></div>
+            <p id="nearbyShopsEmpty" class="nearby-empty" hidden>
+                Is area me abhi koi shop nahi hai
+                <button type="button" id="changeLocationButton">Change location</button>
+            </p>
+        </section>
+
 
         <!-- POPULAR FOOD -->
 
@@ -1384,6 +1577,8 @@
             <h2>
                 Track Your Order 🚴
             </h2>
+
+            <div id="trackingOrderSummary"></div>
 
             <div id="trackingSteps">
 
@@ -1421,16 +1616,6 @@
             <a href="/contact.html">Contact &amp; Support</a>
         </p>
 
-    <!-- FLOATING THEME SELECTOR BAR (For User to preview & choose 5 matching colors) -->
-    <div id="themeSwitcherBar" style="position:fixed;bottom:72px;left:50%;transform:translateX(-50%);z-index:99999;background:rgba(12,8,28,0.94);border:1px solid rgba(255,138,92,0.45);border-radius:30px;padding:6px 12px;display:flex;align-items:center;gap:6px;box-shadow:0 8px 30px rgba(0,0,0,0.6);backdrop-filter:blur(10px);max-width:calc(100vw - 20px);overflow-x:auto;-webkit-overflow-scrolling:touch;">
-        <span style="color:#ff8a5c;font-size:12px;font-weight:bold;white-space:nowrap;margin-right:2px;">&#127912; Select Color:</span>
-        <button type="button" onclick="setAppTheme(1)" style="border:none;background:#231742;color:#fff;padding:6px 10px;border-radius:15px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid #7c3aed;">1: Cosmic Glass</button>
-        <button type="button" onclick="setAppTheme(2)" style="border:none;background:#0f172a;color:#fff;padding:6px 10px;border-radius:15px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid #3b82f6;">2: Midnight Slate</button>
-        <button type="button" onclick="setAppTheme(3)" style="border:none;background:#18181b;color:#fff;padding:6px 10px;border-radius:15px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid #71717a;">3: Charcoal</button>
-        <button type="button" onclick="setAppTheme(4)" style="border:none;background:#f3f0ff;color:#1e1b4b;padding:6px 10px;border-radius:15px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid #a78bfa;">4: Milky Pearl</button>
-        <button type="button" onclick="setAppTheme(5)" style="border:none;background:#241224;color:#fed7aa;padding:6px 10px;border-radius:15px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid #f97316;">5: Sunset Amber</button>
-        <button type="button" onclick="setAppTheme(0)" style="border:none;background:#ffffff;color:#111;padding:6px 10px;border-radius:15px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">Original White</button>
-    </div>
     <script>
         function setAppTheme(n) {
             if (n === 0) {
@@ -1459,6 +1644,10 @@
 
         const foodApi = "/api/customer/foods";
         const categoryApi = "/api/customer/categories";
+        const marketApi = "/api/customer/markets";
+        const landmarkApi = "/api/customer/landmarks";
+        const locationApi = "/api/customer/location";
+        const nearbyShopsApi = "/api/customer/nearby-shops";
         const popularFoodsApi = "/api/customer/foods/popular";
         const orderApi = "/api/customer/orders/current";
         const orderHistoryApi = "/api/customer/orders/history";
@@ -1478,6 +1667,9 @@
 
         const trackingSteps =
             document.getElementById("trackingSteps");
+
+        const trackingOrderSummary =
+            document.getElementById("trackingOrderSummary");
 
         const foodMessage =
             document.getElementById("foodMessage");
@@ -1505,6 +1697,217 @@
 
         const accountLink = document.getElementById("accountLink");
         const customerProfile = document.getElementById("customerProfile");
+        const locationButton = document.getElementById("locationButton");
+        const locationPanel = document.getElementById("locationPanel");
+        const locationLabel = document.getElementById("locationLabel");
+        const locationMarket = document.getElementById("locationMarket");
+        const locationPincode = document.getElementById("locationPincode");
+        const locationLandmark = document.getElementById("locationLandmark");
+        const nearbyShopsList = document.getElementById("nearbyShopsList");
+        const nearbyShopsEmpty = document.getElementById("nearbyShopsEmpty");
+        const locationStorageKey = "ramjicart_customer_location";
+        let marketOptions = [];
+        let customerLocation = null;
+        let selectedNearbyCategoryId = "";
+
+        function savedLocation() {
+            try {
+                const value = JSON.parse(localStorage.getItem(locationStorageKey) || "null");
+                return value && value.marketId && /^\d{6}$/.test(String(value.pincode || ""))
+                    ? value
+                    : null;
+            } catch (_error) {
+                return null;
+            }
+        }
+
+        function applyLocation(value) {
+            customerLocation = value && value.marketId && value.pincode ? value : null;
+            locationLabel.textContent = customerLocation ? customerLocation.pincode : "Set";
+            locationMarket.value = customerLocation ? String(customerLocation.marketId) : "";
+            locationPincode.value = customerLocation ? customerLocation.pincode : "";
+            locationLandmark.value = customerLocation ? (customerLocation.landmark || "") : "";
+            document.getElementById("locationIntro").hidden = Boolean(customerLocation);
+        }
+
+        function toggleLocationPanel(open) {
+            locationPanel.hidden = !open;
+            locationButton.setAttribute("aria-expanded", String(open));
+            if (open) {
+                customerProfile.hidden = true;
+                accountLink.setAttribute("aria-expanded", "false");
+            }
+        }
+
+        function clearLocationErrors() {
+            ["locationLandmarkError", "locationMarketError", "locationPincodeError"]
+                .forEach(function(id) { document.getElementById(id).textContent = ""; });
+        }
+
+        async function loadMarkets() {
+            try {
+                const response = await fetch(marketApi);
+                if (!response.ok) throw new Error("Markets could not be loaded.");
+                marketOptions = await response.json();
+                marketOptions.forEach(function(market) {
+                    const option = document.createElement("option");
+                    option.value = market.id;
+                    option.textContent = market.pincode ? market.name + " · " + market.pincode : market.name;
+                    locationMarket.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Could not load markets:", error);
+            }
+        }
+
+        async function loadLandmarks(marketId) {
+            const options = document.getElementById("locationLandmarkOptions");
+            options.innerHTML = "";
+            if (!marketId) return;
+            try {
+                const response = await fetch(landmarkApi + "?marketId=" + encodeURIComponent(marketId));
+                if (!response.ok) return;
+                const landmarks = await response.json();
+                landmarks.forEach(function(landmark) {
+                    const option = document.createElement("option");
+                    option.value = landmark.name;
+                    options.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Could not load landmarks:", error);
+            }
+        }
+
+        function renderNearbyShops(shops) {
+            nearbyShopsList.innerHTML = "";
+            nearbyShopsEmpty.hidden = shops.length > 0;
+            shops.forEach(function(shop) {
+                const card = document.createElement("a");
+                card.className = "nearby-shop-card" + (shop.isOpen ? "" : " is-closed");
+                card.href = "/restaurant/" + encodeURIComponent(shop.id);
+                if (shop.logo) {
+                    const image = document.createElement("img");
+                    image.src = shop.logo;
+                    image.alt = shop.name;
+                    image.loading = "lazy";
+                    image.onerror = function() {
+                        this.onerror = null;
+                        this.replaceWith(makeShopIcon());
+                    };
+                    card.appendChild(image);
+                } else {
+                    card.appendChild(makeShopIcon());
+                }
+                const name = document.createElement("strong");
+                name.textContent = shop.name;
+                const category = document.createElement("span");
+                category.className = "nearby-shop-category";
+                category.textContent = shop.category || "Restaurant";
+                const badge = document.createElement("span");
+                badge.className = "nearby-shop-badge";
+                badge.textContent = shop.badge;
+                card.append(name, category, badge);
+                if (!shop.isOpen) {
+                    const closed = document.createElement("span");
+                    closed.className = "nearby-shop-badge";
+                    closed.textContent = "Closed";
+                    card.appendChild(closed);
+                }
+                nearbyShopsList.appendChild(card);
+            });
+        }
+
+        function makeShopIcon() {
+            const icon = document.createElement("span");
+            icon.className = "nearby-shop-icon";
+            icon.textContent = "🏪";
+            icon.setAttribute("aria-hidden", "true");
+            return icon;
+        }
+
+        async function loadNearbyShops() {
+            if (!customerLocation) {
+                renderNearbyShops([]);
+                return;
+            }
+            const params = new URLSearchParams({
+                marketId: String(customerLocation.marketId),
+                pincode: customerLocation.pincode
+            });
+            if (customerLocation.landmark) params.set("landmark", customerLocation.landmark);
+            if (selectedNearbyCategoryId) params.set("categoryId", selectedNearbyCategoryId);
+            try {
+                const response = await fetch(nearbyShopsApi + "?" + params.toString());
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || "Nearby shops could not be loaded.");
+                renderNearbyShops(data.shops || []);
+            } catch (error) {
+                console.error("Could not load nearby shops:", error);
+                renderNearbyShops([]);
+            }
+        }
+
+        async function saveCustomerLocation(event) {
+            event.preventDefault();
+            clearLocationErrors();
+            const marketId = locationMarket.value;
+            const pincode = locationPincode.value.trim();
+            const landmark = locationLandmark.value.trim();
+            let valid = true;
+            if (!marketId) {
+                document.getElementById("locationMarketError").textContent = "Market zaroori hai.";
+                valid = false;
+            }
+            if (!/^\d{6}$/.test(pincode)) {
+                document.getElementById("locationPincodeError").textContent = "Pin code exactly 6 digits ka hona chahiye.";
+                valid = false;
+            }
+            if (!valid) return;
+            const selectedMarket = marketOptions.find(function(market) { return String(market.id) === marketId; });
+            if (selectedMarket && selectedMarket.pincode && selectedMarket.pincode !== pincode) {
+                document.getElementById("locationPincodeError").textContent = "Is market ke liye sahi pin code chunein.";
+                return;
+            }
+            const locationValue = {
+                marketId: Number(marketId),
+                market: selectedMarket ? selectedMarket.name : "",
+                landmark: landmark,
+                pincode: pincode
+            };
+            try {
+                const accountResponse = await RamjicartAuth.currentUser();
+                if (accountResponse.ok) {
+                    const account = await accountResponse.json();
+                    if (account.role === "customer") {
+                        const csrfCookie = document.cookie.split("; ").find(function(cookie) { return cookie.startsWith("csrftoken="); });
+                        const response = await fetch(locationApi, {
+                            method: "PUT",
+                            credentials: "same-origin",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRFToken": csrfCookie ? decodeURIComponent(csrfCookie.split("=").slice(1).join("=")) : ""
+                            },
+                            body: JSON.stringify(locationValue)
+                        });
+                        if (!response.ok) {
+                            const data = await response.json();
+                            document.getElementById("locationPincodeError").textContent = data.message || "Location save nahi hui.";
+                            return;
+                        }
+                    }
+                } else if (accountResponse.status !== 401) {
+                    document.getElementById("locationPincodeError").textContent = "Location save nahi hui. Dobara koshish karein.";
+                    return;
+                }
+                localStorage.setItem(locationStorageKey, JSON.stringify(locationValue));
+                applyLocation(locationValue);
+                toggleLocationPanel(false);
+                await loadNearbyShops();
+            } catch (error) {
+                console.error("Could not save customer location:", error);
+                document.getElementById("locationPincodeError").textContent = "Location save nahi hui. Dobara koshish karein.";
+            }
+        }
 
         async function signOut() {
             const response = await RamjicartAuth.logout();
@@ -1514,6 +1917,8 @@
         accountLink.addEventListener("click", function(event) {
             if (accountLink.dataset.authenticated !== "true") return;
             event.preventDefault();
+            locationPanel.hidden = true;
+            locationButton.setAttribute("aria-expanded", "false");
             if (accountLink.dataset.role === "customer") {
                 customerProfile.hidden = !customerProfile.hidden;
                 accountLink.setAttribute("aria-expanded", String(!customerProfile.hidden));
@@ -1522,16 +1927,51 @@
             signOut();
         });
 
+        locationButton.addEventListener("click", function() {
+            toggleLocationPanel(locationPanel.hidden);
+        });
+        document.getElementById("closeLocationPanel").addEventListener("click", function() {
+            toggleLocationPanel(false);
+        });
+        document.getElementById("changeLocationButton").addEventListener("click", function(event) {
+            event.stopPropagation();
+            locationButton.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            locationButton.focus();
+        });
+        document.getElementById("locationForm").addEventListener("submit", saveCustomerLocation);
+        locationMarket.addEventListener("change", function() {
+            const selectedMarket = marketOptions.find(function(market) {
+                return String(market.id) === locationMarket.value;
+            });
+            if (selectedMarket && selectedMarket.pincode) locationPincode.value = selectedMarket.pincode;
+            loadLandmarks(locationMarket.value);
+        });
+        document.getElementById("nearbyShopsPrevious").addEventListener("click", function() {
+            nearbyShopsList.scrollBy({ left: -300, behavior: "smooth" });
+        });
+        document.getElementById("nearbyShopsNext").addEventListener("click", function() {
+            nearbyShopsList.scrollBy({ left: 300, behavior: "smooth" });
+        });
+        nearbyShopsList.addEventListener("wheel", function(event) {
+            if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
+                event.preventDefault();
+                nearbyShopsList.scrollLeft += event.deltaY;
+            }
+        }, { passive: false });
+
         document.getElementById("signOutButton").addEventListener("click", signOut);
 
         document.addEventListener("click", function(event) {
-            if (!customerProfile.hidden && !event.target.closest(".account-menu")) {
+            if (!event.target.closest(".account-menu")) {
                 customerProfile.hidden = true;
                 accountLink.setAttribute("aria-expanded", "false");
+                toggleLocationPanel(false);
             }
         });
 
         async function loadAccountAction() {
+            const cachedLocation = savedLocation();
+            applyLocation(cachedLocation);
             try {
                 const response = await RamjicartAuth.currentUser();
                 if (!response.ok) {
@@ -1539,6 +1979,9 @@
                     accountLink.href = "login.html";
                     accountLink.dataset.authenticated = "false";
                     customerProfile.hidden = true;
+                    if (!cachedLocation) toggleLocationPanel(true);
+                    await loadLandmarks(locationMarket.value);
+                    await loadNearbyShops();
                     return;
                 }
                 const account = await response.json();
@@ -1546,6 +1989,9 @@
                 accountLink.dataset.role = account.role || "";
                 if (account.role !== "customer") {
                     accountLink.textContent = "Sign out";
+                    if (!cachedLocation) toggleLocationPanel(true);
+                    await loadLandmarks(locationMarket.value);
+                    await loadNearbyShops();
                     return;
                 }
                 const accountEmail = typeof account.email === "string" ? account.email.trim() : "";
@@ -1565,11 +2011,48 @@
                 accountLink.href = "#";
                 accountLink.setAttribute("aria-expanded", "false");
                 customerProfile.hidden = true;
+                let storedLocation = null;
+                try {
+                    const locationResponse = await fetch(locationApi);
+                    if (locationResponse.ok) storedLocation = await locationResponse.json();
+                } catch (error) {
+                    console.error("Could not load account location:", error);
+                }
+                if (storedLocation && storedLocation.marketId && storedLocation.pincode) {
+                    applyLocation(storedLocation);
+                    localStorage.setItem(locationStorageKey, JSON.stringify(storedLocation));
+                } else {
+                    applyLocation(cachedLocation);
+                    if (cachedLocation) {
+                        try {
+                            const csrfCookie = document.cookie.split("; ").find(function(cookie) { return cookie.startsWith("csrftoken="); });
+                            const saveResponse = await fetch(locationApi, {
+                                method: "PUT",
+                                credentials: "same-origin",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    "X-CSRFToken": csrfCookie ? decodeURIComponent(csrfCookie.split("=").slice(1).join("=")) : ""
+                                },
+                                body: JSON.stringify(cachedLocation)
+                            });
+                            if (!saveResponse.ok) console.error("Could not sync saved location to the customer profile.");
+                        } catch (syncError) {
+                            console.error("Could not sync saved location to the customer profile:", syncError);
+                        }
+                    }
+                }
+                if (!customerLocation) toggleLocationPanel(true);
+                await loadLandmarks(locationMarket.value);
+                await loadNearbyShops();
             } catch (error) {
+                console.error("Could not load the account:", error);
                 accountLink.textContent = "Sign in";
                 accountLink.href = "login.html";
                 accountLink.dataset.authenticated = "false";
                 customerProfile.hidden = true;
+                applyLocation(cachedLocation);
+                if (!customerLocation) toggleLocationPanel(true);
+                await loadNearbyShops();
             }
         }
 
@@ -1610,6 +2093,10 @@
                         this.onerror = null;
                         this.src = "/static/food-placeholder.svg";
                     };
+                    image.style.cursor = "zoom-in";
+                    image.addEventListener("click", function() {
+                        window.RamjicartProductGallery.open(food.images || [food.image], food.name);
+                    });
                     const title = document.createElement("h3");
                     title.textContent = food.name;
                     const restaurant = document.createElement("p");
@@ -1635,7 +2122,7 @@
                     button.type = "button";
                     button.textContent = "Order Now";
                     button.addEventListener("click", function() {
-                        addToCart(food, selectedQuantity);
+                        addToCart(food, selectedQuantity, button);
                     });
                     card.append(image, title, restaurant, price, button);
                     foodList.appendChild(card);
@@ -1705,9 +2192,12 @@
                     categoryCard.addEventListener(
                         "click",
                         function() {
-
-                            window.location.href = "/category/" + category.slug;
-
+                            selectedNearbyCategoryId = String(category.id);
+                            loadNearbyShops();
+                            document.getElementById("nearbyShopsSection").scrollIntoView({
+                                behavior: "smooth",
+                                block: "center"
+                            });
                         }
                     );
 
@@ -1806,6 +2296,10 @@
                     this.onerror = null;
                     this.src = "/static/food-placeholder.svg";
                 };
+                image.style.cursor = "zoom-in";
+                image.addEventListener("click", function() {
+                    window.RamjicartProductGallery.open(food.images || [food.image], food.name);
+                });
                 card.appendChild(image);
 
                 const title = document.createElement("h3");
@@ -1830,7 +2324,7 @@
                 const button = document.createElement("button");
                 button.textContent = "Order Now";
                 button.addEventListener("click", function() {
-                    addToCart(food);
+                    addToCart(food, 1, button);
                 });
 
                 card.appendChild(title);
@@ -1864,32 +2358,36 @@
         ==========================================
         */
 
-        async function addToCart(food, quantity = 1) {
+        async function addToCart(food, quantity = 1, button) {
+            const previousText = button ? button.textContent : "";
+            if (button) {
+                button.disabled = true;
+                button.textContent = "Adding...";
+            }
             try {
-                const csrfToken = document.cookie
-                    .split("; ")
-                    .find(function(cookie) {
-                        return cookie.startsWith("csrftoken=");
-                    });
-                const response = await fetch("/api/customer/cart", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-CSRFToken": csrfToken
-                            ? decodeURIComponent(csrfToken.split("=")[1])
-                            : ""
-                    },
-                    body: JSON.stringify({ foodId: food.id, quantity: quantity })
-                });
-                const data = await response.json();
-                if (!response.ok) {
-                    throw new Error(data.message || "Could not add food to cart.");
+                const data = await RamjicartCartAccess.add({ foodId: food.id, quantity: quantity });
+                if (!data) {
+                    if (button) {
+                        button.textContent = previousText;
+                        button.disabled = false;
+                    }
+                    return;
                 }
 
                 updateCartCount(data);
-                alert(food.name + " added to cart 🛒");
+                if (button) {
+                    button.textContent = "Added ✓";
+                    setTimeout(function() {
+                        button.textContent = previousText;
+                        button.disabled = false;
+                    }, 1200);
+                }
             } catch (error) {
                 foodMessage.textContent = error.message;
+                if (button) {
+                    button.textContent = previousText;
+                    button.disabled = false;
+                }
             }
 
         }
@@ -1981,76 +2479,68 @@
         async function loadCurrentOrder() {
 
             try {
-
-                const response =
-                    await fetch(orderApi);
-
+                const response = await fetch(orderApi);
 
                 if (response.status === 404) {
                     trackingSteps.innerHTML = "";
+                    trackingOrderSummary.textContent = "";
                     trackingMessage.textContent = "No order found yet.";
                     return;
                 }
 
                 if (response.status === 401) {
                     trackingSteps.innerHTML = "";
+                    trackingOrderSummary.textContent = "";
                     trackingMessage.textContent = "Sign in to track your orders.";
                     return;
                 }
 
                 if (!response.ok) {
                     const error = await response.json();
-
-                    throw new Error(
-                        error.message || "Order status load nahi hua"
-                    );
-
+                    throw new Error(error.message || "Order status load nahi hua");
                 }
 
-
-                const order =
-                    await response.json();
-
-
+                const order = await response.json();
                 trackingSteps.innerHTML = "";
-
                 trackingMessage.textContent = "";
 
-
                 if (!order) {
-
-                    trackingMessage.textContent =
-                        "No active order.";
-
+                    trackingOrderSummary.textContent = "";
+                    trackingMessage.textContent = "No active order.";
                     return;
-
                 }
 
+                const orderNumber = order.orderNumber || order.id;
+                const total = Number(order.total);
+                trackingOrderSummary.textContent = "Order #" + orderNumber
+                    + " · Rs " + (Number.isFinite(total) ? total.toFixed(2) : "0.00");
 
-                const statuses =
-                    order.statuses || order.timeline || [];
+                const currentStep = {
+                    payment_pending: 0,
+                    placed: 0,
+                    paid: 0,
+                    accepted: 1,
+                    preparing: 1,
+                    ready_for_pickup: 1,
+                    assigned: 2,
+                    picked_up: 2,
+                    out_for_delivery: 2,
+                    completed: 3
+                }[order.status];
+                const labels = ["Order placed", "Preparing", "On the way", "Delivered"];
 
-
-                statuses.forEach(function(status) {
-
-                    const step =
-                        document.createElement("p");
-
-                    step.textContent =
-                        status.status || status.name;
-
-                    trackingSteps.appendChild(
-                        step
-                    );
-
+                labels.forEach(function(label, index) {
+                    const step = document.createElement("p");
+                    step.textContent = label;
+                    if (typeof currentStep === "number" && index < currentStep) {
+                        step.className = "is-done";
+                    } else if (index === currentStep) {
+                        step.className = "is-active";
+                    }
+                    trackingSteps.appendChild(step);
                 });
-
-
             } catch (error) {
-
-                trackingMessage.textContent =
-                    error.message;
-
+                trackingMessage.textContent = error.message;
             }
 
         }
@@ -2188,11 +2678,22 @@
 
         loadCurrentOrder();
 
+        window.setInterval(loadCurrentOrder, 30000);
+
         loadOrderHistory();
 
         loadCartCount();
 
-        loadAccountAction();
+        loadMarkets().then(loadAccountAction);
+
+        document.addEventListener("ramjicart:pending-cart-result", function(event) {
+            if (event.detail.success) {
+                updateCartCount(event.detail.data);
+            } else {
+                foodMessage.textContent = event.detail.error.message || "Could not add item to cart.";
+            }
+        });
+        RamjicartCartAccess.resumePendingAdd();
 
 
         

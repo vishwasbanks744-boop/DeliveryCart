@@ -82,6 +82,23 @@
             margin-bottom: 17px;
         }
 
+        .field-error {
+            display: block;
+            min-height: 0;
+            margin-top: 4px;
+            color: #c62828;
+            font-size: 12px;
+        }
+
+        .field-error:empty { display: none; }
+
+        .verification-note {
+            margin: -2px 0 14px;
+            text-align: center;
+            color: #6b584c;
+            font-size: 13px;
+        }
+
         label {
             display: inline-block;
 
@@ -222,7 +239,9 @@
 
         button[type="submit"]:disabled {
 
-            opacity: 0.7;
+            background: #bdbdbd;
+            box-shadow: none;
+            opacity: 1;
 
             cursor: not-allowed;
         }
@@ -237,6 +256,21 @@
             text-align: center;
 
             font-size: 14px;
+        }
+
+        #registerMessage.auth-response {
+            padding: 8px 10px;
+            border-radius: 6px;
+        }
+
+        #registerMessage.auth-response.success-message {
+            color: #17833d;
+            background: #e8f5e9;
+        }
+
+        #registerMessage.auth-response.error-message {
+            color: #c62828;
+            background: #ffebee;
         }
 
 
@@ -307,134 +341,54 @@
 
             <!-- Registration Form -->
 
-            <form id="registrationForm">
+            <form id="registrationForm" novalidate>
 
+                <div class="form-group">
+                    <label for="fullname">Full Name</label>
+                    <input type="text" id="fullname" name="fullname" placeholder="Full Name" autocomplete="name" required maxlength="150">
+                    <small class="field-error" id="fullnameError" aria-live="polite"></small>
+                </div>
+
+
+
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" placeholder="Email Address" required autocomplete="email">
+                    <small class="field-error" id="emailError" aria-live="polite"></small>
+                </div>
+
+
+
+                <div class="form-group">
+                    <label for="mobile">Mobile No.</label>
+                    <input type="tel" id="mobile" name="mobile" placeholder="Mobile No." required autocomplete="tel" inputmode="numeric" maxlength="10" pattern="[0-9]{10}">
+                    <small class="field-error" id="mobileError" aria-live="polite"></small>
+                </div>
+
+                <div class="form-group">
+                    <label for="pincode">Pin code</label>
+                    <input type="text" id="pincode" name="pincode" placeholder="6-digit Pin code" required inputmode="numeric" autocomplete="postal-code" maxlength="6" pattern="[0-9]{6}">
+                    <small class="field-error" id="pincodeError" aria-live="polite"></small>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Password" required autocomplete="new-password" minlength="8">
+                    <small class="field-error" id="passwordError" aria-live="polite"></small>
+                </div>
+
+
+
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm Password" required autocomplete="new-password">
+                    <small class="field-error" id="confirmPasswordError" aria-live="polite"></small>
+                </div>
+
+                <p class="verification-note">Firstly verify with Google, then Register</p>
                 <button type="button" id="googleRegisterButton" style="width:100%;padding:12px;margin-bottom:18px;background:#fff;color:#222;border:1px solid #bbb;border-radius:8px;cursor:pointer">
-                    Continue with Google
+                    Verify with Google
                 </button>
-
-
-                <div class="form-group">
-
-                    <label for="fullname">
-                        Full Name
-                    </label>
-
-                    <input
-                        type="text"
-                        id="fullname"
-                        name="fullname"
-                        placeholder="Full Name"
-                        required
-                        autocomplete="name"
-                        minlength="3">
-
-                </div>
-
-
-
-                <div class="form-group">
-
-                    <label for="mobile">
-                        Email Address
-                    </label>
-
-                    <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        placeholder="Email Address"
-                        required
-                        autocomplete="email">
-
-                </div>
-
-
-
-                <div class="form-group">
-
-                    <label for="mobile">
-                        Mobile No
-                    </label>
-
-                    <input
-                        type="tel"
-                        id="mobile"
-                        name="mobile"
-                        placeholder="Mobile No"
-                        required
-                        autocomplete="tel">
-
-                </div>
-
-
-
-                <div class="form-group">
-
-                    <label for="password">
-                        Password
-                    </label>
-
-                    <input
-                        type="password"
-                        id="password"
-                        name="password"
-                        placeholder="Password"
-                        required
-                        autocomplete="new-password"
-                        minlength="8">
-
-                </div>
-
-
-
-                <div class="form-group">
-
-                    <label for="confirmPassword">
-                        Confirm Password
-                    </label>
-
-                    <input
-                        type="password"
-                        id="confirmPassword"
-                        name="confirmPassword"
-                        placeholder="Confirm Password"
-                        required
-                        autocomplete="new-password">
-
-                </div>
-
-
-
-                <!-- Terms -->
-
-                <div class="terms">
-
-                    <input
-                        type="checkbox"
-                        id="terms"
-                        name="terms"
-                        required>
-
-                    <label for="terms">
-
-                        I agree to
-
-                        <a href="/terms.html">
-                            Terms
-                        </a>
-
-                        and
-
-                        <a href="/privacy.html">
-                            Privacy Policy
-                        </a>.
-
-                    </label>
-
-                </div>
-
-
 
                 <!-- Registration Button -->
 
@@ -444,7 +398,7 @@
                         type="submit"
                         id="registerButton">
 
-                        Registration
+                        Register
 
                     </button>
 
@@ -461,6 +415,10 @@
             <!-- Footer -->
 
             <footer>
+
+                <p class="legal-links">
+                    By registering, you agree to our <a href="/terms.html">Terms</a> and <a href="/privacy.html">Privacy Policy</a>.
+                </p>
 
                 <p>
 
@@ -482,163 +440,113 @@
 
 
     <script>
-
-        const registrationForm =
-            document.getElementById("registrationForm");
+        const registrationForm = document.getElementById("registrationForm");
+        const registerButton = document.getElementById("registerButton");
+        const googleButton = document.getElementById("googleRegisterButton");
+        const message = document.getElementById("registerMessage");
+        const fields = ["fullname", "email", "mobile", "pincode", "password", "confirmPassword"];
         let googleRegistrationIdentity = null;
+        let submitting = false;
 
-        document.getElementById("googleRegisterButton").addEventListener("click", async function() {
-            const button = this;
-            const message = document.getElementById("registerMessage");
-            button.disabled = true;
-            message.textContent = "Connecting your Google account...";
+        function validateField(id) {
+            const input = document.getElementById(id);
+            const value = input.value.trim();
+            let error = "";
+            if (!value) error = "This field is required.";
+            else if (id === "fullname" && value.length > 150) error = "Name must be 150 characters or fewer.";
+            else if (id === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = "Enter a valid email address.";
+            else if (id === "mobile" && !/^\d{10}$/.test(value)) error = "Mobile number must be exactly 10 digits.";
+            else if (id === "pincode" && !/^\d{6}$/.test(value)) error = "Pin code must be exactly 6 digits.";
+            else if (id === "password" && input.value.length < 8) error = "Password must be at least 8 characters.";
+            else if (id === "confirmPassword" && input.value !== document.getElementById("password").value) error = "Passwords do not match.";
+            if (id === "email" && googleRegistrationIdentity && value.toLowerCase() !== googleRegistrationIdentity.email.toLowerCase()) {
+                error = "Try again";
+            }
+            document.getElementById(id + "Error").textContent = error;
+            input.setAttribute("aria-invalid", error ? "true" : "false");
+            return !error;
+        }
+
+        function updateFormState() {
+            const valid = fields.map(validateField).every(Boolean);
+            registerButton.disabled = submitting || !valid || !googleRegistrationIdentity;
+        }
+
+        fields.forEach(function(id) {
+            document.getElementById(id).addEventListener("input", function() {
+                if (googleRegistrationIdentity) {
+                    googleRegistrationIdentity = null;
+                    googleButton.textContent = "Verify with Google";
+                    googleButton.style.color = "#222";
+                    message.textContent = "";
+                    message.className = "";
+                }
+                updateFormState();
+            });
+        });
+        updateFormState();
+
+        googleButton.addEventListener("click", async function() {
+            googleButton.disabled = true;
+            message.textContent = "";
+            message.className = "";
             try {
-                googleRegistrationIdentity = await RamjicartAuth.startGoogleSignIn();
-                document.getElementById("email").value = googleRegistrationIdentity.email;
-                const nameInput = document.getElementById("fullname");
-                if (!nameInput.value.trim()) nameInput.value = googleRegistrationIdentity.displayName;
-                ["password", "confirmPassword"].forEach(function(id) {
-                    const input = document.getElementById(id);
-                    input.required = false;
-                    input.closest(".form-group").hidden = true;
-                });
-                message.textContent = "Google connected. Complete your name and phone number, then create the account.";
+                const identity = await RamjicartAuth.startGoogleSignIn();
+                googleRegistrationIdentity = identity;
+                if (document.getElementById("email").value.trim().toLowerCase() !== identity.email.toLowerCase()) {
+                    googleRegistrationIdentity = identity;
+                    validateField("email");
+                    message.textContent = "Try again";
+                    message.className = "auth-response error-message";
+                    googleButton.textContent = "Verify with Google";
+                } else {
+                    googleButton.textContent = "\u2713 Verified";
+                    googleButton.style.color = "#17833d";
+                }
+                updateFormState();
             } catch (error) {
-                message.textContent = error.message || "Could not connect Google account.";
+                console.error("Google registration verification failed:", error);
+                googleRegistrationIdentity = null;
+                message.textContent = "Try again";
+                message.className = "auth-response error-message";
+                updateFormState();
             } finally {
-                button.disabled = false;
+                googleButton.disabled = false;
             }
         });
 
-
-        registrationForm.addEventListener(
-            "submit",
-            async function (event) {
-
-                event.preventDefault();
-
-
-                const fullname =
-                    document.getElementById("fullname").value.trim();
-
-
-                const email =
-                    document.getElementById("email").value.trim();
-
-
-                const mobile =
-                    document.getElementById("mobile").value.trim();
-
-
-                const password =
-                    document.getElementById("password").value;
-
-
-                const confirmPassword =
-                    document.getElementById("confirmPassword").value;
-
-
-                const message =
-                    document.getElementById("registerMessage");
-
-
-                const button =
-                    document.getElementById("registerButton");
-
-
-
-                /* Password check */
-
-                if (!googleRegistrationIdentity && password !== confirmPassword) {
-
-                    message.textContent =
-                        "Passwords do not match.";
-
-                    message.style.color =
-                        "#c62828";
-
-                    return;
-                }
-
-
-
-                try {
-
-                    button.disabled = true;
-
-                    button.textContent =
-                        "Registering...";
-
-
-                    const response = await RamjicartAuth.registerCustomer({
-                        fullname: fullname,
-                        email: email,
-                        mobile: mobile,
-                        password: password
-                    }, googleRegistrationIdentity);
-
-
-                    const data =
-                        await response.json();
-
-
-                    if (!response.ok) {
-
-                        throw new Error(
-                            data.message ||
-                            "Registration failed."
-                        );
-
-                    }
-
-
-                    message.textContent =
-                        data.message ||
-                        "Registration successful.";
-
-                    message.style.color =
-                        "#17833d";
-
-
-                    if (data.redirect) {
-
-                        setTimeout(
-                            function () {
-
-                                window.location.href =
-                                    data.redirect;
-
-                            },
-                            600
-                        );
-
-                    }
-
-                }
-
-                catch (error) {
-
-                    message.textContent =
-                        error.message ||
-                        "Something went wrong.";
-
-                    message.style.color =
-                        "#c62828";
-
-                }
-
-                finally {
-
-                    button.disabled = false;
-
-                    button.textContent =
-                        "Registration";
-
-                }
-
+        registrationForm.addEventListener("submit", async function(event) {
+            event.preventDefault();
+            updateFormState();
+            if (registerButton.disabled) return;
+            submitting = true;
+            updateFormState();
+            registerButton.textContent = "Registering...";
+            message.textContent = "";
+            message.className = "";
+            try {
+                const response = await RamjicartAuth.registerCustomer({
+                    fullname: document.getElementById("fullname").value.trim(),
+                    email: document.getElementById("email").value.trim(),
+                    mobile: document.getElementById("mobile").value.trim(),
+                    pincode: document.getElementById("pincode").value.trim(),
+                    password: document.getElementById("password").value
+                }, googleRegistrationIdentity);
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || "Registration failed.");
+                message.textContent = data.message || "Login successful";
+                message.className = "auth-response success-message";
+                if (data.redirect) setTimeout(function() { window.location.href = data.redirect; }, 600);
+            } catch (error) {
+                console.error("Registration failed:", error);
+                message.textContent = "Try again";
+                message.className = "auth-response error-message";
+            } finally {
+                submitting = false;
+                registerButton.textContent = "Register";
+                updateFormState();
             }
-        );
-
+        });
     </script>
 
 

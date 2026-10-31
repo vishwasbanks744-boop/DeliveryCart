@@ -580,6 +580,9 @@
     <!-- TOAST NOTIFICATION -->
     <div id="toastNotification" class="toast" role="status" aria-live="polite"></div>
 
+    <script src="/static/js/auth-client.js"></script>
+    <script src="/static/js/cart-access.js"></script>
+    <script src="/static/js/product-gallery.js"></script>
     <script>
         (function() {
             const pathParts = window.location.pathname.split("/").filter(Boolean);
@@ -746,6 +749,10 @@
                         this.onerror = null;
                         this.src = "/static/food-placeholder.svg";
                     };
+                    img.style.cursor = "zoom-in";
+                    img.addEventListener("click", () => {
+                        window.RamjicartProductGallery.open(item.images || [item.image], item.name);
+                    });
 
                     const body = document.createElement("div");
                     body.className = "food-card-body";
@@ -784,27 +791,10 @@
                 button.textContent = "Adding...";
 
                 try {
-                    const response = await fetch("/api/customer/cart", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "X-CSRFToken": getCsrfToken()
-                        },
-                        body: JSON.stringify({
-                            foodId: item.id,
-                            quantity: 1
-                        })
-                    });
-
-                    const data = await response.json();
-
-                    if (!response.ok) {
-                        // Backend returns: "Please finish or clear the current restaurant's cart first."
-                        throw new Error(data.message || "Could not add item to cart.");
-                    }
+                    const data = await RamjicartCartAccess.add({ foodId: item.id, quantity: 1 });
+                    if (!data) return;
 
                     button.textContent = "Added ✓";
-                    showToast(`${item.name} added to cart! 🛒`);
                     updateCartBadge(data);
 
                     setTimeout(() => {
@@ -815,11 +805,6 @@
                     button.textContent = prevText;
                     button.disabled = false;
                     showToast(error.message, true);
-                    if (error.message.toLowerCase().includes("log in") || error.message.toLowerCase().includes("customer account required")) {
-                        setTimeout(() => {
-                            window.location.href = "/login.html";
-                        }, 1500);
-                    }
                 }
             }
 
@@ -859,7 +844,17 @@
                 renderMenu();
             });
 
-            loadInitialCartCount();
+            document.addEventListener("ramjicart:pending-cart-result", function(event) {
+                if (event.detail.success) {
+                    updateCartBadge(event.detail.data);
+                } else {
+                    showToast(event.detail.error.message || "Could not add item to cart.", true);
+                }
+            });
+
+            loadInitialCartCount().then(function() {
+                RamjicartCartAccess.resumePendingAdd();
+            });
             loadRestaurantDetails();
             loadRestaurantMenu();
         })();

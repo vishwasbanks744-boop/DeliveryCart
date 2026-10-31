@@ -767,6 +767,25 @@ body {
     transform: translateY(-1px);
 }
 
+.product-photo-field { grid-column: 1 / -1; }
+.product-photo-upload {
+    width: 100%; min-height: 94px; border: 2px dashed #cbd4df; border-radius: 12px;
+    background: #fbfcfe; color: #445066; display: grid; place-content: center; gap: 5px;
+    cursor: pointer; text-align: center; font: inherit;
+}
+.product-photo-upload:hover { border-color: #ff6a2a; background: #fff8f4; }
+.product-photo-upload span:first-child { color: #ff5a16; font-size: 25px; line-height: 1; }
+.product-photo-grid { display: grid; width: 100%; max-width: 390px; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.product-photo-item { min-width: 0; }
+.product-photo-tile { position: relative; aspect-ratio: 1; border: 1px solid #e1e6ec; border-radius: 10px; overflow: hidden; background: #f2f4f7; }
+.product-photo-tile img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.product-photo-main { position: absolute; left: 5px; bottom: 5px; padding: 4px 7px; border-radius: 20px; background: #ff5a16; color: white; font-size: 11px; font-weight: 700; }
+.product-photo-remove { position: absolute; top: 4px; right: 4px; width: 27px; height: 27px; padding: 0; border: 0; border-radius: 50%; background: rgba(25, 33, 45, .82); color: white; font-size: 18px; cursor: pointer; }
+.product-photo-make-main { position: absolute; inset: 0; width: 100%; border: 0; background: transparent; cursor: pointer; }
+.product-photo-tile:not(.is-main) .product-photo-make-main:hover { background: rgba(255,255,255,.22); }
+.product-photo-error, .product-photos-error { display: block; min-height: 16px; color: #c62828; font-size: 12px; }
+.product-photo-uploading { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(255,255,255,.82); color: #344054; font-size: 12px; font-weight: 600; }
+
 
 /* =========================
    MENU SECTION
@@ -1773,7 +1792,7 @@ body {
 <section class="add-product-section">
 
     <div class="section-header">
-        <h2>Add New Product</h2>
+        <h2 id="productFormHeading">Add New Product</h2>
         <p>Fill in the details to add a new item to your menu.</p>
         <a class="back-to-dashboard" href="#dashboard">← Dashboard</a>
     </div>
@@ -1843,16 +1862,15 @@ body {
         </div>
 
 
-        <!-- Product Image -->
-        <div class="form-group">
-            <label for="productImage">Product Image URL</label>
-
-            <input
-                type="url"
-                id="productImage"
-                name="productImage"
-                placeholder="https://example.com/food.jpg"
-            >
+        <!-- Product Photos -->
+        <div class="form-group product-photo-field">
+            <label>Product photos <span aria-hidden="true">*</span></label>
+            <input type="file" id="productPhotos" name="photos" accept="image/jpeg,image/png,image/webp" multiple hidden>
+            <button type="button" class="product-photo-upload" id="addProductPhotosButton" aria-label="Upload product photos">
+                <span>＋</span><span>Upload photos</span>
+            </button>
+            <div class="product-photo-grid" id="productPhotoGrid" aria-live="polite"></div>
+            <small class="product-photos-error" id="productPhotosError" role="alert"></small>
         </div>
 
         <div class="form-group">
@@ -1873,8 +1891,9 @@ body {
         <!-- Add Product Button -->
         <div class="form-button">
             <button type="submit" id="addProductBtn">
-                Add Product
+                Save product
             </button>
+            <button type="button" id="cancelProductEditButton" hidden>Cancel edit</button>
         </div>
 
     </form>
@@ -2239,7 +2258,7 @@ function renderMenuProducts(products) {
 
             <img
                 class="menu-item-image"
-                src="${product.image || ""}"
+                src="${escapeMenuHtml(product.image || "")}"
                 alt="${product.name || "Product"}"
             >
 
@@ -2290,34 +2309,148 @@ function optionLines(options) {
     return (options || []).map(option => `${option.name}:${option.price}`).join("\n");
 }
 
+let editingProductId = null;
+let productPhotoItems = [];
+let editingOriginalPhotoIds = [];
+let productPhotoValidationError = "";
+
+function parseProductOptions(value) {
+    return value.trim() ? value.trim().split(/\r?\n/).map(function(line) {
+        const [name, ...price] = line.split(":");
+        return {name: name.trim(), price: price.join(":").trim()};
+    }) : [];
+}
+
+function productPhotoError(message) {
+    document.getElementById("productPhotosError").textContent = message || "";
+}
+
+function renderProductPhotos() {
+    const grid = document.getElementById("productPhotoGrid");
+    if (!grid) return;
+    grid.replaceChildren();
+    productPhotoItems.forEach(function(photo, index) {
+        const item = document.createElement("div");
+        item.className = "product-photo-item";
+        const tile = document.createElement("div");
+        tile.className = "product-photo-tile" + (photo.isMain ? " is-main" : "");
+        const image = document.createElement("img");
+        image.src = photo.url;
+        image.alt = "Product photo " + (index + 1);
+        tile.appendChild(image);
+        if (photo.isMain) {
+            const main = document.createElement("span");
+            main.className = "product-photo-main";
+            main.textContent = "Main";
+            tile.appendChild(main);
+        } else {
+            const selectMain = document.createElement("button");
+            selectMain.type = "button";
+            selectMain.className = "product-photo-make-main";
+            selectMain.setAttribute("aria-label", "Make photo " + (index + 1) + " main");
+            selectMain.addEventListener("click", function() {
+                productPhotoItems.forEach(item => item.isMain = item === photo);
+                renderProductPhotos();
+            });
+            tile.appendChild(selectMain);
+        }
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "product-photo-remove";
+        remove.textContent = "×";
+        remove.setAttribute("aria-label", "Remove photo " + (index + 1));
+        remove.addEventListener("click", function() {
+            if (photo.file) URL.revokeObjectURL(photo.url);
+            productPhotoItems.splice(index, 1);
+            if (!productPhotoItems.some(item => item.isMain) && productPhotoItems.length) productPhotoItems[0].isMain = true;
+            productPhotoError("");
+            renderProductPhotos();
+        });
+        tile.appendChild(remove);
+        if (photo.uploading) {
+            const uploading = document.createElement("span");
+            uploading.className = "product-photo-uploading";
+            uploading.textContent = "Uploading…";
+            tile.appendChild(uploading);
+        }
+        if (photo.error) {
+            const error = document.createElement("small");
+            error.className = "product-photo-error";
+            error.textContent = photo.error;
+            item.appendChild(tile);
+            item.appendChild(error);
+        } else {
+            item.appendChild(tile);
+        }
+        grid.appendChild(item);
+    });
+}
+
+function validatePickedPhoto(file) {
+    const extension = file.name.split(".").pop().toLowerCase();
+    if (!( ["jpg", "jpeg", "png", "webp"].includes(extension)
+        && ["image/jpeg", "image/png", "image/webp"].includes(file.type))) return "Use JPG, PNG, or WEBP.";
+    if (file.size > 5 * 1024 * 1024) return "Photo must be 5 MB or smaller.";
+    return "";
+}
+
+document.getElementById("addProductPhotosButton").addEventListener("click", function() {
+    document.getElementById("productPhotos").click();
+});
+document.getElementById("productPhotos").addEventListener("change", function() {
+    const files = Array.from(this.files || []);
+    const validFiles = [];
+    const errors = [];
+    files.forEach(function(file) {
+        const error = validatePickedPhoto(file);
+        if (error) errors.push(file.name + ": " + error);
+        else validFiles.push(file);
+    });
+    if (productPhotoItems.length + validFiles.length > 6) errors.push("A product can have up to 6 photos.");
+    else validFiles.forEach(function(file) {
+        productPhotoItems.push({id: null, file, url: URL.createObjectURL(file), legacy: false, isMain: productPhotoItems.length === 0});
+    });
+    productPhotoValidationError = errors.join(" ");
+    productPhotoError(productPhotoValidationError);
+    this.value = "";
+    renderProductPhotos();
+});
+
+function resetProductEditor() {
+    editingProductId = null;
+    editingOriginalPhotoIds = [];
+    productPhotoValidationError = "";
+    productPhotoItems.forEach(photo => { if (photo.file) URL.revokeObjectURL(photo.url); });
+    productPhotoItems = [];
+    productForm.reset();
+    productPhotoError("");
+    renderProductPhotos();
+    document.getElementById("productFormHeading").textContent = "Add New Product";
+    document.getElementById("addProductBtn").textContent = "Save product";
+    document.getElementById("cancelProductEditButton").hidden = true;
+}
+
+document.getElementById("cancelProductEditButton").addEventListener("click", resetProductEditor);
+
 async function editMenuProduct(product) {
-    const name = prompt("Product name", product.name);
-    if (name === null) return;
-    const price = prompt("Price (₹)", product.price);
-    if (price === null) return;
-    const description = prompt("Description", product.description || "");
-    if (description === null) return;
-    const image = prompt("Photo URL (leave blank for no photo)", product.image || "");
-    if (image === null) return;
-    const variantsText = prompt("Variants (Name:Price per line)", optionLines(product.variants));
-    if (variantsText === null) return;
-    const addonsText = prompt("Add-ons (Name:Price per line)", optionLines(product.addons));
-    if (addonsText === null) return;
-    const categoryName = prompt("Category", product.category || "");
-    if (categoryName === null) return;
-    const stockQuantity = prompt("Stock quantity (blank = not tracked)", product.stockQuantity ?? "");
-    if (stockQuantity === null) return;
-    const category = (await (await fetch("/api/customer/categories")).json()).find(item => item.name.toLowerCase() === categoryName.trim().toLowerCase());
-    if (!category) { alert("Select one of the listed categories."); return; }
-    const variants = variantsText.trim() ? variantsText.trim().split(/\r?\n/).map(line => { const [optionName, ...amount] = line.split(":"); return {name: optionName.trim(), price: amount.join(":").trim()}; }) : [];
-    const addons = addonsText.trim() ? addonsText.trim().split(/\r?\n/).map(line => { const [optionName, ...amount] = line.split(":"); return {name: optionName.trim(), price: amount.join(":").trim()}; }) : [];
-    try {
-        const response = await fetch(`/api/restaurant/products/${product.id}`, {method:"PUT", headers:{"Content-Type":"application/json","X-CSRFToken":orderCsrfToken()}, body:JSON.stringify({name, price, description, image, categoryId:category.id, quantityUnit:product.quantityUnit, variants, addons, stockQuantity:stockQuantity.trim() ? stockQuantity : null})});
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.message || "Product update failed.");
-        menuProducts = menuProducts.map(item => item.id === result.id ? result : item);
-        renderMenuProducts(menuProducts);
-    } catch (error) { alert(error.message); }
+    resetProductEditor();
+    editingProductId = product.id;
+    productForm.elements.productName.value = product.name || "";
+    productForm.elements.productCategory.value = product.category || "";
+    productForm.elements.productPrice.value = product.price ?? "";
+    productForm.elements.quantityUnit.value = product.quantityUnit || "piece";
+    productForm.elements.productDescription.value = product.description || "";
+    productForm.elements.variants.value = optionLines(product.variants);
+    productForm.elements.addons.value = optionLines(product.addons);
+    productForm.elements.stockQuantity.value = product.stockQuantity ?? "";
+    productPhotoItems = (product.images || (product.image ? [{id: null, url: product.image, legacy: true, isMain: true}] : []))
+        .map(photo => ({id: photo.id, url: photo.url, legacy: Boolean(photo.legacy), isMain: Boolean(photo.isMain)}));
+    editingOriginalPhotoIds = productPhotoItems.filter(photo => photo.id).map(photo => photo.id);
+    if (productPhotoItems.length && !productPhotoItems.some(photo => photo.isMain)) productPhotoItems[0].isMain = true;
+    document.getElementById("productFormHeading").textContent = "Edit Product";
+    document.getElementById("cancelProductEditButton").hidden = false;
+    renderProductPhotos();
+    document.querySelector(".add-product-section").scrollIntoView({behavior: "smooth", block: "start"});
 }
 
 async function toggleMenuProduct(product) {
@@ -2421,109 +2554,117 @@ if (productForm) {
         async function (event) {
 
             event.preventDefault();
-
-
             const addProductBtn =
                 document.getElementById("addProductBtn");
-
-
-            /* Form data */
-
-            const formData =
-                new FormData(productForm);
-
-
-            try {
-
-                /* Disable button */
-
-                addProductBtn.disabled = true;
-
-                addProductBtn.textContent =
-                    "Adding...";
-
-
-                /*
-                    Product backend ko bhejna
-                */
-
-                const response =
-                    await fetch(
-                        "/api/restaurant/products",
-                        {
-                            method: "POST",
-                            headers: {
-                                "X-CSRFToken": (document.cookie
-                                    .split("; ")
-                                    .find(function(cookie) {
-                                        return cookie.startsWith("csrftoken=");
-                                    }) || "csrftoken=").split("=").slice(1).join("=")
-                            },
-                            body: formData
-                        }
-                    );
-
-
-                if (!response.ok) {
-                    throw new Error(
-                        "Product could not be added"
-                    );
-                }
-
-
-                /*
-                    Backend ka response
-                */
-
-                const newProduct =
-                    await response.json();
-
-
-                /*
-                    New product ko current
-                    menu mein add karna
-                */
-
-                menuProducts.push(newProduct);
-
-
-                renderMenuProducts(
-                    menuProducts
-                );
-
-
-                /*
-                    Form clear
-                */
-
-                productForm.reset();
-
-
-                alert(
-                    "Product added successfully!"
-                );
-
-
-            } catch (error) {
-
-                console.error(
-                    "Add product error:",
-                    error
-                );
-
-                alert(
-                    "Product add nahi ho saka."
-                );
-
-            } finally {
-
-                addProductBtn.disabled = false;
-
-                addProductBtn.textContent =
-                    "Add Product";
-
+            if (!productPhotoItems.length) {
+                productPhotoError("Add at least one product photo.");
+                return;
             }
+            if (productPhotoItems.length > 6) {
+                productPhotoError("A product can have up to 6 photos.");
+                return;
+            }
+            if (productPhotoValidationError) {
+                productPhotoError(productPhotoValidationError);
+                return;
+            }
+            const fileItems = productPhotoItems.filter(photo => photo.file);
+            const removedIds = editingProductId
+                ? editingOriginalPhotoIds.filter(id => !productPhotoItems.some(photo => photo.id === id))
+                : [];
+            const mainPhoto = productPhotoItems.find(photo => photo.isMain) || productPhotoItems[0];
+            try {
+                addProductBtn.disabled = true;
+                addProductBtn.textContent = "Saving...";
+                productPhotoError("");
+                productPhotoItems.forEach(photo => photo.uploading = Boolean(photo.file));
+                renderProductPhotos();
+                const csrf = orderCsrfToken();
+                let savedProduct;
 
+                if (editingProductId) {
+                    const original = menuProducts.find(item => item.id === editingProductId);
+                    const legacyPhoto = productPhotoItems.find(photo => photo.legacy);
+                    const metadata = {
+                        name: productForm.elements.productName.value.trim(),
+                        price: productForm.elements.productPrice.value,
+                        description: productForm.elements.productDescription.value.trim(),
+                        image: legacyPhoto ? legacyPhoto.url : "",
+                        categoryId: Number(original.categoryId),
+                        quantityUnit: productForm.elements.quantityUnit.value,
+                        variants: parseProductOptions(productForm.elements.variants.value),
+                        addons: parseProductOptions(productForm.elements.addons.value),
+                        stockQuantity: productForm.elements.stockQuantity.value.trim() || null
+                    };
+                    const updateResponse = await fetch(`/api/restaurant/products/${editingProductId}`, {
+                        method: "PUT",
+                        headers: {"Content-Type": "application/json", "X-CSRFToken": csrf},
+                        body: JSON.stringify(metadata)
+                    });
+                    const updateData = await updateResponse.json();
+                    if (!updateResponse.ok) throw new Error(updateData.message || "Product update failed.");
+                    savedProduct = updateData;
+
+                    if (fileItems.length) {
+                        const uploadData = new FormData();
+                        fileItems.forEach(photo => uploadData.append("photos", photo.file));
+                        uploadData.append("removeImageIds", JSON.stringify(removedIds));
+                        uploadData.append("mainIndex", mainPhoto.file ? String(fileItems.indexOf(mainPhoto)) : "-1");
+                        if (!mainPhoto.file) uploadData.append("mainImageId", mainPhoto.id ? String(mainPhoto.id) : "");
+                        const uploadResponse = await fetch(`/api/restaurant/products/${editingProductId}/images`, {
+                            method: "POST", headers: {"X-CSRFToken": csrf}, body: uploadData
+                        });
+                        const uploadDataResponse = await uploadResponse.json();
+                        if (!uploadResponse.ok) throw new Error(uploadDataResponse.message || "Photo upload failed.");
+                    } else {
+                        for (const photoId of removedIds) {
+                            const deleteResponse = await fetch(`/api/restaurant/products/${editingProductId}/images/${photoId}`, {
+                                method: "DELETE", headers: {"X-CSRFToken": csrf}
+                            });
+                            const deleteData = await deleteResponse.json();
+                            if (!deleteResponse.ok) throw new Error(deleteData.message || "Photo could not be removed.");
+                        }
+                        const mainResponse = await fetch(`/api/restaurant/products/${editingProductId}/images/main`, {
+                            method: "PUT", headers: {"Content-Type": "application/json", "X-CSRFToken": csrf},
+                            body: JSON.stringify({mainImageId: mainPhoto.id || null})
+                        });
+                        const mainData = await mainResponse.json();
+                        if (!mainResponse.ok) throw new Error(mainData.message || "Main photo could not be changed.");
+                    }
+                    await loadMenuProducts();
+                    resetProductEditor();
+                    alert("Product updated successfully!");
+                } else {
+                    const formData = new FormData(productForm);
+                    formData.delete("photos");
+                    fileItems.forEach(photo => formData.append("photos", photo.file));
+                    formData.append("mainIndex", String(fileItems.indexOf(mainPhoto)));
+                    const response = await fetch("/api/restaurant/products", {
+                        method: "POST", headers: {"X-CSRFToken": csrf}, body: formData
+                    });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.message || "Product could not be added.");
+                    menuProducts.push(result);
+                    renderMenuProducts(menuProducts);
+                    resetProductEditor();
+                    alert("Product added successfully!");
+                }
+            } catch (error) {
+                console.error("Save product error:", error);
+                productPhotoError(error.message || "Product could not be saved.");
+                productPhotoItems.forEach(photo => {
+                    if (photo.file && photo.uploading) {
+                        photo.uploading = false;
+                        photo.error = error.message || "Upload failed.";
+                    }
+                });
+                renderProductPhotos();
+            } finally {
+                addProductBtn.disabled = false;
+                addProductBtn.textContent = "Save product";
+                productPhotoItems.forEach(photo => photo.uploading = false);
+                renderProductPhotos();
+            }
         }
     );
 
