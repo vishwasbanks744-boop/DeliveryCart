@@ -61,6 +61,9 @@ it and creates the usual Django session. Cart, orders, restaurant, and delivery
 APIs remain session-based. Firebase verification follows the client SDK
 sign-in and server Admin SDK ID-token verification pattern in the [Firebase web guide](https://firebase.google.com/docs/auth/web/start)
 and [Firebase Admin guide](https://firebase.google.com/docs/auth/admin/verify-id-tokens).
+Add the exact AIC app hostname to Firebase Authentication's Authorized domains.
+Existing Django accounts created before Firebase was enabled can still sign in
+with their old Django password until they are linked to a Firebase account.
 Never commit the service account credential.
 
 Restaurants can save their location from registration or their profile, and a

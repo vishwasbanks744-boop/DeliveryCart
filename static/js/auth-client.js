@@ -1,4 +1,5 @@
 (function() {
+    const GOOGLE_LOGIN_REDIRECT_ROLE = "ramjicart.googleLoginRedirectRole";
     let configPromise;
     let firebasePromise;
     let firebaseAuth;
@@ -113,11 +114,21 @@
         const config = await clientConfig();
         if (!config.firebaseEnabled) return request("/api/auth/login", "POST", credentials);
         const firebase = await getFirebase();
-        const credential = await firebase.methods.signInWithEmailAndPassword(
-            firebase.auth,
-            String(credentials.email || "").trim(),
-            String(credentials.password || "")
-        );
+        let credential;
+        try {
+            credential = await firebase.methods.signInWithEmailAndPassword(
+                firebase.auth,
+                String(credentials.email || "").trim(),
+                String(credentials.password || "")
+            );
+        } catch (error) {
+            // Older accounts were created in Django before Firebase was enabled.
+            // The server only accepts this fallback for accounts not linked to Firebase.
+            if (error.code === "auth/invalid-credential") {
+                return request("/api/auth/login", "POST", credentials);
+            }
+            throw error;
+        }
         const response = await request("/api/auth/login", "POST", {
             firebaseIdToken: await credential.user.getIdToken(true),
             expectedRole: credentials.expectedRole || ""
@@ -139,16 +150,48 @@
     }
 
     async function loginWithGoogle(expectedRole) {
-        const identity = await startGoogleSignIn();
+        const firebase = await getFirebase();
+        const provider = new firebase.methods.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: "select_account" });
+        const useRedirect = typeof window !== "undefined"
+            && window.matchMedia
+            && window.matchMedia("(pointer: coarse)").matches;
+        if (useRedirect) {
+            sessionStorage.setItem(GOOGLE_LOGIN_REDIRECT_ROLE, expectedRole || "customer");
+            await firebase.methods.signInWithRedirect(firebase.auth, provider);
+            return null;
+        }
+        let credential;
+        try {
+            credential = await firebase.methods.signInWithPopup(firebase.auth, provider);
+        } catch (error) {
+            if (error.code !== "auth/popup-blocked") throw error;
+            sessionStorage.setItem(GOOGLE_LOGIN_REDIRECT_ROLE, expectedRole || "customer");
+            await firebase.methods.signInWithRedirect(firebase.auth, provider);
+            return null;
+        }
+        return completeGoogleLogin(credential, expectedRole);
+    }
+
+    async function completeGoogleLogin(credential, expectedRole) {
         const response = await request("/api/auth/login", "POST", {
-            firebaseIdToken: identity.firebaseIdToken,
+            firebaseIdToken: await credential.user.getIdToken(true),
             expectedRole: expectedRole || ""
         });
-        if (!response.ok) {
-            const firebase = await getFirebase();
-            await firebase.methods.signOut(firebase.auth);
-        }
         return response;
+    }
+
+    async function completeGoogleRedirectLogin() {
+        const expectedRole = sessionStorage.getItem(GOOGLE_LOGIN_REDIRECT_ROLE);
+        if (!expectedRole) return null;
+        const firebase = await getFirebase();
+        try {
+            const credential = await firebase.methods.getRedirectResult(firebase.auth);
+            if (!credential) return null;
+            return completeGoogleLogin(credential, expectedRole);
+        } finally {
+            sessionStorage.removeItem(GOOGLE_LOGIN_REDIRECT_ROLE);
+        }
     }
 
     async function registerWithGoogle(endpoint, profile, identity) {
@@ -200,6 +243,7 @@
         login: login,
         startGoogleSignIn: startGoogleSignIn,
         loginWithGoogle: loginWithGoogle,
+        completeGoogleRedirectLogin: completeGoogleRedirectLogin,
         logout: logout,
         sendPasswordResetEmail: sendPasswordResetEmail,
         registerCustomer: async function(profile, googleIdentity) {

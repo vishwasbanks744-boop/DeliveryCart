@@ -980,7 +980,7 @@ def auth_login(request):
         data = _json_body(request)
     except ValueError as error:
         return _error(str(error))
-    if settings.FIREBASE_AUTH_ENABLED:
+    if settings.FIREBASE_AUTH_ENABLED and data.get("firebaseIdToken"):
         identity, error = _firebase_identity(data, require_verified=True)
         if error:
             return error
@@ -997,6 +997,11 @@ def auth_login(request):
     profile = _account_profile_for_user(user)
     if profile is None:
         return _error("This account is not configured. Contact support.", 403)
+    if settings.FIREBASE_AUTH_ENABLED and profile.firebase_uid:
+        return _error(
+            "This account uses Firebase sign-in. Use its Firebase password or Google sign-in.",
+            401,
+        )
     if profile.role != AccountProfile.Role.CUSTOMER and not _profile_is_approved(profile):
         return _error(
             "Your account is waiting for administrator approval before login.",

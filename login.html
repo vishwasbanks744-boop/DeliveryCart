@@ -260,6 +260,18 @@
             if (error && error.code === "auth/invalid-credential") {
                 return "Firebase could not verify this email and password. Check both, or use Continue with Google if you registered with Google.";
             }
+            if (error && error.code === "auth/unauthorized-domain") {
+                return "This app domain is not allowed by Firebase. Add the AIC Cloud domain in Firebase Authentication settings under Authorized domains.";
+            }
+            if (error && error.code === "auth/operation-not-allowed") {
+                return "Google sign-in is disabled for this Firebase project. Enable the Google provider in Firebase Authentication.";
+            }
+            if (error && error.code === "auth/popup-closed-by-user") {
+                return "Google sign-in closed before it finished. Please try again.";
+            }
+            if (error && error.message === "No account is registered for this Firebase email.") {
+                return "This Google account is not registered with Ramjicart yet. Use registration here to finish creating your account.";
+            }
             return error && error.message ? error.message : "Sign-in failed. Please try again.";
         }
         document.querySelector(".forgot-password").addEventListener("click", async function(event) {
@@ -285,6 +297,7 @@
             loginMessage.textContent = "Signing in with Google...";
             try {
                 const response = await RamjicartAuth.loginWithGoogle("customer");
+                if (!response) return; // Mobile browsers complete Google sign-in after redirect.
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.message || "Google sign-in failed.");
                 loginMessage.textContent = data.message || "Login successful.";
@@ -358,6 +371,23 @@
             }
 
         });
+
+        (async function finishGoogleRedirect() {
+            try {
+                const response = await RamjicartAuth.completeGoogleRedirectLogin();
+                if (!response) return;
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || "Google sign-in failed.");
+                loginMessage.textContent = data.message || "Login successful.";
+                loginMessage.className = "success-message";
+                window.setTimeout(function() {
+                    window.location.href = data.redirect || "/";
+                }, 400);
+            } catch (error) {
+                loginMessage.textContent = readableAuthError(error);
+                loginMessage.className = "error-message";
+            }
+        })();
 
     </script>
 
