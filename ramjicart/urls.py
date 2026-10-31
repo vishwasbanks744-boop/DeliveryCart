@@ -24,6 +24,13 @@ if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 else:
     urlpatterns += [
+        # AIC Cloud may start Gunicorn without running collectstatic. Keep a
+        # Django fallback for the checked-in public assets in that case.
+        re_path(
+            r"^static/(?P<path>.*)$",
+            serve,
+            {"document_root": settings.BASE_DIR / "static"},
+        ),
         re_path(
             r"^media/(?P<path>restaurant-logos/[^/]+)$",
             serve,
