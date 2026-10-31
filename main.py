@@ -14,6 +14,8 @@ os.chdir(project_root)
 
 # Hosting ka PORT read karo
 port = os.environ.get("PORT", "8000")
+workers = os.environ.get("WEB_CONCURRENCY", "2")
+threads = os.environ.get("GUNICORN_THREADS", "2")
 
 # Python ke through Gunicorn start karo
 os.execv(
@@ -22,6 +24,10 @@ os.execv(
         sys.executable,
         "-m",
         "gunicorn",
+        "--workers",
+        workers,
+        "--threads",
+        threads,
         "--bind",
         f"0.0.0.0:{port}",
         "ramjicart.wsgi:application",

@@ -16,7 +16,7 @@ class GalaxyBackgroundMiddleware:
         if response.status_code == 200 and "text/html" in content_type:
             try:
                 content = response.content.decode("utf-8")
-                tag = '<script src="/assets/js/galaxy-bg.js" defer></script>'
+                tag = '<script id="globalGalaxyScript" src="/assets/js/galaxy-bg.js" defer></script>'
                 if tag not in content and "/assets/js/galaxy-bg.js" not in content:
                     if "</body>" in content:
                         content = content.replace("</body>", f"{tag}</body>", 1)

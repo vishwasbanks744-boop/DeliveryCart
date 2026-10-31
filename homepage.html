@@ -1539,14 +1539,14 @@
                     accountLink.href = "login.html";
                     accountLink.dataset.authenticated = "false";
                     customerProfile.hidden = true;
-                    return;
+                    return false;
                 }
                 const account = await response.json();
                 accountLink.dataset.authenticated = "true";
                 accountLink.dataset.role = account.role || "";
                 if (account.role !== "customer") {
                     accountLink.textContent = "Sign out";
-                    return;
+                    return false;
                 }
                 const accountEmail = typeof account.email === "string" ? account.email.trim() : "";
                 const accountName = typeof account.name === "string" ? account.name.trim() : "";
@@ -1565,11 +1565,13 @@
                 accountLink.href = "#";
                 accountLink.setAttribute("aria-expanded", "false");
                 customerProfile.hidden = true;
+                return true;
             } catch (error) {
                 accountLink.textContent = "Sign in";
                 accountLink.href = "login.html";
                 accountLink.dataset.authenticated = "false";
                 customerProfile.hidden = true;
+                return false;
             }
         }
 
@@ -2186,13 +2188,18 @@
 
         loadFoods();
 
-        loadCurrentOrder();
-
-        loadOrderHistory();
-
-        loadCartCount();
-
-        loadAccountAction();
+        loadAccountAction().then(function(isCustomer) {
+            if (isCustomer) {
+                loadCurrentOrder();
+                loadOrderHistory();
+                loadCartCount();
+                return;
+            }
+            trackingSteps.innerHTML = "";
+            trackingMessage.textContent = "Sign in to track your orders.";
+            orderHistoryMessage.textContent = "Sign in to view your order history.";
+            updateCartCount(null);
+        });
 
 
         

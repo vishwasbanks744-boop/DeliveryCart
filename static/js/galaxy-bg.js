@@ -138,10 +138,10 @@
         function createStars() {
             stars = [];
             const isMobile = width < 768;
-            // Mobile: ~55-75 stars; Desktop: ~130-180 stars
+            // Keep the decorative background light on phones and low-power devices.
             const starCount = isMobile
-                ? Math.floor(Math.min(75, Math.max(55, (width * height) / 10000)))
-                : Math.floor(Math.min(180, Math.max(130, (width * height) / 6000)));
+                ? Math.floor(Math.min(44, Math.max(30, (width * height) / 16000)))
+                : Math.floor(Math.min(140, Math.max(100, (width * height) / 8000)));
 
             for (let i = 0; i < starCount; i++) {
                 const color = pickColor();
@@ -217,7 +217,7 @@
         function resize() {
             width = window.innerWidth || document.documentElement.clientWidth || 1200;
             height = window.innerHeight || document.documentElement.clientHeight || 800;
-            dpr = Math.min(window.devicePixelRatio || 1, 2);
+            dpr = Math.min(window.devicePixelRatio || 1, width < 768 ? 1.25 : 1.5);
 
             canvas.width = Math.floor(width * dpr);
             canvas.height = Math.floor(height * dpr);
@@ -283,12 +283,20 @@
 
         // Animation loop
         let lastTime = performance.now();
+        let lastRenderTime = 0;
+        const frameInterval = 1000 / 30;
 
         function animate(now) {
             if (!isRunning) return;
 
+            if (now - lastRenderTime < frameInterval) {
+                animId = requestAnimationFrame(animate);
+                return;
+            }
+
             const delta = Math.min(now - lastTime, 64);
             lastTime = now;
+            lastRenderTime = now;
 
             ctx.clearRect(0, 0, width, height);
 

@@ -274,11 +274,4 @@
         }
     });
 
-    if (typeof document !== "undefined" && !document.getElementById("globalGalaxyScript") && !document.getElementById("globalGalaxyCanvas")) {
-        const s = document.createElement("script");
-        s.id = "globalGalaxyScript";
-        s.src = "/assets/js/galaxy-bg.js";
-        s.defer = true;
-        document.head.appendChild(s);
-    }
 })();
