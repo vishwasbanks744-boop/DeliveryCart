@@ -12,6 +12,13 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include("orders.urls")),
     path("api/config/public", views.public_client_config, name="public-client-config"),
+    # Some hosts reserve /static before requests reach Django. This alias
+    # serves the same checked-in public assets through the app routes.
+    re_path(
+        r"^assets/(?P<path>.*)$",
+        serve,
+        {"document_root": settings.BASE_DIR / "static"},
+    ),
     path("login/", RedirectView.as_view(url="/login.html", permanent=False)),
     path("", views.homepage, name="homepage"),
     path("category/<slug:slug>", views.frontend_page, {"page": "category"}, name="category-page"),
@@ -24,8 +31,7 @@ if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 else:
     urlpatterns += [
-        # AIC Cloud may start Gunicorn without running collectstatic. Keep a
-        # Django fallback for the checked-in public assets in that case.
+        # Fallback if the host skips collectstatic and WhiteNoise has no copy.
         re_path(
             r"^static/(?P<path>.*)$",
             serve,
