@@ -184,7 +184,8 @@ TIME_ZONE = "Asia/Kolkata"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "/static/"
+# Keep Django/WhiteNoise's URL prefix aligned with the AIC-compatible asset route.
+STATIC_URL = "/assets/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STORAGES = {
