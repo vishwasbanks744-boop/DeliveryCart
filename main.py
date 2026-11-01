@@ -14,8 +14,8 @@ os.chdir(project_root)
 
 # Hosting ka PORT read karo
 port = os.environ.get("PORT", "8000")
-workers = "2"
-threads = "2"
+workers = os.environ.get("WEB_CONCURRENCY", "2")
+threads = os.environ.get("GUNICORN_THREADS", "2")
 
 # Python ke through Gunicorn start karo
 os.execv(
