@@ -314,6 +314,13 @@
             transform: translateY(-1px);
         }
 
+        .craving-food-card button:disabled,
+        .food-card button:disabled {
+            cursor: wait;
+            opacity: .75;
+            transform: none;
+        }
+
         .craving-food-card button:focus-visible {
             outline: 3px solid rgba(240, 68, 43, .35);
             outline-offset: 3px;
@@ -1035,6 +1042,23 @@
                 line-height: 1;
             }
 
+            #foodList > .craving-food-card button.is-adding,
+            #foodList > .food-card button.is-adding {
+                width: auto;
+                min-width: 68px;
+                padding: 0 7px;
+                border-radius: 15px;
+                color: #fff;
+                font-size: 10px;
+                font-weight: 700;
+                white-space: nowrap;
+            }
+
+            #foodList > .craving-food-card button.is-adding::after,
+            #foodList > .food-card button.is-adding::after {
+                content: none;
+            }
+
             #foodList > .craving-food-card button:hover,
             #foodList > .food-card button:hover {
                 background: #e94328;
@@ -1637,7 +1661,7 @@
                     button.type = "button";
                     button.textContent = "Order Now";
                     button.addEventListener("click", function() {
-                        addToCart(food, selectedQuantity);
+                        addToCart(food, selectedQuantity, button);
                     });
                     card.append(image, title, restaurant, price, button);
                     foodList.appendChild(card);
@@ -1832,7 +1856,7 @@
                 const button = document.createElement("button");
                 button.textContent = "Order Now";
                 button.addEventListener("click", function() {
-                    addToCart(food);
+                    addToCart(food, 1, button);
                 });
 
                 card.appendChild(title);
@@ -1866,7 +1890,15 @@
         ==========================================
         */
 
-        async function addToCart(food, quantity = 1) {
+        async function addToCart(food, quantity = 1, button = null) {
+            if (button && button.disabled) return;
+            const originalButtonText = button ? button.textContent : "";
+            if (button) {
+                button.disabled = true;
+                button.classList.add("is-adding");
+                button.textContent = "Adding...";
+                button.setAttribute("aria-busy", "true");
+            }
             try {
                 const csrfToken = document.cookie
                     .split("; ")
@@ -1889,9 +1921,15 @@
                 }
 
                 updateCartCount(data);
-                alert(food.name + " added to cart 🛒");
             } catch (error) {
                 foodMessage.textContent = error.message;
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.classList.remove("is-adding");
+                    button.textContent = originalButtonText;
+                    button.removeAttribute("aria-busy");
+                }
             }
 
         }
