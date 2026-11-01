@@ -41,7 +41,7 @@ class Command(BaseCommand):
                 cancelled += 1
 
         retry_ids = Order.objects.filter(
-            status=Order.Status.CANCELLED,
+            status__in=[Order.Status.CANCELLED, Order.Status.PAYMENT_FAILED],
             refund_status__in=["pending", "failed"],
             gateway_payment_status="success",
         ).exclude(cashfree_order_id="").values_list("pk", flat=True)

@@ -1,10 +1,15 @@
 import json
+import base64
+import hashlib
+import hmac
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.contrib.staticfiles import finders
 from django.core.exceptions import ValidationError
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.utils import timezone
 
 from .models import AccountProfile, Category, Food, Order, PricingSettings, Restaurant
@@ -729,6 +734,102 @@ class OrderWorkflowTests(TestCase):
         self.assertContains(response, 'id="payLaterAmount"')
         self.assertContains(response, "no online money is collected right now")
         self.assertNotContains(response, "Razorpay")
+
+    @override_settings(CASHFREE_ENABLED=True, CASHFREE_SECRET_KEY="test-secret")
+    def test_late_cashfree_success_keeps_failed_order_failed_and_starts_refund(self):
+        self.food.stock_quantity = 10
+        self.food.save(update_fields=["stock_quantity"])
+        order, _code = self._create_order(Order.OrderType.PICKUP)
+        self.food.refresh_from_db()
+        self.assertEqual(self.food.stock_quantity, 9)
+
+        order.cashfree_order_id = str(order.id)
+        order.status = Order.Status.PAYMENT_FAILED
+        order.gateway_payment_status = "expired"
+        order.save(update_fields=["cashfree_order_id", "status", "gateway_payment_status"])
+        from .views import _restore_order_stock
+        _restore_order_stock(order)
+        self.food.refresh_from_db()
+        self.assertEqual(self.food.stock_quantity, 10)
+
+        payload = {
+            "data": {
+                "order": {"order_id": str(order.id)},
+                "payment": {
+                    "payment_status": "SUCCESS",
+                    "cf_payment_id": "cashfree-payment-1",
+                    "payment_amount": float(order.gateway_amount),
+                    "payment_currency": "INR",
+                },
+            }
+        }
+        body = json.dumps(payload).encode("utf-8")
+        timestamp = "1762000000000"
+        signature = base64.b64encode(
+            hmac.new(
+                b"test-secret",
+                timestamp.encode("utf-8") + body,
+                hashlib.sha256,
+            ).digest()
+        ).decode("ascii")
+
+        with patch("orders.views._request_order_refund") as request_refund:
+            response = Client().generic(
+                "POST",
+                "/api/payments/cashfree/webhook",
+                body,
+                content_type="application/json",
+                HTTP_X_WEBHOOK_TIMESTAMP=timestamp,
+                HTTP_X_WEBHOOK_SIGNATURE=signature,
+            )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        request_refund.assert_called_once()
+        order.refresh_from_db()
+        self.food.refresh_from_db()
+        self.assertEqual(order.status, Order.Status.PAYMENT_FAILED)
+        self.assertEqual(order.gateway_payment_status, "success")
+        self.assertEqual(self.food.stock_quantity, 10)
+
+    @override_settings(CASHFREE_ENABLED=True)
+    def test_customer_cancellation_starts_refund_for_paid_order(self):
+        order, _code = self._create_order(Order.OrderType.PICKUP)
+        order.gateway_payment_status = "success"
+        order.cashfree_order_id = str(order.id)
+        order.save(update_fields=["gateway_payment_status", "cashfree_order_id"])
+
+        with patch("orders.views._request_order_refund") as request_refund:
+            response = self.customer_client.post(
+                f"/api/customer/orders/{order.id}/cancel"
+            )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        request_refund.assert_called_once()
+        order.refresh_from_db()
+        self.assertEqual(order.status, Order.Status.CANCELLED)
+
+    def test_failed_payment_refunds_are_included_in_retry_job(self):
+        order, _code = self._create_order(Order.OrderType.PICKUP)
+        order.status = Order.Status.PAYMENT_FAILED
+        order.gateway_payment_status = "success"
+        order.cashfree_order_id = str(order.id)
+        order.refund_status = "failed"
+        order.save(
+            update_fields=[
+                "status",
+                "gateway_payment_status",
+                "cashfree_order_id",
+                "refund_status",
+            ]
+        )
+
+        with patch(
+            "orders.management.commands.process_restaurant_orders._request_order_refund"
+        ) as request_refund:
+            call_command("process_restaurant_orders", stdout=None)
+
+        request_refund.assert_called_once()
+        self.assertEqual(request_refund.call_args.args[0].pk, order.pk)
 
     def test_admin_can_edit_delivery_and_platform_fees(self):
         admin_user = get_user_model().objects.create_superuser(

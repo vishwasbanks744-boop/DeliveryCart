@@ -267,16 +267,22 @@ def _mark_cashfree_order_paid(order_id, payment_id, amount, currency="INR"):
     with transaction.atomic():
         order = Order.objects.select_for_update().get(pk=order.pk)
         if order.status in {Order.Status.PLACED, Order.Status.PAID}:
-            return True
+            return "paid" if order.gateway_payment_status == "success" else False
         if order.status not in {
             Order.Status.PAYMENT_PENDING,
             Order.Status.PAYMENT_FAILED,
+            Order.Status.CANCELLED,
         }:
             return False
-        order.status = Order.Status.PLACED
         order.gateway_payment_status = "success"
         order.cashfree_payment_id = str(payment_id or "")[:80]
         order.paid_at = timezone.now()
+        late_payment = order.status in {
+            Order.Status.PAYMENT_FAILED,
+            Order.Status.CANCELLED,
+        }
+        if not late_payment:
+            order.status = Order.Status.PLACED
         order.save(
             update_fields=[
                 "status",
@@ -285,7 +291,7 @@ def _mark_cashfree_order_paid(order_id, payment_id, amount, currency="INR"):
                 "paid_at",
             ]
         )
-    return True
+    return "refund" if late_payment else "paid"
 
 
 def _firebase_identity(data, require_verified):
@@ -1838,12 +1844,23 @@ def cashfree_payment_status(request, order_id):
             for payment in payments if isinstance(payments, list) else []:
                 if payment.get("payment_status") != "SUCCESS":
                     continue
-                if _mark_cashfree_order_paid(
+                payment_result = _mark_cashfree_order_paid(
                     order.cashfree_order_id,
                     payment.get("cf_payment_id"),
                     payment.get("payment_amount"),
                     payment.get("payment_currency", "INR"),
-                ):
+                )
+                if payment_result == "refund":
+                    late_order = Order.objects.get(pk=order.pk)
+                    _request_order_refund(late_order)
+                    late_order.refresh_from_db()
+                    return JsonResponse({
+                        "enabled": True,
+                        "status": "refund_pending",
+                        "orderStatus": late_order.status,
+                        "refundStatus": late_order.refund_status,
+                    })
+                if payment_result == "paid":
                     return JsonResponse({
                         "enabled": True,
                         "status": "success",
@@ -1904,14 +1921,17 @@ def cashfree_webhook(request):
     except (json.JSONDecodeError, UnicodeDecodeError, AttributeError):
         return _error("Invalid Cashfree webhook payload.")
     if payment_data.get("payment_status") == "SUCCESS":
-        accepted = _mark_cashfree_order_paid(
+        payment_result = _mark_cashfree_order_paid(
             order_data.get("order_id"),
             payment_data.get("cf_payment_id"),
             payment_data.get("payment_amount"),
             payment_data.get("payment_currency", "INR"),
         )
-        if not accepted:
+        if not payment_result:
             return _error("Cashfree payment could not be matched to an order.", 409)
+        if payment_result == "refund":
+            late_order = Order.objects.get(cashfree_order_id=order_data.get("order_id"))
+            _request_order_refund(late_order)
     return JsonResponse({"received": True})
 
 
@@ -3246,9 +3266,17 @@ def cancel_order(request, order_id):
     if role_error:
         return role_error
     order = get_object_or_404(Order, id=order_id, customer=request.user)
-    if order.status != Order.Status.PLACED:
-        return _error("Only new orders can be cancelled here.", 409)
-    order.status = Order.Status.CANCELLED
-    order.save(update_fields=["status"])
-    _restore_order_stock(order)
-    return JsonResponse({"message": "Order cancelled.", "status": order.status})
+    with transaction.atomic():
+        order = Order.objects.select_for_update().get(pk=order.pk)
+        if order.status != Order.Status.PLACED:
+            return _error("Only new orders can be cancelled here.", 409)
+        order.status = Order.Status.CANCELLED
+        order.save(update_fields=["status"])
+        _restore_order_stock(order)
+    _request_order_refund(order)
+    order.refresh_from_db()
+    return JsonResponse({
+        "message": "Order cancelled.",
+        "status": order.status,
+        "refundStatus": order.refund_status,
+    })
