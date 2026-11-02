@@ -53,7 +53,7 @@
             <div class="field">
                 <label>Order type</label>
                 <label class="type-option"><input type="radio" name="orderType" value="pickup" checked> On the way (I'll collect from the restaurant)</label>
-                <label class="type-option"><input type="radio" name="orderType" value="delivery"> Delivery</label>
+                <label class="type-option"><input type="radio" name="orderType" value="delivery" hidden> Delivery</label>
             </div>
             <p id="customerInfo" class="note"></p>
             <div class="field" id="addressField" hidden>
@@ -72,10 +72,10 @@
         <aside class="card">
             <h2>Order summary</h2>
             <div class="row"><span>Food total</span><strong id="itemTotal">₹0.00</strong></div>
-            <div class="row"><span>Restaurant commission (online)</span><strong id="commissionFee">₹0.00</strong></div>
+            <div class="row" hidden><span>Restaurant commission (online)</span><strong id="commissionFee">₹0.00</strong></div>
             <div class="row" id="deliveryRow" hidden><span>Delivery charge</span><strong id="deliveryFee">₹0.00</strong></div>
             <div class="row" id="platformRow"><span>Platform fee</span><strong id="platformFee">₹10.00</strong></div>
-            <div class="row"><span>Gateway amount (fees only)</span><strong id="onlinePaymentAmount">₹0.00</strong></div>
+            <div class="row"><span>pay at checkout</span><strong id="onlinePaymentAmount">₹0.00</strong></div>
             <div class="row"><span id="payLaterLabel">Pay at restaurant</span><strong id="payLaterAmount">₹0.00</strong></div>
             <div class="row total"><span>Total order amount</span><strong id="customerTotal">₹0.00</strong></div>
             <p id="paymentNote" class="note">Payment gateway is not connected yet. This is the planned payment split only; no online money is collected right now. Clicking Place order will place the order without taking payment.</p>
